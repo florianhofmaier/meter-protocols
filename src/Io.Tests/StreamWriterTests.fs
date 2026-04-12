@@ -37,7 +37,7 @@ let ``WriteAsync WhenLongFrameCiOnly ShouldWriteCorrectBytes`` () =
         use ms = new MemoryStream()
         let writer = StreamWriter.create ms
         let tpl = Tpl.CiOnly TplCiOnlyFunc.AplSelect
-        let apl = Apl.UserData []
+        let apl = Apl.RspUdData { DataRecords = []; MfrSpecificData = None; IsMoreDataInNextTelegram = false }
         let lf = { CField = 0x53uy; PrmAdr = 0x01uy; Tpl = tpl; Apl = apl }
 
         do! writer (Frame.LongFrame lf) CancellationToken.None

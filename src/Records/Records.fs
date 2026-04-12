@@ -3,14 +3,24 @@ namespace Mbus.Records
 open System
 open Mbus
 open Mbus.Records.DataInfoBlocks
+open Mbus.Records.ValueInfoBlocks
 
-type DataRecord = {
+type RspDataRecord = {
     Value: MbusValue
     StNum: StorageNumber
     Fn: MbusFunctionField
     Tariff: Tariff
     SubUnit: SubUnit
-    Vib: Vib
+    Vib: RspVib
+}
+
+type CmdRecord = {
+    Value: MbusValue
+    StNum: StorageNumber
+    Fn: MbusFunctionField
+    Tariff: Tariff
+    SubUnit: SubUnit
+    Vib: CmdVib
 }
 
 type SpecialFunction =
@@ -18,8 +28,8 @@ type SpecialFunction =
     | MfrData of ReadOnlyMemory<byte>
     | MfrDataMoreFollows of ReadOnlyMemory<byte>
 
-type Record =
-    | Data of DataRecord
+type RspRecord =
+    | Data of RspDataRecord
     | SpecialFunction of SpecialFunction
 
 module Record =
@@ -51,32 +61,53 @@ module Record =
             | _ -> return! failBefore $"invalid special function code: 0x{b:X2}"
         }
 
-        let parseDataRec dif : Parser<DataRecord> = parser {
+        let parseDataRec dif : Parser<RspDataRecord> = parser {
             let! fn, stNum, tariff, subUnit = DibParser.parse dif
-            let! vib = Vib.Parser.parse
+            let! vib = Vib.Parser.parseRsp
             let! value = MbusValue.parse dif
             return { Fn = fn; StNum = stNum; Tariff = tariff; SubUnit = subUnit; Vib = vib; Value = value; }
         }
 
-        let parseRecord: Parser<Record> = parser {
+        let parseRspRec: Parser<RspRecord> = parser {
             let! dif = parseU8
             if isSpecFn dif then
-             let! record = parseSpecFn dif |> withCtx "special function record"
-             return SpecialFunction record
+                let! record = parseSpecFn dif |> withCtx "special function record"
+                return SpecialFunction record
             else
-             let! record = parseDataRec dif |> withCtx "data record"
-             return Data record
+                let! record = parseDataRec dif |> withCtx "data record"
+                return Data record
+        }
+
+        let parseCmdRec dif : Parser<CmdRecord> = parser {
+            let! fn, stNum, tariff, subUnit = DibParser.parse dif
+            let! vib = Vib.Parser.parseCmd
+            let! value = MbusValue.parse dif
+            return { Fn = fn; StNum = stNum; Tariff = tariff; SubUnit = subUnit; Vib = vib; Value = value; }
+        }
+
+        let parseCmdRecord : Parser<CmdRecord> = parser {
+            let! dif = parseU8
+            return! parseCmdRec dif |> withCtx "cmd data record"
         }
 
     module Writer =
         open Mbus.BaseWriters.Core
         open Mbus.Records
 
-        let write (record: DataRecord) : Writer<unit> =
+        let write (record: RspDataRecord) : Writer<unit> =
             writer {
                 do! DibWriter.writeDib record.Fn record.StNum record.Tariff record.SubUnit record.Value
                 match record.Vib with
-                | Vib.Normal nv -> do! Vib.Writer.writeNormalVib nv
+                | RspVib.Normal nv -> do! Vib.Writer.writeNormalVib nv
                 | vib -> return! writerError $"Unsupported Vib type for writing: {vib}"
+                do! MbusValue.write record.Value
+            }
+
+        let writeCmd (record: CmdRecord) : Writer<unit> =
+            writer {
+                do! DibWriter.writeDib record.Fn record.StNum record.Tariff record.SubUnit record.Value
+                match record.Vib with
+                | CmdVib.Normal nv -> do! Vib.Writer.writeCmdVib nv
+                | vib -> return! writerError $"Unsupported CmdVib type for writing: {vib}"
                 do! MbusValue.write record.Value
             }

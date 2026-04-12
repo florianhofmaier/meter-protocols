@@ -7,9 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="DeviceSelection.fs" />
     <Compile Include="DeviceLogic.fs" />
     <Compile Include="DeviceRuntime.fs" />
-    <Compile Include="MbusDevice.fs" />
   </ItemGroup>
 
   <ItemGroup>

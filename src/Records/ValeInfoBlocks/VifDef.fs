@@ -1,4 +1,4 @@
-namespace Mbus.Records
+namespace Mbus.Records.ValueInfoBlocks
 
 open System
 open Mbus
@@ -49,14 +49,14 @@ module VifDef =
             0x25uy, { Val = MbusValueType.OperatingTime; Unit = MbusUnit.Minutes; Scaler = 1m }
             0x26uy, { Val = MbusValueType.OperatingTime; Unit = MbusUnit.Hours; Scaler = 1m }
             0x27uy, { Val = MbusValueType.OperatingTime; Unit = MbusUnit.Days; Scaler = 1m }
-            0x28uy, { Val = MbusValueType.Power; Unit = MbusUnit.Watt; Scaler = 1e-3m }
-            0x29uy, { Val = MbusValueType.Power; Unit = MbusUnit.Watt; Scaler = 1e-2m }
-            0x2Auy, { Val = MbusValueType.Power; Unit = MbusUnit.Watt; Scaler = 1e-1m }
-            0x2Buy, { Val = MbusValueType.Power; Unit = MbusUnit.Watt; Scaler = 1e0m }
-            0x2Cuy, { Val = MbusValueType.Power; Unit = MbusUnit.Watt; Scaler = 1e1m }
-            0x2Duy, { Val = MbusValueType.Power; Unit = MbusUnit.Watt; Scaler = 1e2m }
-            0x2Euy, { Val = MbusValueType.Power; Unit = MbusUnit.Watt; Scaler = 1e3m }
-            0x2Fuy, { Val = MbusValueType.Power; Unit = MbusUnit.Watt; Scaler = 1e4m }
+            0x28uy, { Val = MbusValueType.Power; Unit = MbusUnit.Watts; Scaler = 1e-3m }
+            0x29uy, { Val = MbusValueType.Power; Unit = MbusUnit.Watts; Scaler = 1e-2m }
+            0x2Auy, { Val = MbusValueType.Power; Unit = MbusUnit.Watts; Scaler = 1e-1m }
+            0x2Buy, { Val = MbusValueType.Power; Unit = MbusUnit.Watts; Scaler = 1e0m }
+            0x2Cuy, { Val = MbusValueType.Power; Unit = MbusUnit.Watts; Scaler = 1e1m }
+            0x2Duy, { Val = MbusValueType.Power; Unit = MbusUnit.Watts; Scaler = 1e2m }
+            0x2Euy, { Val = MbusValueType.Power; Unit = MbusUnit.Watts; Scaler = 1e3m }
+            0x2Fuy, { Val = MbusValueType.Power; Unit = MbusUnit.Watts; Scaler = 1e4m }
             0x30uy, { Val = MbusValueType.Power; Unit = MbusUnit.JoulesPerHour; Scaler = 1e0m }
             0x31uy, { Val = MbusValueType.Power; Unit = MbusUnit.JoulesPerHour; Scaler = 1e1m }
             0x32uy, { Val = MbusValueType.Power; Unit = MbusUnit.JoulesPerHour; Scaler = 1e2m }
@@ -159,8 +159,8 @@ module VifDef =
             0x1Buy, { Val = MbusValueType.RelativeHumidity; Unit = MbusUnit.Percent; Scaler = 1e0m }
             0x20uy, { Val = MbusValueType.Volume; Unit = MbusUnit.CubicFeet; Scaler = 1e0m }
             0x21uy, { Val = MbusValueType.Volume; Unit = MbusUnit.CubicFeet; Scaler = 1e-1m }
-            0x28uy, { Val = MbusValueType.Power; Unit = MbusUnit.Watt; Scaler = 1e5m }
-            0x29uy, { Val = MbusValueType.Power; Unit = MbusUnit.Watt; Scaler = 1e6m }
+            0x28uy, { Val = MbusValueType.Power; Unit = MbusUnit.Watts; Scaler = 1e5m }
+            0x29uy, { Val = MbusValueType.Power; Unit = MbusUnit.Watts; Scaler = 1e6m }
             0x2Auy, { Val = MbusValueType.PhaseUToU; Unit = MbusUnit.Degrees; Scaler = 1e-1m }
             0x2Buy, { Val = MbusValueType.PhaseUToI; Unit = MbusUnit.Degrees; Scaler = 1e-1m }
             0x2Cuy, { Val = MbusValueType.Frequency; Unit = MbusUnit.Hertz; Scaler = 1e-3m }
@@ -177,14 +177,14 @@ module VifDef =
             0x75uy, { Val = MbusValueType.ColdWarmTemperatureLimit; Unit = MbusUnit.Celsius; Scaler = 1e-2m }
             0x76uy, { Val = MbusValueType.ColdWarmTemperatureLimit; Unit = MbusUnit.Celsius; Scaler = 1e-1m }
             0x77uy, { Val = MbusValueType.ColdWarmTemperatureLimit; Unit = MbusUnit.Celsius; Scaler = 1e0m }
-            0x78uy, { Val = MbusValueType.CumulativeMaximumOfActivePower; Unit = MbusUnit.Watt; Scaler = 1e-3m }
-            0x79uy, { Val = MbusValueType.CumulativeMaximumOfActivePower; Unit = MbusUnit.Watt; Scaler = 1e-2m }
-            0x7Auy, { Val = MbusValueType.CumulativeMaximumOfActivePower; Unit = MbusUnit.Watt; Scaler = 1e-1m }
-            0x7Buy, { Val = MbusValueType.CumulativeMaximumOfActivePower; Unit = MbusUnit.Watt; Scaler = 1e0m }
-            0x7Cuy, { Val = MbusValueType.CumulativeMaximumOfActivePower; Unit = MbusUnit.Watt; Scaler = 1e1m }
-            0x7Duy, { Val = MbusValueType.CumulativeMaximumOfActivePower; Unit = MbusUnit.Watt; Scaler = 1e2m }
-            0x7Euy, { Val = MbusValueType.CumulativeMaximumOfActivePower; Unit = MbusUnit.Watt; Scaler = 1e3m }
-            0x7Fuy, { Val = MbusValueType.CumulativeMaximumOfActivePower; Unit = MbusUnit.Watt; Scaler = 1e4m }
+            0x78uy, { Val = MbusValueType.CumulativeMaximumOfActivePower; Unit = MbusUnit.Watts; Scaler = 1e-3m }
+            0x79uy, { Val = MbusValueType.CumulativeMaximumOfActivePower; Unit = MbusUnit.Watts; Scaler = 1e-2m }
+            0x7Auy, { Val = MbusValueType.CumulativeMaximumOfActivePower; Unit = MbusUnit.Watts; Scaler = 1e-1m }
+            0x7Buy, { Val = MbusValueType.CumulativeMaximumOfActivePower; Unit = MbusUnit.Watts; Scaler = 1e0m }
+            0x7Cuy, { Val = MbusValueType.CumulativeMaximumOfActivePower; Unit = MbusUnit.Watts; Scaler = 1e1m }
+            0x7Duy, { Val = MbusValueType.CumulativeMaximumOfActivePower; Unit = MbusUnit.Watts; Scaler = 1e2m }
+            0x7Euy, { Val = MbusValueType.CumulativeMaximumOfActivePower; Unit = MbusUnit.Watts; Scaler = 1e3m }
+            0x7Fuy, { Val = MbusValueType.CumulativeMaximumOfActivePower; Unit = MbusUnit.Watts; Scaler = 1e4m }
         ]
 
     let secExtTable = dict [
@@ -337,8 +337,8 @@ module VifDef =
     let descriptions = dict [
         MbusValueTypeExtension.RelativeDeviation,"Relative deviation"
         MbusValueTypeExtension.StandardConformDataContent,"Standard conform data content"
-        MbusValueTypeExtension.CompactProfileWithRegisters,"Compact profile with registers"
-        MbusValueTypeExtension.CompactProfileWithoutRegisters,"Compact profile without registers"
+        MbusValueTypeExtension.CompactProfileWithRegisterNumbers,"Compact profile with registers"
+        MbusValueTypeExtension.CompactProfile,"Compact profile without registers"
         MbusValueTypeExtension.PerSecond,"Per second"
         MbusValueTypeExtension.PerMinute,"Per minute"
         MbusValueTypeExtension.PerHour,"Per hour"

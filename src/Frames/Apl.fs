@@ -1,10 +1,18 @@
 namespace Mbus.Frames
-open Mbus
+
+open System
 open Mbus.Records
 
-type DeviceSelection = { Adr: MbusAddress; Data: Record list option }
+module DeviceSelection =
+    let length = 8
+
+type RspUdData =
+    { DataRecords: RspDataRecord list
+      MfrSpecificData: ReadOnlyMemory<byte> option
+      IsMoreDataInNextTelegram: bool }
 
 type Apl =
-    | UserData of Record list
+    | RspUdData of RspUdData
     | AlarmBits of uint8
-    | DeviceSelection of DeviceSelection
+    | SelectedDevice of byte[]
+    | SndUdData of CmdRecord list

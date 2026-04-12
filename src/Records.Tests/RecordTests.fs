@@ -1,15 +1,16 @@
-module Mbus.Records.Tests.RecordTests
+module Mbus.Records.Tests.RspRecordTests
 
 open System
 open Mbus
 open Mbus.BaseParsers.Core
 open Mbus.Records
 open Mbus.Records.DataInfoBlocks
+open Mbus.Records.ValueInfoBlocks
 open Xunit
 open FsUnit.Xunit
 
 let PRec buf =
-    match Record.Parser.parseRecord { Off = 0; Buf = ReadOnlyMemory<uint8>(buf) } with
+    match Record.Parser.parseRspRec { Off = 0; Buf = ReadOnlyMemory<uint8>(buf) } with
     | Ok (r, _) -> r
     | Error e -> failwithf $"Unexpected: %A{e}"
 
@@ -37,7 +38,7 @@ let ``parse mfr specific record with more follows`` () =
 [<Fact>]
 let ``parse invalid special function code`` () =
     let buf = [| 0x3Fuy |]
-    match Record.Parser.parseRecord { Off = 0; Buf = ReadOnlyMemory<uint8>(buf) } with
+    match Record.Parser.parseRspRec { Off = 0; Buf = ReadOnlyMemory<uint8>(buf) } with
     | Error e -> e |> should equal { Pos = 0; Msg = "invalid special function code: 0x3F"; Ctx = [ "special function record" ] }
     | Ok (r, _) -> failwithf $"Expected error, got {r}"
 
@@ -51,5 +52,5 @@ let ``parse data record`` () =
         r.StNum |> should equal StorageNumber.zero
         r.Tariff |> should equal Tariff.zero
         r.SubUnit |> should equal SubUnit.zero
-        r.Vib |> should equal (Normal { Def = { Val = MbusValueType.Volume; Unit = MbusUnit.CubicMeters; Scaler = 1e-3m }; Ext = [ ] })
+        r.Vib |> should equal (RspVib.Normal { Def = { Val = MbusValueType.Volume; Unit = MbusUnit.CubicMeters; Scaler = 1e-3m }; Ext = [ ]; Codes = [] })
     | other -> failwithf $"Expected DataRecord, got {other}"

@@ -23,7 +23,7 @@ let runWriterError st0 pos w =
 
 [<Fact>]
 let ``writeU8 at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU8 0x42uy
     let resultState = runWriterOk testState 0 w
 
@@ -32,7 +32,7 @@ let ``writeU8 at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeU8 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU8 0xAAuy
     let resultState = runWriterOk testState 14 w
     WState.pos resultState |> should equal 15
@@ -40,7 +40,7 @@ let ``writeU8 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeU8 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w =
         writer {
             do! writeU8 0x01uy
@@ -53,7 +53,7 @@ let ``chained writeU8 returns expected state`` () =
 
 [<Fact>]
 let ``writeU8 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU8 0x42uy
     let error = runWriterError testState 256 w
     error.Pos |> should equal 256
@@ -61,7 +61,7 @@ let ``writeU8 overflow returns error`` () =
 
 [<Fact>]
 let ``writeI8 (negative) at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI8 -1y
     let resultState = runWriterOk testState 0 w
 
@@ -70,7 +70,7 @@ let ``writeI8 (negative) at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeI8 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI8 -128y
     let resultState = runWriterOk testState 14 w
     WState.pos resultState |> should equal 15
@@ -78,7 +78,7 @@ let ``writeI8 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeI8 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w =
         writer {
             do! writeI8 -1y     // 0xFF
@@ -91,7 +91,7 @@ let ``chained writeI8 returns expected state`` () =
 
 [<Fact>]
 let ``writeI8 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI8 -1y
     let error = runWriterError testState 256 w
     error.Pos |> should equal 256
@@ -99,7 +99,7 @@ let ``writeI8 overflow returns error`` () =
 
 [<Fact>]
 let ``writeU16 at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU16 0xAABBus
     let resultState = runWriterOk testState 0 w
 
@@ -108,7 +108,7 @@ let ``writeU16 at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeU16 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU16 0x1234us
     let resultState = runWriterOk testState 10 w
     WState.pos resultState |> should equal 12
@@ -116,7 +116,7 @@ let ``writeU16 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeU16 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w =
         writer {
             do! writeU16 0x1122us
@@ -129,7 +129,7 @@ let ``chained writeU16 returns expected state`` () =
 
 [<Fact>]
 let ``writeU16 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU16 0xAABBus
     let error = runWriterError testState 255 w
     error.Pos |> should equal 255
@@ -137,7 +137,7 @@ let ``writeU16 overflow returns error`` () =
 
 [<Fact>]
 let ``writeI16 (negative) at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI16 -1s
     let resultState = runWriterOk testState 0 w
 
@@ -146,7 +146,7 @@ let ``writeI16 (negative) at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeI16 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI16 -32768s
     let resultState = runWriterOk testState 10 w
     WState.pos resultState |> should equal 12
@@ -154,7 +154,7 @@ let ``writeI16 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeI16 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w =
         writer {
             do! writeI16 -1s
@@ -167,7 +167,7 @@ let ``chained writeI16 returns expected state`` () =
 
 [<Fact>]
 let ``writeI16 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI16 -1s
     let error = runWriterError testState 255 w
     error.Pos |> should equal 255
@@ -175,7 +175,7 @@ let ``writeI16 overflow returns error`` () =
 
 [<Fact>]
 let ``writeU24 at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU24 0xAABBCCu
     let resultState = runWriterOk testState 0 w
 
@@ -184,7 +184,7 @@ let ``writeU24 at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeU24 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU24 0x112233u
     let resultState = runWriterOk testState 10 w
     WState.pos resultState |> should equal 13
@@ -192,7 +192,7 @@ let ``writeU24 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeU24 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w =
         writer {
             do! writeU24 0x112233u
@@ -205,7 +205,7 @@ let ``chained writeU24 returns expected state`` () =
 
 [<Fact>]
 let ``writeU24 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU24 0xAABBCCu
     let error = runWriterError testState 254 w
     error.Pos |> should equal 254
@@ -213,7 +213,7 @@ let ``writeU24 overflow returns error`` () =
 
 [<Fact>]
 let ``writeI24 (negative) at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI24 -1
     let resultState = runWriterOk testState 0 w
 
@@ -222,7 +222,7 @@ let ``writeI24 (negative) at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeI24 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI24 0x123456
     let resultState = runWriterOk testState 10 w
     WState.pos resultState |> should equal 13
@@ -230,7 +230,7 @@ let ``writeI24 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeI24 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w =
         writer {
             do! writeI24 0x112233
@@ -243,7 +243,7 @@ let ``chained writeI24 returns expected state`` () =
 
 [<Fact>]
 let ``writeI24 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI24 -1
     let error = runWriterError testState 254 w
     error.Pos |> should equal 254
@@ -251,7 +251,7 @@ let ``writeI24 overflow returns error`` () =
 
 [<Fact>]
 let ``writeU32 at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU32 0xAABBCCDDu
     let resultState = runWriterOk testState 0 w
 
@@ -260,7 +260,7 @@ let ``writeU32 at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeU32 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU32 0x12345678u
     let resultState = runWriterOk testState 10 w
     WState.pos resultState |> should equal 14
@@ -268,7 +268,7 @@ let ``writeU32 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeU32 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w =
         writer {
             do! writeU32 0x11223344u
@@ -281,7 +281,7 @@ let ``chained writeU32 returns expected state`` () =
 
 [<Fact>]
 let ``writeU32 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU32 0xAABBCCDDu
     let error = runWriterError testState 253 w
     error.Pos |> should equal 253
@@ -289,7 +289,7 @@ let ``writeU32 overflow returns error`` () =
 
 [<Fact>]
 let ``writeI32 (negative) at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI32 -1
     let resultState = runWriterOk testState 0 w
 
@@ -298,7 +298,7 @@ let ``writeI32 (negative) at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeI32 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI32 0x12345678
     let resultState = runWriterOk testState 10 w
     WState.pos resultState |> should equal 14
@@ -306,7 +306,7 @@ let ``writeI32 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeI32 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w =
         writer {
             do! writeI32 0x11223344
@@ -319,7 +319,7 @@ let ``chained writeI32 returns expected state`` () =
 
 [<Fact>]
 let ``writeI32 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI32 -1
     let error = runWriterError testState 253 w
     error.Pos |> should equal 253
@@ -327,7 +327,7 @@ let ``writeI32 overflow returns error`` () =
 
 [<Fact>]
 let ``writeU48 at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU48 0xAABBCCDDEEFFUL
     let resultState = runWriterOk testState 0 w
 
@@ -336,7 +336,7 @@ let ``writeU48 at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeU48 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU48 0x112233445566UL
     let resultState = runWriterOk testState 10 w
     WState.pos resultState |> should equal 16
@@ -344,7 +344,7 @@ let ``writeU48 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeU48 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w =
         writer {
             do! writeU48 0x112233445566UL
@@ -357,7 +357,7 @@ let ``chained writeU48 returns expected state`` () =
 
 [<Fact>]
 let ``writeU48 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU48 0xAABBCCDDEEFFUL
     let error = runWriterError testState 251 w
     error.Pos |> should equal 251
@@ -365,7 +365,7 @@ let ``writeU48 overflow returns error`` () =
 
 [<Fact>]
 let ``writeI48 (negative) at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI48 -1L
     let resultState = runWriterOk testState 0 w
 
@@ -374,7 +374,7 @@ let ``writeI48 (negative) at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeI48 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI48 0x1234567890ABL
     let resultState = runWriterOk testState 10 w
 
@@ -383,7 +383,7 @@ let ``writeI48 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeI48 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w =
         writer {
             do! writeI48 0x112233445566L
@@ -396,7 +396,7 @@ let ``chained writeI48 returns expected state`` () =
 
 [<Fact>]
 let ``writeI48 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI48 -1L
     let error = runWriterError testState 251 w
     error.Pos |> should equal 251
@@ -404,7 +404,7 @@ let ``writeI48 overflow returns error`` () =
 
 [<Fact>]
 let ``writeU64 at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU64 0xAABBCCDDEEFF1122UL
     let resultState = runWriterOk testState 0 w
 
@@ -413,7 +413,7 @@ let ``writeU64 at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeU64 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU64 0x1122334455667788UL
     let resultState = runWriterOk testState 10 w
     WState.pos resultState |> should equal 18
@@ -421,7 +421,7 @@ let ``writeU64 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeU64 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w =
         writer {
             do! writeU64 0x1122334455667788UL
@@ -434,7 +434,7 @@ let ``chained writeU64 returns expected state`` () =
 
 [<Fact>]
 let ``writeU64 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeU64 0xAABBCCDDEEFF1122UL
     let error = runWriterError testState 249 w
     error.Pos |> should equal 249
@@ -442,7 +442,7 @@ let ``writeU64 overflow returns error`` () =
 
 [<Fact>]
 let ``writeI64 (negative) at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI64 -1L
     let resultState = runWriterOk testState 0 w
 
@@ -451,7 +451,7 @@ let ``writeI64 (negative) at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeI64 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI64 0x1234567890ABCDEFL
     let resultState = runWriterOk testState 10 w
 
@@ -460,7 +460,7 @@ let ``writeI64 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeI64 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w =
         writer {
             do! writeI64 0x1122334455667788L
@@ -473,7 +473,7 @@ let ``chained writeI64 returns expected state`` () =
 
 [<Fact>]
 let ``writeI64 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let w = writeI64 -1L
     let error = runWriterError testState 249 w
     error.Pos |> should equal 249

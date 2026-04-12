@@ -1,14 +1,24 @@
-namespace Mbus.Records
+namespace Mbus.Records.ValueInfoBlocks
 
 open System
 open Mbus
-open Mbus.Records.VifDef
+open Mbus.Records
+open Mbus.Records.ValueInfoBlocks.VifDef
 
-type NormalVib = { Def: VifDef; Ext: CombVifExt list; }
-type Vib =
+type NormalRspVib = { Def: VifDef; Ext: CombVifExt list; Codes: MbusRecordError list}
+
+type NormalCmdVib = { Def: VifDef; Ext: CombVifExt list; Actions: MbusActionCode list;}
+
+type RspVib =
     | Invalid of ReadOnlyMemory<uint8>
     | Mfr of ReadOnlyMemory<uint8>
-    | Normal of NormalVib
+    | Normal of NormalRspVib
+    | Text of string
+
+type CmdVib =
+    | Invalid of ReadOnlyMemory<uint8>
+    | Mfr of ReadOnlyMemory<uint8>
+    | Normal of NormalCmdVib
     | Text of string
 
 module Vib =
@@ -76,41 +86,67 @@ module Vib =
                    |> Encoding.ASCII.GetString
         }
 
-        let private parseFirstExt : Parser<Vib> = parser {
+        // Shared core: resolves Def + Ext from a lookup table, delegates construction to caller.
+        // originalByte is masked internally for the lookup; the unmasked value is used for the extension-bit check.
+        let private parseLookup
+            (lookup: uint8 -> VifDef option)
+            (prefix: uint8[])
+            (originalByte: uint8)
+            (makeNormal: VifDef -> CombVifExt list -> 'a)
+            (makeInvalid: ReadOnlyMemory<uint8> -> 'a) : Parser<'a> = parser {
+            match lookup (originalByte &&& mask) with
+            | Some def ->
+                let! ext = parseExt originalByte
+                return makeNormal def ext
+            | None ->
+                let! raw = parseVibBytes prefix
+                return makeInvalid raw
+        }
+
+        let private parseFirstExtWith makeNormal makeInvalid : Parser<'a> = parser {
             let! code = parseU8
-            match firstExt code with
-            | Some def ->
-                let! ext = parseExt code
-                return { Def = def; Ext = ext } |> Normal
-            | None -> return! parseVibBytes [| firstExtension; code |] |>> Invalid
+            return! parseLookup firstExt [| firstExtension; code |] code makeNormal makeInvalid
         }
 
-        let private parseSecondExt : Parser<Vib> = parser {
+        let private parseSecondExtWith makeNormal makeInvalid : Parser<'a> = parser {
             let! code = parseU8
-            match sndExt code with
-            | Some def ->
-                let! ext = parseExt code
-                return { Def = def; Ext = ext } |> Normal
-            | None -> return! parseVibBytes [| secondExtension; code |] |>> Invalid
+            return! parseLookup sndExt [| secondExtension; code |] code makeNormal makeInvalid
         }
 
-        let private parsePrim vif : Parser<Vib> = parser {
-            match prim (vif &&& mask) with
-            | Some def ->
-                let! ext = parseExt vif
-                return { Def = def; Ext = ext } |> Normal
-            | None -> return! parseVibBytes [| vif |] |>> Invalid
-        }
+        let private parsePrimWith makeNormal makeInvalid vif : Parser<'a> =
+            parseLookup prim [| vif |] vif makeNormal makeInvalid
 
-        let parse: Parser<Vib> = parser {
+        let private parseWith
+            (makeNormal: VifDef -> CombVifExt list -> 'a)
+            (makeInvalid: ReadOnlyMemory<uint8> -> 'a)
+            (makeMfr: ReadOnlyMemory<uint8> -> 'a)
+            (makeText: string -> 'a) : Parser<'a> = parser {
             let! vif = parseU8
             match vif with
-            | IsSpecial mfrVif -> return! parseVibBytes [| vif |] |>> Mfr
-            | IsSpecial textVif -> return! parseTextVib |>> Text
-            | IsExt firstExtension -> return! parseFirstExt
-            | IsExt secondExtension -> return! parseSecondExt
-            | _ -> return! parsePrim vif
+            | IsSpecial mfrVif  -> return! parseVibBytes [| vif |] |>> makeMfr
+            | IsSpecial textVif -> return! parseTextVib |>> makeText
+            | IsSpecial anyVif  -> return! failBefore "Any VIF (0x7E) is not supported"
+            | IsExt firstExtension  -> return! parseFirstExtWith makeNormal makeInvalid
+            | IsExt secondExtension -> return! parseSecondExtWith makeNormal makeInvalid
+            | _ -> return! parsePrimWith makeNormal makeInvalid vif
         }
+
+        let parseRsp : Parser<RspVib> =
+            parseWith
+                (fun def ext -> RspVib.Normal { Def = def; Ext = ext; Codes = [] })
+                RspVib.Invalid
+                RspVib.Mfr
+                RspVib.Text
+
+        let parseCmd : Parser<CmdVib> =
+            parseWith
+                (fun def ext -> CmdVib.Normal { Def = def; Ext = ext; Actions = [] })
+                CmdVib.Invalid
+                CmdVib.Mfr
+                CmdVib.Text
+
+        // keep old name as alias for backwards compat
+        let parse = parseRsp
 
     module Writer =
         open Mbus.BaseWriters.Core
@@ -182,14 +218,19 @@ module Vib =
 
                 if i < count - 1 then setExt (clearExt raw) else clearExt raw
 
-        let writeNormalVib (vib: NormalVib) : Writer<unit> =
+        let private writeVib (def: VifDef) (ext: CombVifExt list) : Writer<unit> =
             fun st0 ->
-                match encodeVif vib.Def with
-                | None -> err st0 "VibWriter: cannot serialize NormalVib.Def (no matching VIF code in tables)"
+                match encodeVif def with
+                | None -> err st0 "VibWriter: cannot serialize VifDef (no matching VIF code in tables)"
                 | Some enc ->
                     match writeVifBytes enc st0 with
                     | Error e -> Error e
                     | Ok ((), st1) ->
-                        // Write VIFE chain (if any)
-                        if vib.Ext.IsEmpty then Ok ((), st1)
-                        else InfoBlock.writeExt vib.Ext writeExtByte st1
+                        if ext.IsEmpty then Ok ((), st1)
+                        else InfoBlock.writeExt ext writeExtByte st1
+
+        let writeNormalVib (vib: NormalRspVib) : Writer<unit> =
+            writeVib vib.Def vib.Ext
+
+        let writeCmdVib (vib: NormalCmdVib) : Writer<unit> =
+            writeVib vib.Def vib.Ext

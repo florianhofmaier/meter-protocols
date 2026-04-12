@@ -4,14 +4,8 @@
         <TargetFramework>net9.0</TargetFramework>
         <IsPackable>false</IsPackable>
         <GenerateProgramFile>false</GenerateProgramFile>
-        <RootNamespace>Mbus.Records.Tests</RootNamespace>
+        <RootNamespace>Mbus.Messages.Tests</RootNamespace>
     </PropertyGroup>
-
-    <ItemGroup>
-        <Compile Include="DibTests.fs" />
-        <Compile Include="RecordTests.fs" />
-        <Compile Include="StorageNumTests.fs" />
-    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1"/>
@@ -22,6 +16,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Messages\Messages.fsproj" />
       <ProjectReference Include="..\Records\Records.fsproj" />
     </ItemGroup>
 
@@ -29,11 +24,5 @@
         <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest"/>
     </ItemGroup>
 
-    <ItemGroup>
-      <Compile Include="Builders\RecordBuildersTests.fs" />
-      <Compile Include="Builders\VibBuilderTests.fs" />
-      <Compile Include="ValueInfoBlocks\RspVibTests.fs" />
-      <Compile Include="ValueInfoBlocks\ParserTests.fs" />
-    </ItemGroup>
-
 </Project>
+

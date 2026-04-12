@@ -6,6 +6,12 @@ open Mbus.Frames.Tests.Layers.TestHelpers
 open Xunit
 open Mbus
 
+let createAla id mfr version deviceType =
+    let result = MbusAddress.create id mfr version deviceType
+    match result with
+    | Ok ala -> ala
+    | Error msg -> failwithf $"Unexpected error: %s{msg}"
+
 [<Fact>]
 let ``parse Tpl with AplSelect bytes return correct Tpl`` () =
     let testState = createState [| 0x50uy |]
@@ -98,7 +104,7 @@ let ``parse Tpl Long Rsp return correct Tpl`` () =
     let expectedResult =
         Tpl.Long
             { Func = TplLongFunc.Rsp
-              Ala = MbusAddress.Create 12345678 "GWF" 1 MbusDeviceType.ElectricityMeter
+              Ala = createAla 12345678 "GWF" 1 MbusDeviceType.ElectricityMeter
               Acc = 0x03uy
               Status = { MbusStatusField.CreateEmpty with PowerLow = true }
               Cnf = 0x1234us }
@@ -114,7 +120,7 @@ let ``parse specific Tpl  Long Rsp return correct Tpl`` () =
 
     let expectedResult =
         { Func = TplLongFunc.Rsp
-          Ala = MbusAddress.Create 12345678 "GWF" 1 MbusDeviceType.ElectricityMeter
+          Ala = createAla 12345678 "GWF" 1 MbusDeviceType.ElectricityMeter
           Acc = 0x03uy
           Status = { MbusStatusField.CreateEmpty with PowerLow = true }
           Cnf = 0x1234us }
@@ -130,7 +136,7 @@ let ``parse specific Tpl Long Alarm return correct Tpl`` () =
 
     let expectedResult =
         { Func = TplLongFunc.Alarm
-          Ala = MbusAddress.Create 12345678 "GWF" 1 MbusDeviceType.ElectricityMeter
+          Ala = createAla 12345678 "GWF" 1 MbusDeviceType.ElectricityMeter
           Acc = 0x03uy
           Status = { MbusStatusField.CreateEmpty with PowerLow = true }
           Cnf = 0x1234us }

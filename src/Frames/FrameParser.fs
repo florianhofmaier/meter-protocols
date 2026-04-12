@@ -28,7 +28,7 @@ let private parseLongFrameLen : Parser<int> =
         return int l1
     }
 
-let private parseRecords aplLen : Parser<Record list> =
+let private parseRecords aplLen : Parser<RspRecord list> =
     (parser {
         let rec loop acc remaining =
             parser {
@@ -36,7 +36,7 @@ let private parseRecords aplLen : Parser<Record list> =
                     return List.rev acc
                 else
                     let! startPos = pos
-                    let! record = Record.Parser.parseRecord
+                    let! record = Record.Parser.parseRspRec
                     let! endPos = pos
                     let consumed = endPos - startPos
                     return! loop (record :: acc) (remaining - consumed)
@@ -53,20 +53,19 @@ let checkCrc start l : Parser<unit> =
 
 let parseLongFrameHeader : Parser<int * int> =
     parser {
-        let parseStartByte = expectU8 Frame.longFrameStartByte "invalid start byte"
-        do! parseStartByte
+        do! expectU8 Frame.longFrameStartByte "invalid start byte"
         let! len = parseLongFrameLen
-        do! parseStartByte
+        do! expectU8 Frame.longFrameStartByte "invalid start byte"
         let! pos = pos
         return len, pos
     }
 
-let private parseApl tpl lenUd cField : Parser<Apl> = parser {
+let private parseApl tpl lenUd : Parser<Apl> = parser {
     let aplLen = lenUd - Tpl.getLen tpl - 2 // minus CField and PrmAdr
     if aplLen < 0 then
         return! fail $"invalid APL length: {aplLen}"
     else
-        return! AplParser.parseAny aplLen cField
+        return! AplParser.parseAny aplLen tpl
 }
 
 let parseLongFrame : Parser<LongFrame> =
@@ -75,7 +74,7 @@ let parseLongFrame : Parser<LongFrame> =
         let! cField = parseU8
         let! prmAdr = parseU8
         let! tpl = TplParser.parseAny
-        let! apl = parseApl tpl lenUd cField
+        let! apl = parseApl tpl lenUd
         do! checkCrc startUd lenUd
         do! expectU8 Frame.stopByte "invalid stop byte"
         return { CField = cField; PrmAdr = prmAdr; Tpl = tpl; Apl = apl }

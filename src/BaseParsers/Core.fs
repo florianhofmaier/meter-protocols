@@ -94,7 +94,7 @@ let runOnSubSlice (n:int) (p: Parser<'a>) : Parser<'a> =
             | Error e ->
                  Error { e with Pos = st.Off + e.Pos }
 
-let parseAll (p: Parser<'a>) : Parser<'a list> =
+let parseUntilEnd (p: Parser<'a>) : Parser<'a list> =
     fun st ->
         let rec loop st acc =
              if st.Off >= st.Buf.Length then

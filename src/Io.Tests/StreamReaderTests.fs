@@ -5,6 +5,7 @@ open System.IO
 open System.Threading
 open Mbus.Io
 open Mbus.Frames
+open FsUnit.Xunit
 
 [<Fact>]
 let ``ReadAsync WhenStreamContainsConfirmation ShouldReturnConfirmationFrame`` () =
@@ -16,7 +17,7 @@ let ``ReadAsync WhenStreamContainsConfirmation ShouldReturnConfirmationFrame`` (
         let! frame = reader CancellationToken.None
 
         match frame with
-        | Frame.Confirmation -> ()
+        | StreamReader.FrameRead Frame.Confirmation -> ()
         | _ -> failwith "Expected Confirmation"
     }
 
@@ -30,7 +31,7 @@ let ``ReadAsync WhenStreamContainsShortFrame ShouldReturnShortFrame`` () =
         let! frame = reader CancellationToken.None
 
         match frame with
-        | Frame.ShortFrame _ -> ()
+        | StreamReader.FrameRead (Frame.ShortFrame _) -> ()
         | _ -> failwith "Expected ShortFrame"
     }
 
@@ -44,17 +45,34 @@ let ``ReadAsync WhenStreamContainsGarbageThenConfirmation ShouldReturnConfirmati
         let! frame = reader CancellationToken.None
 
         match frame with
-        | Frame.Confirmation -> ()
+        | StreamReader.FrameRead Frame.Confirmation -> ()
         | _ -> failwith "Expected Confirmation"
     }
 
 [<Fact>]
-let ``ReadAsync WhenStreamEndsIncomplete ShouldThrowEndOfStreamException`` () =
+let ``ReadAsync WhenStreamEndsIncomplete ShouldReturnTruncatedInput`` () =
+    task {
         let data = [| 0x10uy; 0x40uy |]
         use ms = new MemoryStream(data)
         let reader = StreamReader.create ms 1024
 
-        Assert.ThrowsAsync<EndOfStreamException>(fun () -> reader CancellationToken.None)
+        let! frame = reader CancellationToken.None
+
+        match frame with
+        | StreamReader.TruncatedInput bytes -> bytes.ToArray() |> should equal data
+        | _ -> failwith "Expected TruncatedInput"
+    }
+
+[<Fact>]
+let ``ReadAsync WhenStreamIsEmpty ShouldReturnEndOfInput`` () =
+    task {
+        use ms = new MemoryStream([||])
+        let reader = StreamReader.create ms 1024
+
+        let! frame = reader CancellationToken.None
+
+        frame |> should equal StreamReader.EndOfInput
+    }
 
 [<Fact>]
 let ``ReadAsync WhenInvalidFollowedByValid ShouldRecover`` () =
@@ -66,21 +84,21 @@ let ``ReadAsync WhenInvalidFollowedByValid ShouldRecover`` () =
         let! frame = reader CancellationToken.None
 
         match frame with
-        | Frame.Confirmation -> ()
+        | StreamReader.FrameRead Frame.Confirmation -> ()
         | _ -> failwith "Expected Confirmation"
     }
 
 [<Fact>]
 let ``ReadAsync WhenStreamContainsLongFrame ShouldReturnLongFrame`` () =
     task {
-        let data = [| 0x68uy; 0x03uy; 0x03uy; 0x68uy; 0x08uy; 0x01uy; 0x50uy; 0x59uy; 0x16uy |]
+        let data = [| 0x68uy; 0x06uy; 0x06uy; 0x68uy; 0x53uy; 0x00uy; 0x51uy; 0x01uy; 0x7Auy; 0x01uy; 0x20uy; 0x16uy |]
         use ms = new MemoryStream(data)
         let reader = StreamReader.create ms 1024
 
         let! frame = reader CancellationToken.None
 
         match frame with
-        | Frame.LongFrame _ -> ()
+        | StreamReader.FrameRead (Frame.LongFrame _) -> ()
         | actual -> failwith $"Expected LongFrame but was %A{actual}"
     }
 
@@ -97,15 +115,21 @@ let ``ReadAsync WhenLongFrameChecksumInvalid ShouldSkipAndRecover`` () =
         let! frame = reader CancellationToken.None
 
         match frame with
-        | Frame.Confirmation -> ()
+        | StreamReader.FrameRead Frame.Confirmation -> ()
         | _ -> failwith "Expected Confirmation"
     }
 
 [<Fact>]
-let ``ReadAsync WhenLongFrameIncomplete ShouldThrowEndOfStreamException`` () =
+let ``ReadAsync WhenLongFrameIncomplete ShouldReturnTruncatedInput`` () =
+    task {
         let data = [| 0x68uy; 0x03uy; 0x03uy; 0x68uy; 0x08uy |]
         use ms = new MemoryStream(data)
         let reader = StreamReader.create ms 1024
 
-        Assert.ThrowsAsync<EndOfStreamException>(fun () -> reader CancellationToken.None)
+        let! frame = reader CancellationToken.None
+
+        match frame with
+        | StreamReader.TruncatedInput bytes -> bytes.ToArray() |> should equal data
+        | _ -> failwith "Expected TruncatedInput"
+    }
 

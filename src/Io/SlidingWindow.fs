@@ -26,10 +26,11 @@ type SlidingWindow(stream: Stream, bufferSize: int) =
             if offset + count >= bufferSize then compact ()
 
             if count >= bufferSize then
-                 raise (MbusIoException "Frame too large or buffer overflow")
+                raise (MbusIoException "Frame too large or buffer overflow")
 
             let maxBytes = bufferSize - (offset + count)
-            let! n = stream.ReadAsync(buffer, offset + count, maxBytes, ct)
+            let target = Memory(buffer, offset + count, maxBytes)
+            let! n = stream.ReadAsync(target, ct)
             count <- count + n
             return n
         }

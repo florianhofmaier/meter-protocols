@@ -5,7 +5,7 @@ open System
 type WState = { Buf: byte[]; Pos: int }
 
 module WState =
-    let create =
+    let create () =
         { Buf = Array.zeroCreate<byte> 256; Pos = 0 }
     let buf (st: WState) = st.Buf
     let pos (st: WState) = st.Pos

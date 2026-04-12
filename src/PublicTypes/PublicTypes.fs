@@ -39,25 +39,10 @@ type MbusDeviceType =
     | UnidirectionalRepeater = 0x32
     | BidirectionalRepeater = 0x33
 
-type MbusAddress private (idNumber: int, mfr: string, version: int, deviceType: MbusDeviceType) =
-    member this.IdNumber = idNumber
-    member this.Mfr = mfr
-    member this.Version = version
-    member this.DeviceType = deviceType
+type MbusAddress = { IdNumber: int; Mfr: string; Version: int; DeviceType: MbusDeviceType}
 
-    override this.Equals(obj) =
-        match obj with
-        | :? MbusAddress as other ->
-            idNumber = other.IdNumber &&
-            mfr = other.Mfr &&
-            version = other.Version &&
-            deviceType = other.DeviceType
-        | _ -> false
-
-    override this.GetHashCode() =
-        HashCode.Combine(idNumber, mfr, version, deviceType)
-
-    static member Create id mfr version deviceType : Result<MbusAddress, string> =
+module MbusAddress =
+    let create id mfr version deviceType : Result<MbusAddress, string> =
         if id < 0 || id > 99999999 then
             Error $"Invalid ID number: {id}, must be between 0 and 99999999"
         elif String.length mfr<> 3 then
@@ -66,7 +51,7 @@ type MbusAddress private (idNumber: int, mfr: string, version: int, deviceType: 
             Error $"Invalid manufacturer code: {mfr}, must contain only uppercase letters A-Z"
         elif version < 0 || version > 255 then
             Error $"Invalid version: {version}, must be between 0 and 255"
-        else MbusAddress(id, mfr, version, deviceType) |> Ok
+        else Ok { IdNumber = id; Mfr = mfr; Version = version; DeviceType = deviceType }
 
 type MbusApplicationError =
     | NoError = 0uy
@@ -201,11 +186,50 @@ type MbusValueType =
     | UnitsForHca
     | Pressure
 
+type MbusActionCode =
+    | Set = 0x00uy
+    | AddValue = 0x01uy
+    | SubtractValue = 0x02uy
+    | Or = 0x03uy
+    | And = 0x04uy
+    | Xor = 0x05uy
+    | AndNot = 0x06uy
+    | Clear = 0x07uy
+    | AddEntry = 0x08uy
+    | DeleteEntry = 0x09uy
+    | DelayedAction = 0x0Auy
+    | FreezeData = 0x0Buy
+    | AddToReadoutList = 0x0Duy
+    | DeleteFromReadoutList = 0x0Euy
+    | Get = 0x0Fuy
+
+type MbusRecordError =
+    | NoError = 0x00
+    | TooManyDifes = 0x01
+    | StorageNumberNotImplemented = 0x02
+    | UnitNumberNotImplemented = 0x03
+    | TariffNumberNotImplemented = 0x04
+    | FunctionNotImplemented = 0x05
+    | DataClassNotImplemented = 0x06
+    | DataSizeNotImplemented = 0x07
+    | TooManyVifes = 0x0B
+    | IllegalVifGroup = 0x0C
+    | IllegalVifExponent = 0x0D
+    | VifDifMismatch = 0x0E
+    | UnimplementedAction = 0x0F
+    | NoDataAvailable = 0x15
+    | DataOverflow = 0x16
+    | DataUnderflow = 0x17
+    | DataError = 0x18
+    | PrematureEndOfRecord = 0x1C
+
 type MbusValueTypeExtension =
-    | RelativeDeviation = 0x04uy
+    | AverageValue = 0x12uy
+    | InverseCompactProfile = 0x13uy
+    | RelativeDeviation = 0x14uy
     | StandardConformDataContent = 0x1Duy
-    | CompactProfileWithRegisters = 0x1Euy
-    | CompactProfileWithoutRegisters = 0x1Fuy
+    | CompactProfileWithRegisterNumbers = 0x1Euy
+    | CompactProfile = 0x1Fuy
     | PerSecond = 0x20uy
     | PerMinute = 0x21uy
     | PerHour = 0x22uy
@@ -245,7 +269,7 @@ type MbusValueTypeExtension =
 type MbusUnit =
     | NoUnit
     | WattHours
-    | Watt
+    | Watts
     | JoulesPerHour
     | Joules
     | Calories
@@ -333,27 +357,3 @@ type MbusTextRecord(unit: MbusUnit, fn: MbusFunctionField, storageNum: int, tari
     inherit MbusRecordBase(unit, fn, storageNum, tariff, subUnit)
     member _.Value = value
     member _.ValueType = valueType
-
-type WattHoursScaler =
-    | ExpMinus3 = 0
-    | ExpMinus2 = 1
-    | ExpMinus1 = 2
-    | Exp0 = 3
-    | Exp1 = 4
-    | Exp2 = 5
-    | Exp3 = 6
-    | Exp4 = 7
-    | Exp5 = 8
-    | Exp6 = 9
-
-type CubicMetersScaler =
-    | ExpMinus6 = 0
-    | ExpMinus5 = 1
-    | ExpMinus4 = 2
-    | ExpMinus3 = 3
-    | ExpMinus2 = 4
-    | ExpMinus1 = 5
-    | Exp0 = 6
-    | Exp1 = 7
-    | Exp2 = 8
-    | Exp3 = 9

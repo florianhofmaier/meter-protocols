@@ -30,7 +30,7 @@ let parseLla : Parser<MbusAddress> =
         let! id = parseBcd8Digit
         let! version = parseU8
         let! devType = parseDevType
-        match MbusAddress.Create (int id) mfr (int version) devType with
+        match MbusAddress.create (int id) mfr (int version) devType with
         | Error msg -> return! failBefore msg
         | Ok adr -> return adr
     }
@@ -41,7 +41,7 @@ let parseAla : Parser<MbusAddress> =
         let! mfr = parseMfr
         let! version = parseU8
         let! devType = parseDevType
-        match MbusAddress.Create (int id) mfr (int version) devType with
+        match MbusAddress.create (int id) mfr (int version) devType with
         | Error msg -> return! failBefore msg
         | Ok adr -> return adr
     }

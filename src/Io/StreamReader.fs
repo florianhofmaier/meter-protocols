@@ -8,9 +8,14 @@ open Mbus.BaseParsers.Core
 
 module StreamReader =
 
+    type ReadFrameResult =
+        | FrameRead of Frame
+        | EndOfInput
+        | TruncatedInput of ReadOnlyMemory<byte>
+
     type private ParseResult =
-        | Parsed of Frame * int
         | Incomplete
+        | Parsed of Frame * int
         | Invalid
 
     let private tryMatchFrame expectedStart minLength parser (data: ReadOnlyMemory<byte>) =
@@ -53,14 +58,15 @@ module StreamReader =
         let window = SlidingWindow(stream, bufferSize)
 
         fun (ct: CancellationToken) -> task {
-            let mutable frame = Unchecked.defaultof<Frame>
+            let mutable result = EndOfInput
             let mutable found = false
 
             while not found do
+                ct.ThrowIfCancellationRequested()
                 match tryParseFrame window.Data with
                 | Parsed (res, bytesConsumed) ->
                     window.Advance bytesConsumed
-                    frame <- res
+                    result <- FrameRead res
                     found <- true
 
                 | Invalid ->
@@ -68,7 +74,11 @@ module StreamReader =
 
                 | Incomplete ->
                     let! n = window.FillAsync ct
-                    if n = 0 then raise (EndOfStreamException())
+                    if n = 0 then
+                        result <-
+                            if window.Data.IsEmpty then EndOfInput
+                            else TruncatedInput window.Data
+                        found <- true
 
-            return frame
+            return result
         }
