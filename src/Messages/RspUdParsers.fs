@@ -1,12 +1,10 @@
 ﻿namespace Mbus
 
 open System
-open System.IO
-open System.Threading
-open System.Threading.Tasks
 open Mbus.BaseParsers.Core
 open Mbus.Frames
 open Mbus.Records
+open Mbus.Records.ValueInfoBlocks
 open Mbus.Messages.Converters
 open Mbus.Records.DataInfoBlocks
 
@@ -14,8 +12,8 @@ module RspUdParser =
 
     open System.Collections.Generic
 
-    let getBaseFields dr =
-        let unit = MbusUnit.fromRecord dr
+    let getBaseFields (dr: RspDataRecord) =
+        let unit = MbusUnit.fromRspRecord dr
         let fn = dr.Fn
         let storageNum = StorageNumber.value dr.StNum
         let tariff = dr.Tariff |> Tariff.value
@@ -30,17 +28,17 @@ module RspUdParser =
 
     let vibToTxt vib =
         match vib with
-        | Text txt -> txt
-        | Normal normalVib -> normalVib.Def.Val |> MbusValueType.toString
-        | Vib.Mfr mfrVib -> mfrVib.ToArray() |> BitConverter.ToString |> sprintf "Manufacturer specific VIB: %s"
-        | Invalid inv -> inv.ToArray() |> BitConverter.ToString |> sprintf "Invalid VIB: %s"
+        | RspVib.Text txt -> txt
+        | RspVib.Normal normalVib -> normalVib.Def.Val |> MbusValueType.toString
+        | RspVib.Mfr mfrVib -> mfrVib.ToArray() |> BitConverter.ToString |> sprintf "Manufacturer specific VIB: %s"
+        | RspVib.Invalid inv -> inv.ToArray() |> BitConverter.ToString |> sprintf "Invalid VIB: %s"
 
     let failIfNotNormalVib vib =
         match vib with
-        | Normal normalVib -> normalVib
+        | RspVib.Normal normalVib -> normalVib
         | _ -> failwith "Expected normal VIB for numerical record"
 
-    let getValueType vib =
+    let getValueType (vib: NormalRspVib) =
         vib.Def.Val
 
     let createTxtRec dr =
@@ -55,9 +53,9 @@ module RspUdParser =
         let value = MbusValue.getNumericValue dr
         Num (MbusNumericalRecord(unit, fn, storageNum, tariff, subUnit, value, vib))
 
-    let handleDataRecord dr =
+    let handleDataRecord (dr: RspDataRecord) =
         match dr.Value, dr.Vib with
-        | VarLen _, _ | _, Text _ | _, Vib.Mfr _ | _, Invalid _ -> createTxtRec dr
+        | VarLen _, _ | _, RspVib.Text _ | _, RspVib.Mfr _ | _, RspVib.Invalid _ -> createTxtRec dr
         | _ -> createNumRec dr
         |> Some
 
@@ -71,13 +69,13 @@ module RspUdParser =
 
     let toRecordType r =
         match r with
-        | Record.Data dr -> handleDataRecord dr
-        | Record.SpecialFunction sf -> handleSpecialFunction sf
+        | RspRecord.Data dr -> handleDataRecord dr
+        | RspRecord.SpecialFunction sf -> handleSpecialFunction sf
 
-    let getRecords recList : IReadOnlyList<MbusNumericalRecord> * IReadOnlyList<MbusTextRecord> * ReadOnlyMemory<byte> * bool =
+    let getRecords (recList: RspDataRecord list) : IReadOnlyList<MbusNumericalRecord> * IReadOnlyList<MbusTextRecord> * ReadOnlyMemory<byte> * bool =
         let numRecs, txtRecs, mfrData, moreFollows =
             recList
-            |> List.map toRecordType
+            |> List.map handleDataRecord
             |> List.choose id
             |> List.fold (fun (nums, txts, mfr, more) record ->
                 match record with
@@ -92,11 +90,11 @@ module RspUdParser =
         mfrData,
         moreFollows
 
-    let createMsg frame tpl apl =
+    let createMsg frame tpl (apl: RspUdData) =
         let prmAdr = int frame.PrmAdr
         let sndAdr = tpl.Ala
         let status = tpl.Status
-        let numData, txtData, mfrData, moreFollows = getRecords apl
+        let numData, txtData, mfrData, moreFollows = getRecords apl.DataRecords
         prmAdr, sndAdr, status, numData, txtData, mfrData.ToArray(), moreFollows
 
     let parse =
@@ -107,77 +105,8 @@ module RspUdParser =
                 match tpl.Func with
                 | TplLongFunc.Rsp ->
                     match frame.Apl with
-                    | UserData apl -> return createMsg frame tpl apl
+                    | RspUdData apl -> return createMsg frame tpl apl
                     | _ -> return! fail "Expected APL with data records"
                 | _ -> return! fail "Expected Ci field: 0x72"
             | _ -> return! fail "Expected long TPL"
         }
-
-type RspUd =
-    { PrimaryAddress: int
-      SecondaryAddress: MbusAddress
-      StatusField: MbusStatusField
-      NumericalRecords: System.Collections.Generic.IReadOnlyList<MbusNumericalRecord>
-      TextRecords: System.Collections.Generic.IReadOnlyList<MbusTextRecord>
-      MfrData: System.Collections.Generic.IReadOnlyCollection<byte> }
-
-    with
-        static member FromBytes(buf: ReadOnlyMemory<byte>) : RspUd * int =
-            let st = { Off = 0; Buf = buf }
-            match RspUdParser.parse st with
-            | Ok ((prmAdr, sndAdr, status, numRecords, txtRecords, mfrData, moreFollows), st') ->
-                let response =
-                    { PrimaryAddress = prmAdr
-                      SecondaryAddress = sndAdr
-                      StatusField = status
-                      NumericalRecords = numRecords
-                      TextRecords = txtRecords
-                      MfrData = mfrData }
-                (response, st'.Off)
-            | Error e -> raise (MbusParserError.create e)
-
-        static member FromStreamAsync(stream: Stream, ct: CancellationToken) : Task<RspUd> =
-
-            let readByteOrEosAsync () =
-                task {
-                    let buffer = Array.zeroCreate<byte> 1
-                    let! n = stream.ReadAsync(buffer.AsMemory(0, 1), ct)
-                    if n = 0 then raise (EndOfStreamException())
-                    return buffer[0]
-                }
-
-            let readExactlyAsync (buffer: byte[]) offset count =
-                task {
-                    let mutable offset = offset
-                    let mutable count = count
-                    while count > 0 do
-                        let! n = stream.ReadAsync(buffer.AsMemory(offset, count), ct)
-                        if n = 0 then raise (EndOfStreamException())
-                        offset <- offset + n
-                        count <- count - n
-                }
-
-            task {
-                let! start = readByteOrEosAsync ()
-                if start <> Frame.longFrameStartByte then
-                    return raise (InvalidDataException("Expected long frame start byte"))
-
-                let! len1 = readByteOrEosAsync ()
-                let! len2 = readByteOrEosAsync ()
-                let! start2 = readByteOrEosAsync ()
-
-                if len1 <> len2 || start2 <> Frame.longFrameStartByte then
-                    return raise (InvalidDataException("Invalid long frame header"))
-
-                let totalLen = int len1 + 6
-                let buf = Array.zeroCreate<byte> totalLen
-                buf[0] <- start
-                buf[1] <- len1
-                buf[2] <- len2
-                buf[3] <- start2
-
-                do! readExactlyAsync buf 4 (totalLen - 4)
-
-                let response, _ = RspUd.FromBytes(ReadOnlyMemory buf)
-                return response
-            }

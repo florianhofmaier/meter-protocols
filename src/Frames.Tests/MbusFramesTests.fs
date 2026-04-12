@@ -6,6 +6,7 @@ open Mbus.BaseParsers.Core
 open Mbus.Frames
 open Mbus.Records
 open Mbus.Records.DataInfoBlocks
+open Mbus.Records.ValueInfoBlocks
 open Xunit
 open FsUnit.Xunit
 
@@ -79,19 +80,17 @@ let ``parse Long frame when frame is valid SND-UD should return long frame`` () 
         frame.PrmAdr |> should equal 0x00uy
         frame.Tpl |> should equal (Tpl.CiOnly Command)
         match frame.Apl with
-        | UserData records ->
+        | SndUdData records ->
             records.Length |> should equal 1
-            let record = records[0]
-            match record with
-            | Data dr ->
-                dr.Value |> should equal (MbusValue.Int8 1y)
-                dr.StNum |> should equal StorageNumber.zero
-                dr.Fn|> should equal InstValue
-                dr.Tariff |> should equal Tariff.zero
-                dr.SubUnit |> should equal SubUnit.zero
-                dr.Vib |> should equal (Normal { Def = { Val = Address; Unit = NoUnit; Scaler = 1m }; Ext = [] })
-            | _ -> failwith "Expected DataRecord"
-        | _ -> failwith "Expected Data APL"
+            let cmdRecord = records[0]
+            cmdRecord.Value |> should equal (MbusValue.Int8 1y)
+            cmdRecord.StNum |> should equal StorageNumber.zero
+            cmdRecord.Fn|> should equal InstValue
+            cmdRecord.Tariff |> should equal Tariff.zero
+            cmdRecord.SubUnit |> should equal SubUnit.zero
+            cmdRecord.Vib |> should equal (CmdVib.Normal { Def = { Val = Address; Unit = NoUnit; Scaler = 1m }; Ext = []; Actions = [] })
+
+        | _ -> failwith "Expected SndUd APL"
     | _ -> failwith "Expected Long frame"
 
 [<Fact>]
@@ -145,30 +144,50 @@ let ``parse Long frame when frame is valid RSP-UD should return long frame`` () 
             tpl.Ala.Version |> should equal 0x3C
             tpl.Ala.DeviceType |> should equal MbusDeviceType.WaterMeter
             tpl.Acc |> should equal 0x01uy
-            tpl.Status |> should equal 0x00uy
+            tpl.Status |> should equal MbusStatusField.CreateEmpty
             tpl.Cnf |> should equal 0x0000us
             tpl.Func |> should equal TplLongFunc.Rsp
         | _ -> failwith "Expected Long TPL"
         match frame.Apl with
-        | UserData records ->
-            records.Length |> should equal 2
-            match records[0] with
-            | Data dr ->
-                dr.Value|> should equal (MbusValue.Bcd8Digit 21542293u)
-                dr.StNum |> should equal StorageNumber.zero
-                dr.Fn |> should equal InstValue
-                dr.Tariff |> should equal Tariff.zero
-                dr.SubUnit |> should equal SubUnit.zero
-                dr.Vib |> should equal (Normal { Def = { Val = FabricationNumber; Unit = NoUnit; Scaler = 1m }; Ext = [  ] })
-            | _ -> failwith "Expected DataRecord"
-            match records[1] with
-            | Data dr ->
-                dr.Value|> should equal (MbusValue.Bcd8Digit 457u)
-                dr.StNum |> should equal StorageNumber.zero
-                dr.Fn |> should equal InstValue
-                dr.Tariff |> should equal Tariff.zero
-                dr.SubUnit |> should equal SubUnit.zero
-                dr.Vib |> should equal (Normal { Def = { Val = Volume; Unit = CubicMeters; Scaler = 0.001m }; Ext = [  ] })
-            | _ -> failwith "Expected DataRecord"
-        | _ -> failwith "Expected Data APL"
+        | RspUdData data ->
+            data.DataRecords.Length |> should equal 2
+            let firstRecord = data.DataRecords[0]
+            firstRecord.Value|> should equal (MbusValue.Bcd8Digit 21542293u)
+            firstRecord.StNum |> should equal StorageNumber.zero
+            firstRecord.Fn |> should equal InstValue
+            firstRecord.Tariff |> should equal Tariff.zero
+            firstRecord.SubUnit |> should equal SubUnit.zero
+            firstRecord.Vib |> should equal (RspVib.Normal { Def = { Val = FabricationNumber; Unit = NoUnit; Scaler = 1m }; Ext = [ ]; Codes = [ ] })
+
+            let sndRecord = data.DataRecords[1]
+            sndRecord.Value|> should equal (MbusValue.Bcd8Digit 457u)
+            sndRecord.StNum |> should equal StorageNumber.zero
+            sndRecord.Fn |> should equal InstValue
+            sndRecord.Tariff |> should equal Tariff.zero
+            sndRecord.SubUnit |> should equal SubUnit.zero
+            sndRecord.Vib |> should equal (RspVib.Normal { Def = { Val = Volume; Unit = CubicMeters; Scaler = 0.001m }; Ext = [ ]; Codes = [ ] })
+
+        | _ -> failwith "Expected RspUd APL"
     | _ -> failwith "Expected Long frame"
+
+[<Fact>]
+let ``parse Long frame when frame is valid selection of device should return long frame`` () =
+    let buf = [| 0x68uy; 0x0Buy; 0x0Buy; 0x68uy; 0x73uy; 0xFDuy; 0x52uy; 0x78uy; 0x56uy; 0x34uy; 0x12uy; 0xE6uy; 0x1Euy; 0x42uy; 0x07uy; 0x23uy; 0x16uy |]
+    let result = parseValidFrame buf
+    match result with
+    | Frame.LongFrame frame ->
+        frame.CField |> should equal 0x73uy
+        frame.PrmAdr |> should equal 0xFDuy
+        match frame.Tpl with
+        | Tpl.CiOnly sel -> sel |> should equal DevSelect
+        | _ -> failwith "Expected Tpl.CiOnly"
+        match frame.Apl with
+        | SelectedDevice sel -> sel |> should equal [| 0x78uy; 0x56uy; 0x34uy; 0x12uy; 0xE6uy; 0x1Euy; 0x42uy; 0x07uy |]
+        | _ -> failwith "Expected DeviceSelection"
+    | _ -> failwith "Expected Long frame"
+
+[<Fact>]
+let ``parse Long frame when frame is selection of device with a missing byte in pl should return error`` () =
+    let buf = [| 0x68uy; 0x0Auy; 0x0Auy; 0x68uy; 0x73uy; 0xFDuy; 0x52uy; 0x78uy; 0x56uy; 0x34uy; 0x12uy; 0xE6uy; 0x1Euy; 0x42uy; 0x1Cuy; 0x16uy |]
+    let expected = { Pos = 7; Msg = "invalid length for device selection: expect 8, got 7"; Ctx = ["long frame"; "application layer"; "secondary selection"] }
+    parseFrameWithError buf |> should equal expected

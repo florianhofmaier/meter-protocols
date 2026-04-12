@@ -11,7 +11,6 @@
         <Compile Include="DibTests.fs" />
         <Compile Include="RecordTests.fs" />
         <Compile Include="StorageNumTests.fs" />
-        <Compile Include="VibTests.fs" />
     </ItemGroup>
 
     <ItemGroup>
@@ -31,7 +30,10 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Content Include="xunit.runner.json" />
+      <Compile Include="Builders\RecordBuildersTests.fs" />
+      <Compile Include="Builders\VibBuilderTests.fs" />
+      <Compile Include="ValueInfoBlocks\RspVibTests.fs" />
+      <Compile Include="ValueInfoBlocks\ParserTests.fs" />
     </ItemGroup>
 
 </Project>

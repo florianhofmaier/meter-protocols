@@ -1,23 +1,22 @@
 namespace Mbus.Messages
 
 open Mbus
-open Mbus.BaseWriters.Core
 open Mbus.Frames
 open Mbus.Records
 
 type RspUdBuilder =
-    { CField: uint8
-      PrmAdr: uint8
-      Tpl: TplLong
-      Apl: Record list }
+    private { CField: uint8
+              PrmAdr: uint8
+              Tpl: TplLong
+              Records: RspDataRecord list }
 
 module RspUdBuilder =
 
     let init ala =
-        { CField = CField.response
+        { CField = CField.rspUd
           PrmAdr = 0uy
           Tpl = { Func = TplLongFunc.Rsp; Ala = ala; Acc = 0uy; Status = MbusStatusField.CreateEmpty; Cnf = 0us }
-          Apl = [] }
+          Records = [] }
 
     let withDfcSet builder : RspUdBuilder =
         { builder with CField = CField.setDfc builder.CField }
@@ -29,7 +28,7 @@ module RspUdBuilder =
         { builder with PrmAdr = addr }
 
     let addDataRecord record builder : RspUdBuilder =
-        { builder with Apl = builder.Apl @ [ Data record ] }
+        { builder with Records = builder.Records @ [ record ] }
 
     let withStatus status builder : RspUdBuilder =
         { builder with Tpl.Status = status }
@@ -40,12 +39,10 @@ module RspUdBuilder =
     let withAccessNumber acc builder : RspUdBuilder =
         { builder with Tpl.Acc = acc }
 
-    let build builder : Writer<unit> =
-        let longFrame: LongFrame =
-            { CField = builder.CField
-              PrmAdr = builder.PrmAdr
-              Tpl = builder.Tpl |> Tpl.Long
-              Apl = builder.Apl |> Apl.UserData }
-        writer {
-            do! FrameWriter.writeLongFrame longFrame
+    let build builder =
+        LongFrame {
+            CField = builder.CField
+            PrmAdr = builder.PrmAdr
+            Tpl = builder.Tpl |> Tpl.Long
+            Apl = { DataRecords = builder.Records; MfrSpecificData = None; IsMoreDataInNextTelegram = false } |> RspUdData
         }

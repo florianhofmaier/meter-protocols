@@ -6,6 +6,12 @@ open Mbus.Frames.Tests.Layers.TestHelpers
 open Xunit
 open Mbus
 
+let createAla id mfr version deviceType =
+    let result = MbusAddress.create id mfr version deviceType
+    match result with
+    | Ok ala -> ala
+    | Error msg -> failwithf $"Unexpected error: %s{msg}"
+
 [<Fact>]
 let ``parse Tpl with AplSelect bytes return correct Tpl`` () =
     let testState = createState [| 0x50uy |]
@@ -59,7 +65,8 @@ let ``parse specific Tpl None with invalid ci return error`` () =
 [<Fact>]
 let ``parse Tpl Short Rsp return correct Tpl`` () =
     let testState = createState[| 0x7Auy; 0x01uy; 0x02uy; 0x34uy; 0x12uy |]
-    let expectedResult = Tpl.Short { Func = TplShortFunc.Rsp; Acc = 0x01uy; Status = 0x02uy; Cnf = 0x1234us }
+    let status = { MbusStatusField.CreateEmpty with ApplicationError = MbusApplicationError.AnyApplicationError }
+    let expectedResult = Tpl.Short { Func = TplShortFunc.Rsp; Acc = 0x01uy; Status = status; Cnf = 0x1234us }
     let res, pos = runParserOk TplParser.parseAny testState
     res |> should equal expectedResult
     pos |> should equal 5
@@ -67,7 +74,8 @@ let ``parse Tpl Short Rsp return correct Tpl`` () =
 [<Fact>]
 let ``parse specific Tpl Short Rsp return correct Tpl`` () =
     let testState = createState [| 0x7Auy; 0x01uy; 0x02uy; 0x34uy; 0x12uy |]
-    let expectedResult = { Func = TplShortFunc.Rsp; Acc = 0x01uy; Status = 0x02uy; Cnf = 0x1234us }
+    let status = { MbusStatusField.CreateEmpty with ApplicationError = MbusApplicationError.AnyApplicationError }
+    let expectedResult = { Func = TplShortFunc.Rsp; Acc = 0x01uy; Status = status; Cnf = 0x1234us }
     let res, pos = runParserOk TplParser.parseShort testState
     res |> should equal expectedResult
     pos |> should equal 5
@@ -96,9 +104,9 @@ let ``parse Tpl Long Rsp return correct Tpl`` () =
     let expectedResult =
         Tpl.Long
             { Func = TplLongFunc.Rsp
-              Ala = MbusAddress.Create 12345678 "GWF" 1 MbusDeviceType.ElectricityMeter
+              Ala = createAla 12345678 "GWF" 1 MbusDeviceType.ElectricityMeter
               Acc = 0x03uy
-              Status = 0x04uy
+              Status = { MbusStatusField.CreateEmpty with PowerLow = true }
               Cnf = 0x1234us }
 
     let res, pos = runParserOk TplParser.parseAny testState
@@ -112,9 +120,9 @@ let ``parse specific Tpl  Long Rsp return correct Tpl`` () =
 
     let expectedResult =
         { Func = TplLongFunc.Rsp
-          Ala = MbusAddress.Create 12345678 "GWF" 1 MbusDeviceType.ElectricityMeter
+          Ala = createAla 12345678 "GWF" 1 MbusDeviceType.ElectricityMeter
           Acc = 0x03uy
-          Status = 0x04uy
+          Status = { MbusStatusField.CreateEmpty with PowerLow = true }
           Cnf = 0x1234us }
 
     let res, pos = runParserOk TplParser.parseLong testState
@@ -128,9 +136,9 @@ let ``parse specific Tpl Long Alarm return correct Tpl`` () =
 
     let expectedResult =
         { Func = TplLongFunc.Alarm
-          Ala = MbusAddress.Create 12345678 "GWF" 1 MbusDeviceType.ElectricityMeter
+          Ala = createAla 12345678 "GWF" 1 MbusDeviceType.ElectricityMeter
           Acc = 0x03uy
-          Status = 0x04uy
+          Status = { MbusStatusField.CreateEmpty with PowerLow = true }
           Cnf = 0x1234us }
 
     let res, pos = runParserOk TplParser.parseLong testState

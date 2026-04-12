@@ -1,6 +1,6 @@
 using Microsoft.FSharp.Core;
 
-namespace Mbus;
+namespace Mbus.UserData;
 
 internal static class Extensions
 {

@@ -9,14 +9,13 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Messages\Messages.fsproj" />
-      <ProjectReference Include="..\BaseWriters\BaseWriters.fsproj" />
-      <ProjectReference Include="..\Messages\Messages.fsproj" />
+      <ProjectReference Include="..\PublicTypes\PublicTypes.fsproj" />
+      <ProjectReference Include="..\Records\Records.fsproj" />
+      <ProjectReference Include="..\Devices\Devices.fsproj" />
     </ItemGroup>
 
     <ItemGroup>
-      <Reference Include="FSharp.Core">
-        <HintPath>..\..\..\..\.nuget\packages\fsharp.core\9.0.100\lib\netstandard2.1\FSharp.Core.dll</HintPath>
-      </Reference>
+      <PackageReference Include="FSharp.Core" Version="9.0.100" />
     </ItemGroup>
 
 </Project>

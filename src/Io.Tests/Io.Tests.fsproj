@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <GenerateProgramFile>false</GenerateProgramFile>
+        <RootNamespace>Mbus.Io.Tests</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="SlidingWindowTests.fs" />
+        <Compile Include="StreamReaderTests.fs" />
+        <Compile Include="StreamWriterTests.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+        <PackageReference Include="xunit.v3" Version="3.0.1" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" PrivateAssets="all" />
+        <PackageReference Include="FsUnit.Xunit" Version="7.1.1" />
+        <PackageReference Include="coverlet.collector" Version="6.0.2" />
+        <PackageReference Include="Shouldly" Version="4.3.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Io\Io.fsproj" />
+    </ItemGroup>
+
+</Project>
+

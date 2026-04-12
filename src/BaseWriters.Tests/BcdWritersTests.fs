@@ -23,7 +23,7 @@ let runWriterError st0 pos writer =
 
 [<Fact>]
 let ``writeBcdU8 at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer = writeBcdU8 12uy
     let resultState = runWriterOk testState 0 writer
 
@@ -32,7 +32,7 @@ let ``writeBcdU8 at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeBcdU8 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer = writeBcdU8 99uy
     let resultState = runWriterOk testState 10 writer
     WState.pos resultState |> should equal 11
@@ -40,7 +40,7 @@ let ``writeBcdU8 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeBcdU8 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer =
         writer {
             do! writeBcdU8 56uy
@@ -53,7 +53,7 @@ let ``chained writeBcdU8 returns expected state`` () =
 
 [<Fact>]
 let ``writeBcdU8 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer = writeBcdU8 12uy
     let error = runWriterError testState 256 writer
     error.Pos |> should equal 256
@@ -61,7 +61,7 @@ let ``writeBcdU8 overflow returns error`` () =
 
 [<Fact>]
 let ``writeBcdU16 at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer = writeBcdU16 1234us
     let resultState = runWriterOk testState 0 writer
 
@@ -70,7 +70,7 @@ let ``writeBcdU16 at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeBcdU16 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer = writeBcdU16 9876us
     let resultState = runWriterOk testState 10 writer
     WState.pos resultState |> should equal 12
@@ -78,7 +78,7 @@ let ``writeBcdU16 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeBcdU16 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer =
         writer {
             do! writeBcdU16 1122us
@@ -91,7 +91,7 @@ let ``chained writeBcdU16 returns expected state`` () =
 
 [<Fact>]
 let ``writeBcdU16 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer = writeBcdU16 1234us
     let error = runWriterError testState 255 writer
     error.Pos |> should equal 255
@@ -99,7 +99,7 @@ let ``writeBcdU16 overflow returns error`` () =
 
 [<Fact>]
 let ``writeBcdU24 at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer = writeBcdU24 123456u
     let resultState = runWriterOk testState 0 writer
 
@@ -108,7 +108,7 @@ let ``writeBcdU24 at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeBcdU24 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer = writeBcdU24 654321u
     let resultState = runWriterOk testState 10 writer
     WState.pos resultState |> should equal 13
@@ -116,7 +116,7 @@ let ``writeBcdU24 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeBcdU24 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer =
         writer {
             do! writeBcdU24 112233u
@@ -129,7 +129,7 @@ let ``chained writeBcdU24 returns expected state`` () =
 
 [<Fact>]
 let ``writeBcdU24 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer = writeBcdU24 123456u
     let error = runWriterError testState 254 writer
     error.Pos |> should equal 254
@@ -137,7 +137,7 @@ let ``writeBcdU24 overflow returns error`` () =
 
 [<Fact>]
 let ``writeBcdU32 at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer = writeBcdU32 12345678u
     let resultState = runWriterOk testState 0 writer
 
@@ -146,7 +146,7 @@ let ``writeBcdU32 at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeBcdU32 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer = writeBcdU32 87654321u
     let resultState = runWriterOk testState 10 writer
     WState.pos resultState |> should equal 14
@@ -154,7 +154,7 @@ let ``writeBcdU32 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeBcdU32 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer =
         writer {
             do! writeBcdU32 11223344u
@@ -167,7 +167,7 @@ let ``chained writeBcdU32 returns expected state`` () =
 
 [<Fact>]
 let ``writeBcdU32 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer = writeBcdU32 12345678u
     let error = runWriterError testState 253 writer
     error.Pos |> should equal 253
@@ -175,7 +175,7 @@ let ``writeBcdU32 overflow returns error`` () =
 
 [<Fact>]
 let ``writeBcdU48 at first position returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer = writeBcdU48 123456789012UL
     let resultState = runWriterOk testState 0 writer
 
@@ -184,7 +184,7 @@ let ``writeBcdU48 at first position returns expected state`` () =
 
 [<Fact>]
 let ``writeBcdU48 at offset returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer = writeBcdU48 987654321098UL
     let resultState = runWriterOk testState 10 writer
     WState.pos resultState |> should equal 16
@@ -192,7 +192,7 @@ let ``writeBcdU48 at offset returns expected state`` () =
 
 [<Fact>]
 let ``chained writeBcdU48 returns expected state`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer =
         writer {
             do! writeBcdU48 112233445566UL
@@ -205,7 +205,7 @@ let ``chained writeBcdU48 returns expected state`` () =
 
 [<Fact>]
 let ``writeBcdU48 overflow returns error`` () =
-    let testState = WState.create
+    let testState = WState.create()
     let writer = writeBcdU48 123456789012UL
     let error = runWriterError testState 251 writer
     error.Pos |> should equal 251

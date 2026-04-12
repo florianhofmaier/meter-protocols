@@ -4,10 +4,11 @@ module MbusValue =
 
     open System
     open Mbus.Records
+    open Mbus.Records.ValueInfoBlocks
 
     let getScaler vib =
         match vib with
-        | Normal nv -> nv.Def.Scaler
+        | RspVib.Normal nv -> nv.Def.Scaler
         | _ -> 1.0m
 
     let padTo8Bytes (bytes: ReadOnlyMemory<byte>): byte[] =
@@ -16,7 +17,7 @@ module MbusValue =
         Array.blit arr 0 padded 0 arr.Length
         padded
 
-    let getNumericValue r: double =
+    let getNumericValue (r:RspDataRecord) : double =
         let scale v = getScaler r.Vib * v |> double
         match r.Value with
         | Bcd2Digit v -> v |> decimal |> scale
@@ -34,15 +35,16 @@ module MbusValue =
         | NoData -> 0
         | VarLen _ -> failwith "VarLen not supported for numeric value"
 
-    let getTextValue r: string =
+    let getTextValue (r: RspDataRecord): string =
         match r.Value with
         | VarLen text -> text
         | _ -> getNumericValue r |> string
 
-module  MbusValueType =
+module MbusValueType =
 
     open Mbus
     open Mbus.Records
+    open Mbus.Records.ValueInfoBlocks
 
     let toString v =
         match v with
@@ -138,21 +140,22 @@ module  MbusValueType =
         | MbusValueType.UnitsForHca -> "Units For HCA"
         | MbusValueType.Pressure -> "Pressure"
 
-    let fromRecord r =
+    let fromRecord (r: RspDataRecord) =
         match r.Vib with
-        | Normal vib -> vib.Def.Val |> toString
-        | Text text -> text
-        | Mfr mfr -> $"Manufacturer Specific {mfr}"
-        | Invalid inv -> $"Invalid VIB: {inv}"
+        | RspVib.Normal vib -> vib.Def.Val |> toString
+        | RspVib.Text text -> text
+        | RspVib.Mfr mfr -> $"Manufacturer Specific {mfr}"
+        | RspVib.Invalid inv -> $"Invalid VIB: {inv}"
 
 module MbusUnit =
 
     open Mbus
     open Mbus.Records
+    open Mbus.Records.ValueInfoBlocks
 
-    let fromRecord r =
+    let fromRspRecord (r: RspDataRecord) =
         match r.Vib with
-        | Normal vib-> vib.Def.Unit
+        | RspVib.Normal vib -> vib.Def.Unit
         | _ -> MbusUnit.NoUnit
 
 module MbusParserError =
