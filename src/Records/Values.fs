@@ -70,7 +70,7 @@ module MbusValue =
         match b with
         | IsDataType noData -> return NoData
         | IsDataType int8 -> return! parseI8 |>> Int8
-        | IsDataType int16 -> return! parseI16 |>> Int16
+        | IsDataType int16 -> return! parseI16LittleEndian |>> Int16
         | IsDataType int24 -> return! parseI24 |>> Int24
         | IsDataType int32 -> return! parseI32 |>> Int32
         | IsDataType int48 -> return! parseI48 |>> Int48

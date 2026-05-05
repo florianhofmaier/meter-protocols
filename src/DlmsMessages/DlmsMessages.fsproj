@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Tags.fs" />
+        <Compile Include="Utility.fs" />
+        <Compile Include="Ber.fs" />
+        <Compile Include="Axdr.fs" />
+        <Compile Include="Xdlms\XdlmsTag.fs" />
+        <Compile Include="Xdlms\Conformance.fs" />
+        <Compile Include="Xdlms\InitiateRequest.fs" />
+        <Compile Include="Xdlms\InitiateResponse.fs" />
+        <Compile Include="Xdlms\ConfirmedServiceError.fs" />
+        <Compile Include="Xdlms\XdlmsApdu.fs" />
+        <Compile Include="Acse\RawTypes.fs" />
+        <Compile Include="Acse\ValidatedTypes.fs" />
+        <Compile Include="Acse\AarqRawFields.fs" />
+        <Compile Include="Acse\AarqValidatedFields.fs" />
+        <Compile Include="Acse\AareRawFields.fs" />
+        <Compile Include="Acse\AareValidatedFields.fs" />
+        <Compile Include="Apdu\Aarq.fs" />
+        <Compile Include="Apdu\Aare.fs" />
+        <Compile Include="Apdu\Library.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\BaseParsers\BaseParsers.fsproj" />
+      <ProjectReference Include="..\Common\Validators\Validators.fsproj" />
+    </ItemGroup>
+
+</Project>

@@ -2,7 +2,7 @@ module Mbus.BaseParsers.Core
 
 open System
 
-type PState = { Buf: ReadOnlyMemory<uint8>; Off:int }
+type PState = { Buf: ReadOnlyMemory<uint8>; Off: int }
 module PState =
     let init (buf: uint8[]) : PState =
         { Buf = ReadOnlyMemory<byte> buf; Off = 0 }
@@ -62,6 +62,9 @@ let parseByte : Parser<uint8> =
     fun st ->
         if st.Off >= st.Buf.Length then errBufOverflow st
         else ok st.Buf.Span[st.Off] { st with Off = st.Off + 1 }
+
+let skipByte : Parser<unit> =
+    fun st -> ok () { st with Off = st.Off + 1 }
 
 let peekByte : Parser<uint8> =
     fun st ->

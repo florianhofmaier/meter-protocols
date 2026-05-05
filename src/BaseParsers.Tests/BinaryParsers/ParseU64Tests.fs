@@ -4,8 +4,8 @@ open Mbus.BaseParsers.BinaryParsers
 open Mbus.BaseParsers.Tests
 open Xunit
 
-let runPU64 = TestHelpers.runParser parseU64
-let runPU64Err = TestHelpers.runFailingParser parseU64
+let runPU64 = TestHelpers.runParser parseU64LittleEndian
+let runPU64Err = TestHelpers.runFailingParser parseU64LittleEndian
 
 [<Fact>]
 let ``parseU64 at first position returns first u64 and advances by eight`` () =

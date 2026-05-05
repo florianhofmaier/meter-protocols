@@ -7,7 +7,7 @@ open Mbus.BaseParsers.Core
 
 let private parseMfr : Parser<string> =
     parser {
-        let! mfrCode = parseU16
+        let! mfrCode = parseU16LittleEndian
         let char1 = char ((mfrCode &&& 0x1Fus) + 64us)
         let char2 = char (((mfrCode >>> 5) &&& 0x1Fus) + 64us)
         let char3 = char (((mfrCode >>> 10) &&& 0x1Fus) + 64us)

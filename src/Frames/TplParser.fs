@@ -44,7 +44,7 @@ let parseShort : Parser<TplShort> =
         let! ci = parseCiForShort
         let! acc = parseU8
         let! status = parseStatusField
-        let! cnf = parseU16
+        let! cnf = parseU16LittleEndian
         return { Func = ci; Acc = acc; Status = status; Cnf = cnf }
     }
 
@@ -63,7 +63,7 @@ let parseLong : Parser<TplLong> =
         let! ala = AddressParser.parseAla
         let! acc = parseU8
         let! status = parseStatusField
-        let! cnf = parseU16
+        let! cnf = parseU16LittleEndian
         return { Func = ci; Ala = ala; Acc = acc; Status = status; Cnf = cnf }
     }
 

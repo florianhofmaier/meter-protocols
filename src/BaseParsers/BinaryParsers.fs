@@ -20,18 +20,37 @@ let expectU8 b msg : Parser<unit> =
             return! fun _ -> Error { Pos = p-1; Msg = $"{msg}: expect 0x{b:X2}, got 0x{v:X2}"; Ctx = [ ] }
     }
 
-let parseU16: Parser<uint16> =
+let parseU16LittleEndian: Parser<uint16> =
     parser {
         let! b = takeMem 2
         return BinaryPrimitives.ReadUInt16LittleEndian b.Span
     }
 
-let parseI16: Parser<int16> =
-    parseU16 |>> int16
+let parseU16BigEndian: Parser<uint16> =
+    parser {
+        let! b = takeMem 2
+        return BinaryPrimitives.ReadUInt16BigEndian b.Span
+    }
+
+let expectU16BigEndian expect : Parser<unit> =
+    parser {
+        let! v = parseU16BigEndian
+        if v = expect then
+            return ()
+        else
+            let! p = pos
+            return! fun _ -> Error { Pos = p-2; Msg = $"expect 0x{expect:X4}, got 0x{v:X4}"; Ctx = [ ] }
+    }
+
+let parseI16LittleEndian: Parser<int16> =
+    parseU16LittleEndian |>> int16
+
+let parseI16BigEndian: Parser<int16> =
+    parseU16BigEndian |>> int16
 
 let parseU24: Parser<uint32> =
     parser {
-        let! b0 = parseU16
+        let! b0 = parseU16LittleEndian
         let! b1 = parseU8
         return uint32 b0 ||| (uint32 b1 <<< 16)
     }
@@ -57,7 +76,7 @@ let parseI32: Parser<int32> =
 let parseU48: Parser<uint64> =
     parser {
         let! low = parseU32
-        let! high = parseU16
+        let! high = parseU16LittleEndian
         return uint64 low ||| (uint64 high <<< 32)
     }
 
@@ -70,11 +89,17 @@ let parseI48: Parser<int64> =
             int64 u
     )
 
-let parseU64: Parser<uint64> =
+let parseU64LittleEndian: Parser<uint64> =
     parser {
         let! b = takeMem 8
         return BinaryPrimitives.ReadUInt64LittleEndian b.Span
     }
 
+let parseU64BigEndian: Parser<uint64> =
+    parser {
+        let! b = takeMem 8
+        return BinaryPrimitives.ReadUInt64BigEndian b.Span
+    }
+
 let parseI64: Parser<int64> =
-    parseU64 |>> int64
+    parseU64LittleEndian |>> int64

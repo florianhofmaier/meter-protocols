@@ -12,6 +12,7 @@
         <Compile Include="Core.fs" />
         <Compile Include="BinaryParsers.fs" />
         <Compile Include="BcdParsers.fs" />
+        <Compile Include="Utility.fs" />
     </ItemGroup>
 
 </Project>
