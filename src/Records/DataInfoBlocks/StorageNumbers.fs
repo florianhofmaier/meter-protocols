@@ -2,7 +2,9 @@ namespace Mbus.Records.DataInfoBlocks
 
 open System
 
-type StorageNumber = private StorageNumber of int
+type StorageNumber =
+    private
+        StorageNumber of int
 
 module StorageNumber =
     let create (v: int) =

@@ -24,7 +24,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\BaseWriters\BaseWriters.fsproj" />
-      <ProjectReference Include="..\BaseParsers\BaseParsers.fsproj" />
+      <ProjectReference Include="..\Parsers\Parsers.fsproj" />
       <ProjectReference Include="..\BaseWriters\BaseWriters.fsproj" />
       <ProjectReference Include="..\PublicTypes\PublicTypes.fsproj" />
     </ItemGroup>

@@ -35,7 +35,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\BaseParsers\BaseParsers.fsproj"/>
+        <ProjectReference Include="..\Parsers\Parsers.fsproj" />
     </ItemGroup>
 
 </Project>

@@ -1,6 +1,8 @@
 namespace Mbus.Records.DataInfoBlocks
 
-type Tariff = private Tariff of int
+type Tariff =
+    private
+        Tariff of int
 
 module Tariff =
     let create (v : int) =

@@ -35,9 +35,9 @@ let private parseRecords aplLen : Parser<RspRecord list> =
                 if remaining = 0 then
                     return List.rev acc
                 else
-                    let! startPos = pos
+                    let! startPos = getOffset
                     let! record = Record.Parser.parseRspRec
-                    let! endPos = pos
+                    let! endPos = getOffset
                     let consumed = endPos - startPos
                     return! loop (record :: acc) (remaining - consumed)
             }
@@ -56,7 +56,7 @@ let parseLongFrameHeader : Parser<int * int> =
         do! expectU8 Frame.longFrameStartByte "invalid start byte"
         let! len = parseLongFrameLen
         do! expectU8 Frame.longFrameStartByte "invalid start byte"
-        let! pos = pos
+        let! pos = getOffset
         return len, pos
     }
 

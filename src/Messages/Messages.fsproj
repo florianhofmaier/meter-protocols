@@ -13,7 +13,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\BaseParsers\BaseParsers.fsproj" />
+      <ProjectReference Include="..\Parsers\Parsers.fsproj" />
       <ProjectReference Include="..\BaseWriters\BaseWriters.fsproj" />
       <ProjectReference Include="..\Frames\Frames.fsproj" />
       <ProjectReference Include="..\Records\Records.fsproj" />

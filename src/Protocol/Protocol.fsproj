@@ -1,0 +1,71 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <AssemblyName>Protocol</AssemblyName>
+        <RootNamespace>Metering.Dlms.Protocol</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Tags.fs" />
+        <Compile Include="Utility.fs" />
+        <Compile Include="Ber.fs" />
+        <Compile Include="Axdr.fs" />
+        <Compile Include="Security\CipherContext.fs"/>
+        <Compile Include="CommunicationProfile\TcpUdpIp\WrapperPort.fs"/>
+        <Compile Include="CommunicationProfile\TcpUdpIp\WrapperPdu.fs"/>
+        <Compile Include="CommunicationProfile\TcpUdpIp\WrapperSapMapping.fs"/>
+        <Compile Include="CommunicationProfile\TcpUdpIp\TcpUdpIpContext.fs"/>
+        <Compile Include="CommunicationProfile\CommunicationProfileContext.fs"/>
+        <Compile Include="Xdlms\XdlmsTag.fs" />
+        <Compile Include="Xdlms\Common\Conformance.fs" />
+        <Compile Include="Xdlms\InitiateRequest\DedicatedKey.fs" />
+        <Compile Include="Xdlms\InitiateRequest\ResponseAllowed.fs" />
+        <Compile Include="Xdlms\InitiateRequest\ProposedQualityOfService.fs" />
+        <Compile Include="Xdlms\InitiateRequest\DlmsVersionNumber.fs" />
+        <Compile Include="Xdlms\InitiateRequest\ClientMaxPduSize.fs" />
+        <Compile Include="Xdlms\InitiateRequest\InitiateRequestRaw.fs" />
+        <Compile Include="Xdlms\InitiateRequest\InitiateRequestValidatedFields.fs" />
+        <Compile Include="Xdlms\InitiateRequest\InitiateRequestDecodeSteps.fs" />
+        <Compile Include="Xdlms\InitiateResponse.fs" />
+        <Compile Include="Xdlms\ConfirmedServiceError.fs" />
+        <Compile Include="Xdlms\XdlmsApduRaw.fs" />
+        <Compile Include="Xdlms\XdlmsApduValidatedFields.fs" />
+        <Compile Include="Xdlms\XdlmsApduDecodeSteps.fs" />
+        <Compile Include="Acse\AcseTag.fs" />
+        <Compile Include="Acse\Fields\OidValidation.fs" />
+        <Compile Include="Acse\Fields\ProtocolVersion.fs" />
+        <Compile Include="Acse\Fields\ApplicationContextName.fs" />
+        <Compile Include="Acse\Fields\ApTitle.fs" />
+        <Compile Include="Acse\Fields\AeQualifier.fs" />
+        <Compile Include="Acse\Fields\IdentificationIdentifier.fs" />
+        <Compile Include="Acse\Fields\AuthenticationValue.fs" />
+        <Compile Include="Acse\Fields\MechanismName.fs" />
+        <Compile Include="Acse\Fields\SenderAcseRequirements.fs" />
+        <Compile Include="Acse\Fields\ImplementationInformation.fs" />
+        <Compile Include="Acse\Fields\UserInformation.fs" />
+        <Compile Include="Acse\Aarq\AarqRaw.fs" />
+        <Compile Include="Acse\Aarq\AuthenticationFunctionalUnit.fs" />
+        <Compile Include="Acse\Aarq\AarqValidatedFields.fs" />
+        <Compile Include="Acse\RawTypes.fs" />
+        <Compile Include="Acse\ValidatedTypes.fs" />
+        <Compile Include="Acse\AareRawFields.fs" />
+        <Compile Include="Acse\AareValidatedFields.fs" />
+        <Compile Include="Acse\AcseApdu.fs" />
+        <Compile Include="CosemApdus\CosemApdu.fs" />
+        <Compile Include="CosemServices\Library.fs" />
+        <Compile Include="CosemServices\Open\OpenRequestUserInformation.fs" />
+        <Compile Include="CosemServices\Open\OpenRequest.fs" />
+        <Compile Include="CosemServices\Open\OpenResponse.fs" />
+        <Compile Include="CosemServices\CosemServices.fs" />
+        <Compile Include="ApplicationLayer\Primitives.fs"/>
+        <Compile Include="ApplicationLayer\CosemOpenService.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Parsers\Parsers.fsproj" />
+      <ProjectReference Include="..\Common\Validators\Validators.fsproj" />
+    </ItemGroup>
+
+</Project>

@@ -1,6 +1,8 @@
 namespace Mbus.Records.DataInfoBlocks
 
-type SubUnit = private SubUnit of int
+type SubUnit =
+    private
+        SubUnit of int
 
 module SubUnit =
     let create v =
