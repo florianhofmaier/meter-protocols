@@ -106,15 +106,15 @@ type ApplicationReferenceError =
 module ApplicationReferenceError =
     let fromRaw value =
         match value with
-        | 0uy -> Validation.ok Other
-        | 1uy -> Validation.ok TimeElapsed
-        | 2uy -> Validation.ok ApplicationUnreachable
-        | 3uy -> Validation.ok ApplicationReferenceInvalid
-        | 4uy -> Validation.ok ApplicationContextUnsupported
-        | 5uy -> Validation.ok ProviderCommunicationError
-        | 6uy -> Validation.ok DecipheringError
+        | 0uy ->validationOk Other
+        | 1uy ->validationOk TimeElapsed
+        | 2uy ->validationOk ApplicationUnreachable
+        | 3uy ->validationOk ApplicationReferenceInvalid
+        | 4uy ->validationOk ApplicationContextUnsupported
+        | 5uy ->validationOk ProviderCommunicationError
+        | 6uy ->validationOk DecipheringError
         | other ->
-            Validation.error
+            validationError
                 $"unsupported application-reference error {other}"
 
 type HardwareResourceError =
@@ -127,13 +127,13 @@ type HardwareResourceError =
 module HardwareResourceError =
     let fromRaw value =
         match value with
-        | 0uy -> Validation.ok Other
-        | 1uy -> Validation.ok MemoryUnavailable
-        | 2uy -> Validation.ok ProcessorResourceUnavailable
-        | 3uy -> Validation.ok MassStorageUnavailable
-        | 4uy -> Validation.ok OtherResourceUnavailable
+        | 0uy ->validationOk Other
+        | 1uy ->validationOk MemoryUnavailable
+        | 2uy ->validationOk ProcessorResourceUnavailable
+        | 3uy ->validationOk MassStorageUnavailable
+        | 4uy ->validationOk OtherResourceUnavailable
         | other ->
-            Validation.error
+            validationError
                 $"unsupported hardware-resource error {other}"
 
 type VdeStateError =
@@ -146,13 +146,13 @@ type VdeStateError =
 module VdeStateError =
     let fromRaw value =
         match value with
-        | 0uy -> Validation.ok Other
-        | 1uy -> Validation.ok NoDlmsContext
-        | 2uy -> Validation.ok LoadingDataSet
-        | 3uy -> Validation.ok StatusNoChange
-        | 4uy -> Validation.ok StatusInoperable
+        | 0uy ->validationOk Other
+        | 1uy ->validationOk NoDlmsContext
+        | 2uy ->validationOk LoadingDataSet
+        | 3uy ->validationOk StatusNoChange
+        | 4uy ->validationOk StatusInoperable
         | other ->
-            Validation.error
+            validationError
                 $"unsupported vde-state-error {other}"
 
 type ServiceError =
@@ -163,11 +163,11 @@ type ServiceError =
 module ServiceError =
     let fromRaw value =
         match value with
-        | 0uy -> Validation.ok Other
-        | 1uy -> Validation.ok PduSize
-        | 2uy -> Validation.ok ServiceUnsupported
+        | 0uy ->validationOk Other
+        | 1uy ->validationOk PduSize
+        | 2uy ->validationOk ServiceUnsupported
         | other ->
-            Validation.error
+            validationError
                 $"unsupported service error {other}"
 
 type DefinitionError =
@@ -179,12 +179,12 @@ type DefinitionError =
 module DefinitionError =
     let fromRaw value =
         match value with
-        | 0uy -> Validation.ok Other
-        | 1uy -> Validation.ok ObjectUndefined
-        | 2uy -> Validation.ok ObjectClassInconsistent
-        | 3uy -> Validation.ok ObjectAttributeInconsistent
+        | 0uy ->validationOk Other
+        | 1uy ->validationOk ObjectUndefined
+        | 2uy ->validationOk ObjectClassInconsistent
+        | 3uy ->validationOk ObjectAttributeInconsistent
         | other ->
-            Validation.error
+            validationError
                 $"unsupported definition error {other}"
 
 type AccessError =
@@ -197,13 +197,13 @@ type AccessError =
 module AccessError =
     let fromRaw value =
         match value with
-        | 0uy -> Validation.ok Other
-        | 1uy -> Validation.ok ScopeOfAccessViolated
-        | 2uy -> Validation.ok ObjectAccessViolated
-        | 3uy -> Validation.ok HardwareFault
-        | 4uy -> Validation.ok ObjectUnavailable
+        | 0uy ->validationOk Other
+        | 1uy ->validationOk ScopeOfAccessViolated
+        | 2uy ->validationOk ObjectAccessViolated
+        | 3uy ->validationOk HardwareFault
+        | 4uy ->validationOk ObjectUnavailable
         | other ->
-            Validation.error
+            validationError
                 $"unsupported access error {other}"
 
 type InitiateError =
@@ -216,13 +216,13 @@ type InitiateError =
 module InitiateError =
     let fromRaw value =
         match value with
-        | 0uy -> Validation.ok Other
-        | 1uy -> Validation.ok DlmsVersionTooLow
-        | 2uy -> Validation.ok IncompatibleConformance
-        | 3uy -> Validation.ok PduSizeTooShort
-        | 4uy -> Validation.ok RefusedByTheVdeHandler
+        | 0uy ->validationOk Other
+        | 1uy ->validationOk DlmsVersionTooLow
+        | 2uy ->validationOk IncompatibleConformance
+        | 3uy ->validationOk PduSizeTooShort
+        | 4uy ->validationOk RefusedByTheVdeHandler
         | other ->
-            Validation.error
+            validationError
                 $"unsupported initiate error {other}"
 
 type LoadDataSetError =
@@ -238,16 +238,16 @@ type LoadDataSetError =
 module LoadDataSetError =
     let fromRaw value =
         match value with
-        | 0uy -> Validation.ok Other
-        | 1uy -> Validation.ok PrimitiveOutOfSequence
-        | 2uy -> Validation.ok NotLoadable
-        | 3uy -> Validation.ok DatasetSizeTooLarge
-        | 4uy -> Validation.ok NotAwaitedSegment
-        | 5uy -> Validation.ok InterpretationFailure
-        | 6uy -> Validation.ok StorageFailure
-        | 7uy -> Validation.ok DataSetNotReady
+        | 0uy ->validationOk Other
+        | 1uy ->validationOk PrimitiveOutOfSequence
+        | 2uy ->validationOk NotLoadable
+        | 3uy ->validationOk DatasetSizeTooLarge
+        | 4uy ->validationOk NotAwaitedSegment
+        | 5uy ->validationOk InterpretationFailure
+        | 6uy ->validationOk StorageFailure
+        | 7uy ->validationOk DataSetNotReady
         | other ->
-            Validation.error
+            validationError
                 $"unsupported load-data-set error {other}"
 
 type TaskError =
@@ -260,13 +260,13 @@ type TaskError =
 module TaskError =
     let fromRaw value =
         match value with
-        | 0uy -> Validation.ok Other
-        | 1uy -> Validation.ok NoRemoteControl
-        | 2uy -> Validation.ok TiStopped
-        | 3uy -> Validation.ok TiRunning
-        | 4uy -> Validation.ok TiUnusable
+        | 0uy ->validationOk Other
+        | 1uy ->validationOk NoRemoteControl
+        | 2uy ->validationOk TiStopped
+        | 3uy ->validationOk TiRunning
+        | 4uy ->validationOk TiUnusable
         | other ->
-            Validation.error
+            validationError
                 $"unsupported task error {other}"
 
 type ServiceErrorChoice =

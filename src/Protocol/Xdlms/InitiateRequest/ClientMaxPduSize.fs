@@ -1,6 +1,7 @@
 namespace Metering.Dlms.Protocol.Xdlms.InitiateRequest
 
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 
 type ClientMaxReceivePduSize =
@@ -16,7 +17,7 @@ module ClientMaxReceivePduSize =
         value
 
     let validate
-        (raw: Axdr.Unsigned16)
+        (raw: ParsedField<Axdr.Unsigned16>)
         : Validation<ClientMaxReceivePduSize> =
 
-        raw |> create |> Validation.ok
+        raw.Value |> create |> passed

@@ -1,46 +1,56 @@
 module Metering.Dlms.Protocol.Acse.Fields.OidValidation
 
 open System
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Validators.Core
+open Metering.Dlms.Protocol
 
-let private validatePrefix
-    (prefix: byte[])
-    (fieldName: string)
-    (value: ReadOnlyMemory<byte>)
-    : Validation<unit> =
+module OidValidation =
 
-    let isValidPrefix =
-        value.Span.Length >= prefix.Length
-        && value.Span.Slice(0, prefix.Length).SequenceEqual(prefix.AsSpan())
+    let private validatePrefix
+        (prefix: byte[])
+        (fieldName: string)
+        (raw: ParsedField<Ber.ObjectIdentifier>)
+        : Validation<unit> =
 
-    if isValidPrefix then
-        Validation.ok ()
-    else
-        Validation.error $"{fieldName} object identifier has invalid prefix"
+        let bytes =
+            Ber.ObjectIdentifier.toBytes raw.Value
 
-let private validateSingleId
-    (prefix: byte[])
-    (fieldName: string)
-    (value: ReadOnlyMemory<byte>)
-    : Validation<byte> =
+        let isValidPrefix =
+            bytes.Length >= prefix.Length
+            && bytes.Span.Slice(0, prefix.Length).SequenceEqual(prefix.AsSpan())
 
-    if value.Length = prefix.Length + 1 then
-        Validation.ok value.Span[prefix.Length]
-    else
-        Validation.error $"{fieldName} object identifier must contain exactly one context id after the prefix"
+        if isValidPrefix then
+            passed ()
+        else
+            failed raw $"{fieldName} object identifier has invalid prefix"
 
-let validatePrefixAndSingleId
-    (prefix: byte[])
-    (fieldName: string)
-    (value: ReadOnlyMemory<byte>)
-    : Validation<byte> =
+    let private validateSingleId
+        (prefix: byte[])
+        (fieldName: string)
+        (raw: ParsedField<Ber.ObjectIdentifier>)
+        : Validation<byte> =
 
-    validator {
-        let! _ =
-            validatePrefix prefix fieldName value
+        let bytes =
+            Ber.ObjectIdentifier.toBytes raw.Value
 
-        and! id =
-            validateSingleId prefix fieldName value
+        if bytes.Length = prefix.Length + 1 then
+            passed bytes.Span[prefix.Length]
+        else
+            failed raw $"{fieldName} object identifier must contain exactly one context id after the prefix"
 
-        return id
-    }
+    let validatePrefixAndSingleId
+        (prefix: byte[])
+        (fieldName: string)
+        (raw: ParsedField<Ber.ObjectIdentifier>)
+        : Validation<byte> =
+
+        validator {
+            let! () =
+                validatePrefix prefix fieldName raw
+
+            and! id =
+                validateSingleId prefix fieldName raw
+
+            return id
+        }

@@ -1,25 +1,23 @@
 namespace Metering.Dlms.Protocol.Acse
 
-open Metering.Common.Parsers.Core
-open Metering.Common.Parsers.ParserTree
-open Metering.Dlms.Protocol
+open Metering.Common.Decoding.Parsers
 open Metering.Dlms.Protocol.Acse.Aarq
 
 type AcseApduRaw =
-    | Aarq of AarqRaw
+    | Aarq of ParsedField<AarqRaw>
     | Aare of AareRaw
     | Rlrq of RlrqRaw
     | Rlre of RlreRaw
 
 module AcseApduRaw =
 
-    let decode : Parser<Parsed<AcseApduRaw>> =
-        parser {
+    let decode =
+        decoder {
             let! tag = Tag.peek<AcseTag>
 
             match tag with
             | AcseTag.Aarq ->
-                return! AarqRaw.parse |>> Parsed.map Aarq
+                return! Aarq.decode |>> Aarq
 
             | AcseTag.Aare ->
                 return! fail "AARE not supported"

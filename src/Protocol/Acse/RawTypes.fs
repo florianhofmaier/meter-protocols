@@ -1,7 +1,8 @@
 namespace DlmsMessages.Acse
 
-open DlmsMessages
-open Mbus.BaseParsers.Core
+open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.ErrorHandling
+open Metering.Dlms.Protocol
 
 type AssociateSourceDiagnosticRaw =
     | AcseServiceUser of uint32

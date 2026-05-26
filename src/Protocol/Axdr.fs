@@ -1,12 +1,13 @@
 module Metering.Dlms.Protocol.Axdr
 
 open System
-open Metering.Common.Parsers.BaseParsers
-open Metering.Common.Parsers.BinaryParsers
-open Metering.Common.Parsers.Core
-open Metering.Common.Parsers.ParserTree
-open Metering.Common.Validators
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Parsers.Binary
+open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.ErrorHandling
+open Metering.Common.Decoding.Parsers.Utility
+
+open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol.Utility
 
 type UsageFlag =
@@ -30,7 +31,7 @@ type Optional<'a> =
 
 module Optional =
 
-    let parse (p: Parser<'a>) : Parser<Optional<'a>> =
+    let parse (p: Parser<'raw>) : Parser<Optional<'raw>> =
         parser {
             let! usage = UsageFlag.parse
 
@@ -39,27 +40,32 @@ module Optional =
             | Used -> return! p |>> Present
         }
 
-    let validateParsed
+    let validate
         (presenceDiagnostic: PresenceDiagnostic)
-        (validatePresent: 'raw -> Validation<'valid>)
-        (raw: Parsed<Optional<'raw>>)
+        (validatePresent: ParsedField<'raw> -> Validation<'valid>)
+        (raw: ParsedField<Optional<'raw>>)
         : Validation<'valid option> =
 
-        Validation.withNode raw.Node <|
+        validator {
             match raw.Value with
             | Absent ->
-                Validation.ok None
+                return None
 
             | Present value ->
-                validator {
-                    let! valid =
-                        validatePresent value
+                let present =
+                    {
+                        Id = raw.Id
+                        Value = value
+                    }
 
-                    do!
-                        PresenceDiagnostic.emit presenceDiagnostic
+                let! valid =
+                    validatePresent present
 
-                    return Some valid
-                }
+                do!
+                    PresenceDiagnostic.emit raw presenceDiagnostic
+
+                return Some valid
+        }
 
     let toOption mapper value =
         match value with
@@ -77,16 +83,20 @@ type ExplicitDefaultDiagnostic =
 
 module ExplicitDefaultDiagnostic =
 
-    let emit diagnostic : Validation<unit> =
+    let emit
+        (field: ParsedField<_>)
+        (diagnostic: ExplicitDefaultDiagnostic)
+        : Validation<unit> =
+
         match diagnostic with
         | NoExplicitDefaultDiagnostic ->
-            Validation.ok ()
+            passed ()
 
         | InfoWhenExplicitDefault message ->
-            Validation.info message
+            info field message
 
         | WarningWhenExplicitDefault message ->
-            Validation.warning message
+            warning field message
 
 module Default =
 
@@ -107,42 +117,37 @@ module Default =
         | Defaulted -> defaultValue
         | Explicit x -> x
 
-    let validateParsed
+    let validate
         (defaultValue: 'valid)
         (explicitDefaultDiagnostic: ExplicitDefaultDiagnostic)
-        (validateExplicit: 'raw -> Validation<'valid>)
-        (raw: Parsed<Default<'raw>>)
+        (validateExplicit: ParsedField<'raw> -> Validation<'valid>)
+        (raw: ParsedField<Default<'raw>>)
         : Validation<'valid>
         when 'valid : equality =
 
-        Validation.withNode raw.Node <|
+        validator {
             match raw.Value with
             | Defaulted ->
-                Validation.ok defaultValue
+                return defaultValue
 
             | Explicit value ->
-                validator {
-                    let! valid =
-                        validateExplicit value
+                let explicitField: ParsedField<'raw> =
+                    {
+                        Id = raw.Id
+                        Value = value
+                    }
 
-                    do!
-                        if valid = defaultValue then
-                            ExplicitDefaultDiagnostic.emit explicitDefaultDiagnostic
-                        else
-                            Validation.ok ()
+                let! valid =
+                    validateExplicit explicitField
 
-                    return valid
-                }
+                do!
+                    if valid = defaultValue then
+                        ExplicitDefaultDiagnostic.emit raw explicitDefaultDiagnostic
+                    else
+                        passed ()
 
-module Required =
-
-    let validateParsed
-        (validateValue: 'raw -> Validation<'valid>)
-        (raw: Parsed<'raw>)
-        : Validation<'valid> =
-
-        Validation.withNode raw.Node <|
-            validateValue raw.Value
+                return valid
+        }
 
 type Boolean =
     private
@@ -217,14 +222,17 @@ module OctetString =
     let toBytes (OctetString bytes) =
         bytes
 
+    let length (OctetString bytes) =
+        bytes.Length
+
     let parse : Parser<OctetString> =
         parser {
             let! len = parseLength
-            return! takeMem len |>> OctetString
+            return! take len |>> OctetString
         }
 
-    let parseAsBufferSlice : Parser<BufferSlice> =
-        parser {
-            let! len = parseLength
-            return! BufferSlice.parse len
-        }
+    // let parseAsBufferSlice : Parser<BufferSlice> =
+    //     parser {
+    //         let! len = parseLength
+    //         return! BufferSlice.parse len
+    //     }

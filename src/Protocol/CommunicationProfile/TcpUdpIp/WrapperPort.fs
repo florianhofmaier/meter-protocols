@@ -1,6 +1,6 @@
 namespace Metering.Dlms.Protocol.CommunicationProfile.TcpUdpIp
 
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Validators.Core
 
 type WrapperPort =
     private
@@ -28,19 +28,19 @@ module ClientWrapperPort =
 
         match value with
         | 0x0000us ->
-            Validation.ok ClientNoStation
+            validationOkClientNoStation
 
         | 0x0001us ->
-            Validation.ok ClientManagementProcess
+            validationOkClientManagementProcess
 
         | 0x0010us ->
-            Validation.ok PublicClient
+            validationOkPublicClient
 
         | value when isAssignedClientApplicationProcess value ->
-            Validation.ok (AssignedClientApplicationProcess raw)
+            validationOk(AssignedClientApplicationProcess raw)
 
         | other ->
-            Validation.error
+            validationError
                 $"invalid client wrapper port 0x{other:X4}"
 
 type ServerWrapperPort =
@@ -58,21 +58,21 @@ module ServerWrapperPort =
 
         match value with
         | 0x0000us ->
-            Validation.ok ServerNoStation
+            validationOkServerNoStation
 
         | 0x0001us ->
-            Validation.ok ManagementLogicalDevice
+            validationOkManagementLogicalDevice
 
         | value when 0x0002us <= value && value <= 0x000Fus ->
-            Validation.error
+            validationError
                 $"server wrapper port 0x{value:X4} is reserved"
 
         | value when isAssignedLogicalDevice value ->
-            Validation.ok (AssignedLogicalDevice raw)
+            validationOk(AssignedLogicalDevice raw)
 
         | 0x007Fus ->
-            Validation.ok AllStationBroadcast
+            validationOkAllStationBroadcast
 
         | other ->
-            Validation.error
+            validationError
                 $"invalid server wrapper port 0x{other:X4}"

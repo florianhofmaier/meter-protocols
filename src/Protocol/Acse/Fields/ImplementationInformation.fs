@@ -1,6 +1,7 @@
 namespace Metering.Dlms.Protocol.Acse.Fields
 
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 
 type ImplementationInformation =
@@ -15,5 +16,5 @@ module ImplementationInformation =
     let value (ImplementationInformation value) =
         value
 
-    let validate value =
-        value |> create |> Validation.ok
+    let validate (raw: ParsedField<Ber.GraphicString>) =
+        raw.Value |> create |> passed

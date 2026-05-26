@@ -1,6 +1,7 @@
 namespace Metering.Dlms.Protocol.Acse.Fields
 
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Validators.Core
 
 type InvocationIdentifier =
     private
@@ -14,5 +15,5 @@ module InvocationIdentifier =
     let value (InvocationIdentifier value) =
         value
 
-    let validate value =
-        value |> create |> Validation.ok
+    let validate (raw: ParsedField<uint32>) =
+        raw.Value |> create |> passed

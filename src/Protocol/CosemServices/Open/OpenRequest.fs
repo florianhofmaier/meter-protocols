@@ -24,7 +24,7 @@ type OpenRequestValidatedFields =
 module OpenRequestValidatedFields =
 
     let fromRaw
-        (raw: Parsed<OpenRequestRawFields>)
+        (raw: ParsedField<OpenRequestRawFields>)
         : Validation<OpenRequestValidatedFields> =
 
         validator {
@@ -46,7 +46,7 @@ module OpenRequestValidatedFields =
 
             | _ ->
                 return!
-                    Validation.error
+                    validationError
                         ["COSEM-OPEN"; "AARQ"; "user-information"]
                         "COSEM-OPEN.request user-information must resolve to initiateRequest"
         }
@@ -56,7 +56,7 @@ type LogicalNameConformance =
 
 module LogicalNameConformance =
     let fromConformance (c: Conformance) : Validation<LogicalNameConformance> =
-        Validation.ok (LogicalNameConformance c)
+        validationOk(LogicalNameConformance c)
 
     let private value (LogicalNameConformance c) = c
 
@@ -147,7 +147,7 @@ type ShortNameConformance =
 
 module ShortNameConformance =
     let fromConformance (c: Conformance) : Validation<ShortNameConformance> =
-        Validation.ok (ShortNameConformance c)
+        validationOk(ShortNameConformance c)
 
     let private value (ShortNameConformance c) = c
 
@@ -196,9 +196,9 @@ module ClientSystemTitle =
 
     let private validate (bytes: ReadOnlyMemory<byte>) : Validation<ClientSystemTitle> =
         if bytes.Length = 8 then
-            Validation.ok (ClientSystemTitle bytes)
+            validationOk(ClientSystemTitle bytes)
         else
-            Validation.error
+            validationError
                 ["AARQ"; "calling-AP-title"]
                 $"client system title must be 8 octets, got {bytes.Length}"
 
@@ -217,11 +217,11 @@ module ClientDigitalSignatureCertificate =
 
     let private validate (bytes: ReadOnlyMemory<byte>) : Validation<ClientDigitalSignatureCertificate> =
         if bytes.Length = 0 then
-            Validation.error
+            validationError
                 ["AARQ"; "calling-AE-qualifier"]
                 "client digital signature certificate must not be empty"
         else
-            Validation.ok (ClientDigitalSignatureCertificate bytes)
+            validationOk(ClientDigitalSignatureCertificate bytes)
 
     let fromAeQualifier (aeQualifier: AeQualifier) : Validation<ClientDigitalSignatureCertificate> =
         aeQualifier
@@ -509,6 +509,6 @@ module OpenRequest =
                 }
 
         | _ ->
-            Validation.error
+            validationError
                 ["AARQ"; "user-information"]
                 "encrypted AARQ is not supported yet"

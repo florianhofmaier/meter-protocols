@@ -11,6 +11,7 @@
         <Compile Include="Tags.fs" />
         <Compile Include="Utility.fs" />
         <Compile Include="Ber.fs" />
+        <Compile Include="PresenceDiagnostics.fs" />
         <Compile Include="Axdr.fs" />
         <Compile Include="Security\CipherContext.fs"/>
         <Compile Include="CommunicationProfile\TcpUdpIp\WrapperPort.fs"/>
@@ -19,7 +20,7 @@
         <Compile Include="CommunicationProfile\TcpUdpIp\TcpUdpIpContext.fs"/>
         <Compile Include="CommunicationProfile\CommunicationProfileContext.fs"/>
         <Compile Include="Xdlms\XdlmsTag.fs" />
-        <Compile Include="Xdlms\Common\Conformance.fs" />
+        <Compile Include="Xdlms\CommonFields\Conformance.fs" />
         <Compile Include="Xdlms\InitiateRequest\DedicatedKey.fs" />
         <Compile Include="Xdlms\InitiateRequest\ResponseAllowed.fs" />
         <Compile Include="Xdlms\InitiateRequest\ProposedQualityOfService.fs" />
@@ -34,6 +35,7 @@
         <Compile Include="Xdlms\XdlmsApduValidatedFields.fs" />
         <Compile Include="Xdlms\XdlmsApduDecodeSteps.fs" />
         <Compile Include="Acse\AcseTag.fs" />
+        <Compile Include="Acse\Fields\AcseField.fs" />
         <Compile Include="Acse\Fields\OidValidation.fs" />
         <Compile Include="Acse\Fields\ProtocolVersion.fs" />
         <Compile Include="Acse\Fields\ApplicationContextName.fs" />
@@ -45,6 +47,7 @@
         <Compile Include="Acse\Fields\SenderAcseRequirements.fs" />
         <Compile Include="Acse\Fields\ImplementationInformation.fs" />
         <Compile Include="Acse\Fields\UserInformation.fs" />
+        <Compile Include="Acse\Aarq\AarqTag.fs" />
         <Compile Include="Acse\Aarq\AarqRaw.fs" />
         <Compile Include="Acse\Aarq\AuthenticationFunctionalUnit.fs" />
         <Compile Include="Acse\Aarq\AarqValidatedFields.fs" />
@@ -64,7 +67,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Parsers\Parsers.fsproj" />
+      <ProjectReference Include="..\Common\Parsers\Parsers.fsproj" />
       <ProjectReference Include="..\Common\Validators\Validators.fsproj" />
     </ItemGroup>
 

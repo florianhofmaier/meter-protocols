@@ -1,9 +1,9 @@
 namespace Metering.Dlms.Protocol.Xdlms
 
-open Metering.Common.Parsers.BinaryParsers
-open Metering.Common.Parsers.Core
-open Metering.Common.Parsers.ParserTree
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Parsers.Binary
+open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 
 type ConformanceRaw =
@@ -13,8 +13,7 @@ type ConformanceRaw =
 module ConformanceRaw =
     let value (ConformanceRaw bits) = bits
 
-    let parse : Parser<Parsed<ConformanceRaw>> =
-        parseNode "Conformance" <|
+    let parse : Parser<ConformanceRaw> =
         parser {
             do! expectU16BigEndian 0x5F1Fus
             return! Ber.BitString.parseImplicit |>> ConformanceRaw
@@ -24,19 +23,24 @@ type Conformance =
     private Conformance of Ber.BitString
 
 module Conformance =
-    let validate (raw: ConformanceRaw) : Validation<Conformance> =
+    let validate
+        (raw: ParsedField<ConformanceRaw>)
+        : Validation<Conformance> =
+
         validator {
-            let bits = ConformanceRaw.value raw
+            let bits = raw.Value |> ConformanceRaw.value
 
             do!
-                Validation.ensure
-                    "conformance unused bit count must be 0"
-                    (bits.UnusedBitCount = 0uy)
+                ensure
+                    <| raw
+                    <| "conformance unused bit count must be 0"
+                    <| (bits.UnusedBitCount = 0uy)
 
             do!
-                Validation.ensure
-                    "conformance must contain exactly 24 bits / 3 octets"
-                    (bits.Payload.Length = 3)
+                ensure
+                    <| raw
+                    <| "conformance must contain exactly 24 bits / 3 octets"
+                    <| (bits.Payload.Length = 3)
 
             return Conformance bits
         }

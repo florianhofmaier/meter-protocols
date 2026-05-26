@@ -1,7 +1,8 @@
 namespace Metering.Dlms.Protocol.CosemApdu
 
-open Metering.Common.Parsers.Core
-open Metering.Common.Parsers.ParserTree
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Dlms.Protocol
 open Metering.Dlms.Protocol.Acse
 open Metering.Dlms.Protocol.Xdlms
@@ -37,16 +38,16 @@ type CosemApduRaw =
 
 module CosemApduRaw =
 
-    let decode : Parser<Parsed<CosemApduRaw>> =
+    let decode : Parser<ParsedField<CosemApduRaw>> =
         parser {
             let! tag = CosemApduTag.peek
 
             match tag with
             | CosemApduTag.Acse _ ->
-                return! AcseApduRaw.parse |>> Parsed.map CosemApduRaw.Acse
+                return! AcseApduRaw.parse |>> map CosemApduRaw.Acse
 
             | CosemApduTag.Xdlms _ ->
-                return! XdlmsApduRaw.parse |>> Parsed.map CosemApduRaw.Xdlms
+                return! XdlmsApduRaw.parse |>> map CosemApduRaw.Xdlms
         }
 
     let validate (raw: CosemApduRaw) : Result<unit, PError> =

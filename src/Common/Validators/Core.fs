@@ -1,371 +1,190 @@
-﻿module Metering.Common.Validators.Core
+﻿module Metering.Common.Decoding.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Parsers.Types
 
-open Metering.Common.Parsers.ParserTree
-
-type ValidationResult<'a> =
-    | Valid of 'a
-    | Invalid of Failures
-
-type VState =
+type Issue =
     {
-        CurrentNode : ParsedNode
-        Notices : Notice list
+        FieldId : FieldId
+        Message : string
     }
 
-type Validation<'a> = VState -> ValidationResult<'a> * VState
+type Notice =
+    | Info of Issue
+    | Warning of Issue
 
-module Validation =
+type Failures =
+    private Failures of head: Issue * tail: Issue list
 
-    let private issue
-        (message: string)
-        (state: VState)
-        : Issue =
+type Validation<'a> =
+    | Passed of 'a * Notice list
+    | Failed of Failures * Notice list
 
-        {
-            Node = state.CurrentNode
-            Message = message
-        }
+module Failures =
 
-    let private addNotice
-        (notice: Notice)
-        (state: VState)
-        : VState =
+    let single issue =
+        Failures (issue, [])
 
-        { state with Notices = notice :: state.Notices }
+    let append
+        (Failures (leftHead, leftTail))
+        (Failures (rightHead, rightTail)) =
 
-    let ok
-        (value: 'a)
-        : Validation<'a> =
+        Failures (leftHead, leftTail @ (rightHead :: rightTail))
 
-        fun state -> Valid value, state
+    let toList
+        (Failures (head, tail)) =
+        head :: tail
 
-    let error
-        (message: string)
-        : Validation<'a> =
+let passed value =
+    Passed (value, [])
 
-        fun state ->
-            let failure =
-                state
-                |> issue message
-                |> Failures.create
-
-            Invalid failure, state
-
-    let info
-        (message: string)
-        : Validation<unit> =
-
-        fun state ->
-            let notice =
-                state
-                |> issue message
-                |> Notice.Info
-
-            Valid (), addNotice notice state
-
-    let warning
-        (message: string)
-        : Validation<unit> =
-
-        fun state ->
-            let notice =
-                state
-                |> issue message
-                |> Notice.Warning
-
-            Valid (), addNotice notice state
-
-    let ensure
-        (message: string)
-        (condition: bool)
-        : Validation<unit> =
-
-        if condition then
-            ok ()
-        else
-            error message
-
-    let requireSome
-        (message: string)
-        (value: 'a option)
-        : Validation<'a> =
-
-        match value with
-        | Some value ->
-            ok value
-
-        | None ->
-            error message
-
-    let requireNone
-        (message: string)
-        (value: 'a option)
-        : Validation<unit> =
-
-        match value with
-        | None ->
-            ok ()
-
-        | Some _ ->
-            error message
-
-    let withNode
-        (node: ParsedNode)
-        (validation: Validation<'a>)
-        : Validation<'a> =
-
-        fun state ->
-            let previousNode =
-                state.CurrentNode
-
-            let innerState =
-                { state with CurrentNode = node }
-
-            let result, afterInner =
-                validation innerState
-
-            result, { afterInner with CurrentNode = previousNode }
-
-    let parsed
-        (raw: Parsed<'raw>)
-        (validateValue: 'raw -> Validation<'valid>)
-        : Validation<'valid> =
-
-        validateValue raw.Value
-        |> withNode raw.Node
-
-    let runAtNode
-        (node: ParsedNode)
-        (validation: Validation<'a>)
-        : ValidationReport<'a> =
-
-        let initialState =
+let failed field message =
+    Failed (
+        Failures.single
             {
-                CurrentNode = node
-                Notices = []
-            }
+                FieldId = field.Id
+                Message = message
+            },
+        []
+    )
 
-        let result, finalState =
-            validation initialState
+let info field message =
+    Passed (
+        (),
+        [
+            Info
+                {
+                    FieldId = field.Id
+                    Message = message
+                }
+        ]
+    )
 
-        let notices =
-            finalState.Notices |> List.rev
+let warning field message =
+    Passed (
+        (),
+        [
+            Warning
+                {
+                    FieldId = field.Id
+                    Message = message
+                }
+        ]
+    )
 
-        match result with
-        | Valid value ->
-            Passed (value, notices)
+let ensure field message condition =
+    if condition then
+        passed ()
+    else
+        failed field message
 
-        | Invalid failures ->
-            Failed (failures, notices)
+let requireSome message field  =
+    match field.Value with
+    | Some x -> passed x
+    | None -> failed field message
 
-    let runParsed
-        (validateValue: 'raw -> Validation<'valid>)
-        (raw: Parsed<'raw>)
-        : ValidationReport<'valid> =
+let requireNone message field =
+    match field.Value  with
+    | Some _ -> failed field message
+    | None -> passed ()
 
-        validateValue raw.Value
-        |> runAtNode raw.Node
+let map
+    (f: 'a -> 'b)
+    (validation: Validation<'a>)
+    : Validation<'b> =
 
-    let map
-        (f: 'a -> 'b)
-        (validation: Validation<'a>)
-        : Validation<'b> =
+    match validation with
+    | Passed (value, notices) ->
+        Passed (f value, notices)
 
-        fun state ->
-            let result, state =
-                validation state
+    | Failed (failures, notices) ->
+        Failed (failures, notices)
 
-            match result with
-            | Valid value ->
-                Valid (f value), state
+let bind
+    (f: 'a -> Validation<'b>)
+    (validation: Validation<'a>)
+    : Validation<'b> =
 
-            | Invalid failures ->
-                Invalid failures, state
+    match validation with
+    | Passed (value, notices1) ->
+        match f value with
+        | Passed (nextValue, notices2) ->
+            Passed (nextValue, notices1 @ notices2)
 
-    let bind
-        (f: 'a -> Validation<'b>)
-        (validation: Validation<'a>)
-        : Validation<'b> =
+        | Failed (failures, notices2) ->
+            Failed (failures, notices1 @ notices2)
 
-        fun state ->
-            let result, state =
-                validation state
+    | Failed (failures, notices) ->
+        Failed (failures, notices)
 
-            match result with
-            | Valid value ->
-                (f value) state
+let merge
+    (left: Validation<'a>)
+    (right: Validation<'b>)
+    : Validation<'a * 'b> =
 
-            | Invalid failures ->
-                Invalid failures, state
+    match left, right with
+    | Passed (leftValue, leftNotices),
+      Passed (rightValue, rightNotices) ->
 
-    let merge
-        (left: Validation<'a>)
-        (right: Validation<'b>)
-        : Validation<'a * 'b> =
+        Passed (
+            (leftValue, rightValue),
+            leftNotices @ rightNotices
+        )
 
-        fun state ->
-            let leftResult, state =
-                left state
+    | Failed (failures, notices),
+      Passed (_, rightNotices) ->
 
-            let rightResult, state =
-                right state
+        Failed (
+            failures,
+            notices @ rightNotices
+        )
 
-            match leftResult, rightResult with
-            | Valid leftValue,
-              Valid rightValue ->
+    | Passed (_, leftNotices),
+      Failed (failures, notices) ->
 
-                Valid (leftValue, rightValue), state
+        Failed (
+            failures,
+            leftNotices @ notices
+        )
 
-            | Invalid failures,
-              Valid _ ->
+    | Failed (leftFailures, leftNotices),
+      Failed (rightFailures, rightNotices) ->
 
-                Invalid failures, state
+        Failed (
+            Failures.append leftFailures rightFailures,
+            leftNotices @ rightNotices
+        )
 
-            | Valid _,
-              Invalid failures ->
+type ValidationBuilder() =
 
-                Invalid failures, state
+    member _.Return(value: 'a) : Validation<'a> =
+        passed value
 
-            | Invalid leftFailures,
-              Invalid rightFailures ->
+    member _.ReturnFrom(validation: Validation<'a>) : Validation<'a> =
+        validation
 
-                Invalid (Failures.append leftFailures rightFailures), state
+    member _.Bind
+        (
+            validation: Validation<'a>,
+            f: 'a -> Validation<'b>
+        ) : Validation<'b> =
 
-    let sequenceOption
-        (validation: Validation<'a> option)
-        : Validation<'a option> =
+        bind f validation
 
-        match validation with
-        | None ->
-            ok None
+    member _.BindReturn
+        (
+            validation: Validation<'a>,
+            f: 'a -> 'b
+        ) : Validation<'b> =
 
-        | Some validation ->
-            validation |> map Some
+        map f validation
 
-    let traverseOption
-        (f: 'a -> Validation<'b>)
-        (value: 'a option)
-        : Validation<'b option> =
+    member _.MergeSources
+        (
+            left: Validation<'a>,
+            right: Validation<'b>
+        ) : Validation<'a * 'b> =
 
-        value
-        |> Option.map f
-        |> sequenceOption
-
-    let sequenceList
-        (validations: Validation<'a> list)
-        : Validation<'a list> =
-
-        fun state ->
-            let initial : Failures option * 'a list * VState =
-                None, [], state
-
-            let folder
-                (failuresSoFar, valuesSoFar, state)
-                validation =
-
-                let result, state =
-                    validation state
-
-                match failuresSoFar, result with
-                | None, Valid value ->
-                    None, value :: valuesSoFar, state
-
-                | None, Invalid failures ->
-                    Some failures, valuesSoFar, state
-
-                | Some failuresSoFar, Valid _ ->
-                    Some failuresSoFar, valuesSoFar, state
-
-                | Some failuresSoFar, Invalid failures ->
-                    Some (Failures.append failuresSoFar failures), valuesSoFar, state
-
-            let failures, values, state =
-                validations
-                |> List.fold folder initial
-
-            match failures with
-            | None ->
-                Valid (List.rev values), state
-
-            | Some failures ->
-                Invalid failures, state
-
-    let traverseList
-        (f: 'a -> Validation<'b>)
-        (values: 'a list)
-        : Validation<'b list> =
-
-        values
-        |> List.map f
-        |> sequenceList
-
-    let validateParsed
-        (validateValue: 'raw -> Validation<'valid>)
-        (raw: Parsed<'raw>)
-        : ValidationReport<'valid> =
-
-        raw |> runParsed validateValue
-
-    type ValidationBuilder() =
-
-        member _.Return
-            (value: 'a)
-            : Validation<'a> =
-
-            ok value
-
-        member _.ReturnFrom
-            (validation: Validation<'a>)
-            : Validation<'a> =
-
-            validation
-
-        member _.Bind
-            (
-                validation: Validation<'a>,
-                f: 'a -> Validation<'b>
-            )
-            : Validation<'b> =
-
-            bind f validation
-
-        member _.MergeSources
-            (
-                left: Validation<'a>,
-                right: Validation<'b>
-            )
-            : Validation<'a * 'b> =
-
-            merge left right
-
-        member _.BindReturn
-            (
-                validation: Validation<'a>,
-                f: 'a -> 'b
-            )
-            : Validation<'b> =
-
-            map f validation
-
-        member _.Zero()
-            : Validation<unit> =
-
-            ok ()
-
-        member _.Combine
-            (
-                first: Validation<unit>,
-                second: Validation<'a>
-            )
-            : Validation<'a> =
-
-            bind (fun () -> second) first
-
-        member _.Delay
-            (f: unit -> Validation<'a>)
-            : Validation<'a> =
-
-            f ()
+        merge left right
 
 let validator =
-    Validation.ValidationBuilder()
+    ValidationBuilder()

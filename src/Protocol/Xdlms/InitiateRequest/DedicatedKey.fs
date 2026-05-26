@@ -1,8 +1,10 @@
 namespace Metering.Dlms.Protocol.Xdlms.InitiateRequest
 
 open System
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
+open Metering.Dlms.Protocol.Axdr
 
 type DedicatedKey =
     private
@@ -15,8 +17,19 @@ module DedicatedKey =
     let bytes (DedicatedKey bytes) =
         bytes
 
-    let validate (value : Axdr.OctetString) =
-        value
-        |> Axdr.OctetString.toBytes
-        |> create
-        |> Validation.ok
+    let validate
+        (raw: ParsedField<Axdr.OctetString>)
+        : Validation<DedicatedKey> =
+
+        validator {
+            do!
+                ensure
+                    raw
+                    "dedicated-key must not be empty"
+                    (OctetString.length raw.Value > 0)
+
+            return
+                raw.Value
+                |> OctetString.toBytes
+                |> DedicatedKey
+        }

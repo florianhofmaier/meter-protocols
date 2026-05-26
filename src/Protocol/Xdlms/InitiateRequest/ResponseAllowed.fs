@@ -1,6 +1,7 @@
 namespace Metering.Dlms.Protocol.Xdlms.InitiateRequest
 
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 
 type ResponseAllowed =
@@ -18,10 +19,10 @@ module ResponseAllowed =
     let defaultValue = ResponseAllowed
 
     let validate
-        (raw: Axdr.Boolean)
+        (raw: ParsedField<Axdr.Boolean>)
         : Validation<ResponseAllowed> =
 
-        raw
+        raw.Value
         |> Axdr.Boolean.value
         |> fromBool
-        |> Validation.ok
+        |> passed

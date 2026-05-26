@@ -1,9 +1,8 @@
 namespace Metering.Dlms.Protocol.Acse.Aarq
 
-open Metering.Common.Parsers.ParserTree
-open Metering.Common.Validators
-open Metering.Common.Validators.Core
-open Metering.Common.Validators.Fields
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Validators.Core
+open Metering.Dlms.Protocol
 open Metering.Dlms.Protocol.Acse.Fields
 
 type AarqValidatedFields =
@@ -24,103 +23,103 @@ type AarqValidatedFields =
         MechanismName : MechanismName option
         CallingAuthenticationValue : AuthenticationValue option
 
-        UserInformation : Parsed<UserInformation>
+        UserInformation : ParsedField<UserInformation>
     }
 
 module AarqValidatedFields =
 
     let fromParsed
-        (raw: Parsed<AarqRaw>)
+        (raw: ParsedField<AarqRaw>)
         : Validation<AarqValidatedFields> =
 
         validator {
             let! _ =
-                FieldValidation.fromParsedDefaulted
+                AcseField.defaulted
                     ProtocolVersion.Version1
                     (InfoWhenPresent "protocol-version is present although the default value would be sufficient")
                     ProtocolVersion.validateValue
                     raw.Value.ProtocolVersion
 
             and! applicationContextName =
-                FieldValidation.fromParsedRequired
+                AcseField.required
                     "missing application-context-name"
                     ApplicationContextName.validate
                     raw.Value.ApplicationContextName
 
             and! calledApTitle =
-                FieldValidation.fromParsedOptional
+                AcseField.optional
                     NoPresenceDiagnostic
                     ApTitle.validate
                     raw.Value.CalledApTitle
 
             and! calledAeQualifier =
-                FieldValidation.fromParsedOptional
+                AcseField.optional
                     NoPresenceDiagnostic
                     AeQualifier.validate
                     raw.Value.CalledAeQualifier
 
             and! calledApInvocationId =
-                FieldValidation.fromParsedOptional
+                AcseField.optional
                     NoPresenceDiagnostic
                     InvocationIdentifier.validate
                     raw.Value.CalledApInvocationId
 
             and! calledAeInvocationId =
-                FieldValidation.fromParsedOptional
+                AcseField.optional
                     NoPresenceDiagnostic
                     InvocationIdentifier.validate
                     raw.Value.CalledApInvocationId
 
             and! callingApTitle =
-                FieldValidation.fromParsedOptional
+                AcseField.optional
                     NoPresenceDiagnostic
                     ApTitle.validate
                     raw.Value.CallingApTitle
 
             and! callingAeQualifier =
-                FieldValidation.fromParsedOptional
+                AcseField.optional
                     NoPresenceDiagnostic
                     AeQualifier.validate
                     raw.Value.CallingAeQualifier
 
             and! callingApInvocationId =
-                FieldValidation.fromParsedOptional
+                AcseField.optional
                     NoPresenceDiagnostic
                     InvocationIdentifier.validate
                     raw.Value.CallingApInvocationId
 
             and! callingAeInvocationId =
-                FieldValidation.fromParsedOptional
+                AcseField.optional
                     NoPresenceDiagnostic
                     InvocationIdentifier.validate
                     raw.Value.CallingAeInvocationId
 
             and! senderAcseRequirements =
-                FieldValidation.fromParsedOptional
+                AcseField.optional
                     NoPresenceDiagnostic
                     SenderAcseRequirements.validate
                     raw.Value.SenderAcseRequirements
 
             and! mechanismName =
-                FieldValidation.fromParsedOptional
+                AcseField.optional
                     NoPresenceDiagnostic
                     MechanismName.validate
                     raw.Value.MechanismName
 
             and! callingAuthenticationValue =
-                FieldValidation.fromParsedOptional
+                AcseField.optional
                     NoPresenceDiagnostic
                     AuthenticationValue.validate
                     raw.Value.CallingAuthenticationValue
 
             and! _ =
-                FieldValidation.fromParsedOptional
+                AcseField.optional
                     (InfoWhenPresent "implementation-information is not used by DLMS/COSEM AL")
                     ImplementationInformation.validate
                     raw.Value.ImplementationInformation
 
             and! userInformation =
-                FieldValidation.fromParsedRequiredKeepingSource
+                AcseField.requiredField
                     "missing user-information"
                     UserInformation.validate raw.Value.UserInformation
 

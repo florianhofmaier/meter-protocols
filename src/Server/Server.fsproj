@@ -8,7 +8,6 @@
 
     <ItemGroup>
         <Compile Include="ServerState.fs" />
-        <Compile Include="ServerCf.fs" />
         <Compile Include="SupportingLayer\TcpUdpIp\ServerSupportingLayer.fs" />
         <Compile Include="SupportingLayer\TcpUdpIp\ServerWrapperProfile.fs" />
         <Compile Include="SupportingLayer\Handlers.fs" />
@@ -16,7 +15,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Common\Validators\Validators.fsproj" />
       <ProjectReference Include="..\Protocol\Protocol.fsproj" />
     </ItemGroup>
 

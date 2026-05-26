@@ -24,7 +24,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Parsers\Parsers.fsproj" />
       <ProjectReference Include="..\Records\Records.fsproj" />
     </ItemGroup>
 

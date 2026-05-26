@@ -1,7 +1,7 @@
 namespace Metering.Dlms.Protocol.Acse.Aarq
 
-open Metering.Common.Parsers.ParserTree
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 open Metering.Dlms.Protocol.Acse.Fields
 
@@ -10,39 +10,42 @@ type AuthenticationFunctionalUnit =
     | LowLevelSecurity of AuthenticationValue
     | HighLevelSecurity of HlsAuthenticationMechanismName * AuthenticationValue
 
-module Authentication =
+module AuthenticationFunctionalUnit =
     let private validateMechanism
-        (raw: Parsed<Ber.ObjectIdentifier option>)
+        (value: ParsedField<MechanismName option>)
         : Validation<MechanismName> =
-        raw
-        |> Validation.requireSome
+        requireSome
             "missing mechanism-name although authentication is selected"
-        |> Validation.bind MechanismName.validate
+            value
 
     let private validateValue
-        (raw: AuthenticationValueRaw option)
+        (value: ParsedField<AuthenticationValue option>)
         : Validation<AuthenticationValue> =
-        raw
-        |> Validation.requireSome
+        requireSome
             "missing calling-authentication-value although authentication is selected"
-        |> Validation.bind AuthenticationValue.fromParsed
+            value
 
-    let private buildSelectedAuthentication mechanism value : Validation<AuthenticationFunctionalUnit> =
-        match mechanism with
+    let private buildSelectedAuthentication
+        (mechanism: ParsedField<MechanismName>)
+        (value: ParsedField<AuthenticationValue>)
+        : Validation<ParsedField<AuthenticationFunctionalUnit>> =
+
+        match mechanism.Value with
         | MechanismName.LowestLevelSecurity ->
-            Validation.error
+            failed
+                mechanism
                 "lowest-level-security is invalid when sender-acse-requirements selects authentication"
 
         | MechanismName.LowLevelSecurity ->
-            Validation.ok (AuthenticationFunctionalUnit.LowLevelSecurity value)
+            passed (AuthenticationFunctionalUnit.LowLevelSecurity value.Value)
 
         | MechanismName.HighLevelSecurity hls ->
-            Validation.ok (AuthenticationFunctionalUnit.HighLevelSecurity (hls, value))
+            passed (AuthenticationFunctionalUnit.HighLevelSecurity (hls, value.Value))
 
     let private validateSelected
-        (mechanismName: Ber.ObjectIdentifier option)
-        (callingAuthenticationValue: AuthenticationValueRaw option)
-        : Validation<AuthenticationFunctionalUnit> =
+        (mechanismName: ParsedField<MechanismName option>)
+        (callingAuthenticationValue: ParsedField<AuthenticationValue option>)
+        : Validation<ParsedField<AuthenticationFunctionalUnit>> =
         validator {
             let! mechanism =
                 validateMechanism mechanismName

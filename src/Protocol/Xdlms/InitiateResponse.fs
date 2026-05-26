@@ -1,16 +1,17 @@
 namespace Metering.Dlms.Protocol.Xdlms
 
-open Metering.Common.Parsers.Core
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Dlms.Protocol
 
 type InitiateResponseRawFields =
     {
-        NegotiatedQualityOfService : Axdr.Optional<Axdr.Integer8>
-        NegotiatedDlmsVersionNumber : Axdr.Unsigned8
-        NegotiatedConformance : ConformanceRaw
-        ServerMaxReceivePduSize : Axdr.Unsigned16
-        VaaName : Axdr.Integer16
+        NegotiatedQualityOfService : ParsedField<Axdr.Optional<Axdr.Integer8>>
+        NegotiatedDlmsVersionNumber : ParsedField<Axdr.Unsigned8>
+        NegotiatedConformance : ParsedField<ConformanceRaw>
+        ServerMaxReceivePduSize : ParsedField<Axdr.Unsigned16>
+        VaaName : ParsedField<Axdr.Integer16>
     }
 
 module InitiateResponseRawFields =
@@ -18,23 +19,23 @@ module InitiateResponseRawFields =
     let parseBody: Parser<InitiateResponseRawFields> =
         parser {
             let! negotiatedQualityOfService =
-                withCtx "NegotiatedQualityOfService" <|
+                parseField "NegotiatedQualityOfService" <|
                     Axdr.Optional.parse Axdr.Integer8.parse
 
             let! negotiatedDlmsVersionNumber =
-                withCtx "NegotiatedDlmsVersionNumber" <|
+                parseField "NegotiatedDlmsVersionNumber" <|
                     Axdr.Unsigned8.parse
 
             let! negotiatedConformance =
-                withCtx "NegotiatedConformance" <|
+                parseField "NegotiatedConformance" <|
                     ConformanceRaw.parse
 
             let! serverMaxReceivePduSize =
-                withCtx "ServerMaxReceivePduSize" <|
+                parseField "ServerMaxReceivePduSize" <|
                     Axdr.Unsigned16.parse
 
             let! vaaName =
-                withCtx "VaaName" <|
+                parseField "VaaName" <|
                     Axdr.Integer16.parse
 
             return {

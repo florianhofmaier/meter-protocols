@@ -1,6 +1,7 @@
 namespace Metering.Dlms.Protocol.Xdlms.InitiateRequest
 
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 
 type ProposedQualityOfService =
@@ -15,7 +16,7 @@ module ProposedQualityOfService =
         value
 
     let validate
-        (value: Axdr.Integer8)
+        (raw: ParsedField<Axdr.Integer8>)
         : Validation<ProposedQualityOfService> =
 
-        value |> create |> Validation.ok
+        raw.Value |> create |> passed

@@ -1,12 +1,13 @@
 module Metering.Dlms.Server.SupportingLayer.TcpUdpIp.ServerWrapperProfile
 
-open Metering.Common.Parsers.ParserTree
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Validators.Core
+
 open Metering.Dlms.Protocol.ApplicationLayer
 open Metering.Dlms.Protocol.SupportingLayer.TcpUdpIp
 
 let toXxDataIndication
-    (raw: Parsed<WrapperPduRaw>)
+    (raw: ParsedField<WrapperPduRaw>)
     : Validation<XxDataIndication> =
 
     validator {

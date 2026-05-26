@@ -2,41 +2,42 @@ namespace Metering.Dlms.Protocol.CommunicationProfile.TcpUdpIp
 
 open System
 
-open Metering.Common.Parsers.BaseParsers
-open Metering.Common.Parsers.BinaryParsers
-open Metering.Common.Parsers.Core
-open Metering.Common.Parsers.ParserTree
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Parsers.Binary
+open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.FieldParser
+open Metering.Common.Decoding.Parsers.Utility
+open Metering.Common.Decoding.Validators.Core
 
 type WrapperPduRaw =
     {
-        Version : Parsed<uint16>
-        SourceWrapperPort : Parsed<uint16>
-        DestinationWrapperPort : Parsed<uint16>
-        DataLength : Parsed<uint16>
-        Data : Parsed<ReadOnlyMemory<byte>>
+        Version : ParsedField<uint16>
+        SourceWrapperPort : ParsedField<uint16>
+        DestinationWrapperPort : ParsedField<uint16>
+        DataLength : ParsedField<uint16>
+        Data : ParsedField<ReadOnlyMemory<byte>>
     }
 
 module WrapperPduRaw =
 
-    let parse : Parser<Parsed<WrapperPduRaw>> =
-        parseNode "TCP/UDP wrapper PDU" <|
+    let parse : Parser<ParsedField<WrapperPduRaw>> =
+        parseField "TCP/UDP wrapper PDU" <|
             parser {
                 let! version =
-                    parseNode "version" parseU16BigEndian
+                    parseField "version" parseU16BigEndian
 
                 let! sourceWrapperPort =
-                    parseNode "source-wPort" parseU16BigEndian
+                    parseField "source-wPort" parseU16BigEndian
 
                 let! destinationWrapperPort =
-                    parseNode "destination-wPort" parseU16BigEndian
+                    parseField "destination-wPort" parseU16BigEndian
 
                 let! dataLength =
-                    parseNode "data-length" parseU16BigEndian
+                    parseField "data-length" parseU16BigEndian
 
                 let! data =
-                    parseNode "data" <|
-                        takeMem (int dataLength.Value)
+                    parseField "data" <|
+                        take(int dataLength.Value)
 
                 return {
                     Version = version
@@ -57,19 +58,17 @@ type WrapperPdu =
 module WrapperPdu =
 
     let private validateVersion
-        (version: uint16)
+        (rawVersion: ParsedField<uint16>)
         : Validation<unit> =
 
-            Validation.ensure
-                $"unsupported wrapper version 0x{version:X4}"
-                (version = 0x0001us)
+            ensure
+                rawVersion
+                $"unsupported wrapper version 0x{rawVersion.Value:X4}"
+                (rawVersion.Value = 0x0001us)
 
     let fromRaw (raw: WrapperPduRaw) : Validation<WrapperPdu> =
         validator {
-            do!
-                Validation.parsed
-                    raw.Version
-                    validateVersion
+            do! validateVersion raw.Version
 
             return {
                 SourceWrapperPort =

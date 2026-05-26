@@ -1,6 +1,7 @@
 namespace Metering.Dlms.Protocol.Acse.Fields
 
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 
 type SenderAcseRequirements =
@@ -14,17 +15,18 @@ module SenderAcseRequirements =
         && (bits.Payload.Span[0] &&& 0x80uy) <> 0uy
 
     let validate
-        (raw: Ber.BitString)
+        (raw: ParsedField<Ber.BitString>)
         : Validation<SenderAcseRequirements> =
 
         validator {
-            if isAuthenticationBitSet raw then
+            if isAuthenticationBitSet raw.Value then
                 return AuthenticationSelected
 
             else
                 do!
-                    Validation.info
-                        "sender-acse-requirements is present, but authentication bit is not set; authentication functional unit is not selected"
+                    info
+                        <| raw
+                        <| "sender-acse-requirements is present, but authentication bit is not set; authentication functional unit is not selected"
 
                 return AuthenticationNotSelected
         }

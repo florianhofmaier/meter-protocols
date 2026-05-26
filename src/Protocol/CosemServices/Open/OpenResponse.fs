@@ -41,11 +41,11 @@ module AareUserInformation =
     let validateConfirmedServiceErrorForAare error =
         match error with
         | ConfirmedServiceError.InitiateError _ ->
-            Validation.ok error
+            validationOkerror
 
         | ConfirmedServiceError.Read _
         | ConfirmedServiceError.Write _ ->
-            Validation.error
+            validationError
                 ["AARE"; "user-information"]
                 "AARE confirmedServiceError must be initiateError"
 
@@ -72,11 +72,11 @@ module OpenResponseValidatedFields =
     let validateConfirmedServiceErrorForOpenResponse error =
         match error with
         | ConfirmedServiceError.InitiateError _ ->
-            Validation.ok error
+            validationOkerror
 
         | ConfirmedServiceError.Read _
         | ConfirmedServiceError.Write _ ->
-            Validation.error
+            validationError
                 ["COSEM-OPEN"; "AARE"; "user-information"]
                 "AARE confirmedServiceError must be initiateError"
 
@@ -99,7 +99,7 @@ module OpenResponseValidatedFields =
                     |> Validation.map AareUserInformation.ConfirmedServiceError
 
                 | other ->
-                    Validation.error
+                    validationError
                         ["COSEM-OPEN"; "AARE"; "user-information"]
                         $"COSEM-OPEN.response user-information must contain initiateResponse or confirmedServiceError, got {other}"
 
@@ -152,7 +152,7 @@ module OpenResponse =
 
             | AssociationResult.Accepted, AareUserInformation.ConfirmedServiceError _ ->
                 return!
-                    Validation.error
+                    validationError
                         ["COSEM-OPEN"; "AARE"; "user-information"]
                         "accepted AARE must carry initiateResponse"
 

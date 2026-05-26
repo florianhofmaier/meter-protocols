@@ -1,9 +1,10 @@
 module Metering.Dlms.Protocol.Tag
 
 open System
-open Metering.Common.Parsers.BaseParsers
-open Metering.Common.Parsers.BinaryParsers
-open Metering.Common.Parsers.Core
+open Metering.Common.Decoding.Parsers.Binary
+open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.ErrorHandling
+open Metering.Common.Decoding.Parsers.Utility
 
 
 let tryPeek<'a when 'a : enum<byte> and 'a : equality> : Parser<'a option> =
@@ -21,7 +22,7 @@ let tryParseExact<'a when 'a : enum<byte> and 'a : equality> expectedTag : Parse
         if Enum.IsDefined(typeof<'a>, tag) then
             let enumValue = LanguagePrimitives.EnumOfValue<byte, 'a> tag
             if enumValue = expectedTag then
-                do! skipByte
+                do! skip 1
                 return Some enumValue
             else
                 return None

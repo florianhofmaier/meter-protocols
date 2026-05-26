@@ -1,8 +1,10 @@
 namespace Metering.Dlms.Protocol.Acse.Fields
 
 open System
-open Metering.Common.Parsers.Core
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.ErrorHandling
+open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 
 type AuthenticationValueRaw =
@@ -37,11 +39,11 @@ type AuthenticationValue =
 module AuthenticationValue =
 
     let validate
-        (raw: AuthenticationValueRaw)
+        (raw: ParsedField<AuthenticationValueRaw>)
         : Validation<AuthenticationValue> =
 
         validator {
-            match raw with
+            match raw.Value with
             | AuthenticationValueRaw.CharString value ->
                 return
                     value

@@ -1,6 +1,7 @@
 namespace Metering.Dlms.Protocol.Acse.Fields
 
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 
 type UserInformation =
@@ -16,11 +17,11 @@ module UserInformation =
         Ber.OctetString.toBytes value
 
     let validate
-        (raw: Ber.OctetString)
+        (raw: ParsedField<Ber.OctetString>)
         : Validation<UserInformation> =
 
-        if Ber.OctetString.length raw > 0 then
-            Validation.ok (UserInformation raw)
+        if Ber.OctetString.length raw.Value > 0 then
+            passed(UserInformation raw.Value)
 
         else
-            Validation.error "user-information is empty"
+            failed raw "user-information is empty"

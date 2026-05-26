@@ -1,9 +1,11 @@
 module Metering.Dlms.Protocol.Ber
 
 open System
-open Metering.Common.Parsers.BaseParsers
-open Metering.Common.Parsers.BinaryParsers
-open Metering.Common.Parsers.Core
+
+open Metering.Common.Decoding.Parsers.Binary
+open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.ErrorHandling
+open Metering.Common.Decoding.Parsers.Utility
 open Metering.Dlms.Protocol.Utility
 
 type UniversalTag =
@@ -11,20 +13,10 @@ type UniversalTag =
     | OctetString = 0x04uy
     | ObjectIdentifier = 0x06uy
 
-let private runParserAllowNoRemainder (p: Parser<'a>) =
-    parser {
-        let! value = p
-        let! remaining = remainder
-        if remaining <> 0 then
-            return! fail $"BER content not fully consumed: {remaining} byte(s) remaining"
-        else
-            return value
-    }
-
 let parseLengthDelimited (p: Parser<'a>) : Parser<'a> =
     parser {
         let! len = parseLength
-        return! runOnSubSlice len (runParserAllowNoRemainder p)
+        return! runOnSubSlice len p
     }
 
 let parseTagged<'a, 'b when 'a : enum<byte> and 'a: equality> (expectedTag: 'a) (p: Parser<'b>) : Parser<'b> =
@@ -49,9 +41,6 @@ type OctetString =
 
 module OctetString =
 
-    let fromBufferSlice bufferSlice =
-        OctetString bufferSlice
-
     let toBytes (OctetString bytes) =
         bytes
 
@@ -62,20 +51,20 @@ module OctetString =
         parser {
             do! Tag.expect UniversalTag.OctetString
             let! len = parseLength
-            return! takeMem len |>> OctetString
+            return! take len |>> OctetString
         }
 
-    let parseWith p : Parser<'a> =
-        parser {
-            do! Tag.expect UniversalTag.OctetString
-            let! len = parseLength
-            return! runOnSubSlice len p
-        }
+    // let parseWith p : Parser<'a> =
+    //     parser {
+    //         do! Tag.expect UniversalTag.OctetString
+    //         let! len = parseLength
+    //         return! runOnSubSlice len p
+    //     }
 
 module Integer =
 
     let private parseIntegerBytes : Parser<ReadOnlyMemory<byte>> =
-        parseTagged UniversalTag.Integer takeAllMem
+        parseTagged UniversalTag.Integer takeAll
 
     let parseUint32 : Parser<uint32> =
         parser {
@@ -105,7 +94,7 @@ module BitString =
 
     let parseContent: Parser<BitString> =
         parser {
-            let! len = remainder
+            let! len = remaining
             if len < 1 then
                 return! fail "BIT STRING content must contain at least the unused-bits octet"
             else
@@ -114,7 +103,7 @@ module BitString =
                 if unusedBitCount > 7uy then
                     return! fail $"invalid BIT STRING unused bit count {unusedBitCount}"
                 else
-                    let! payload = takeMem (len - 1)
+                    let! payload = take (len - 1)
                     return { UnusedBitCount = unusedBitCount; Payload = payload }
         }
 
@@ -134,7 +123,7 @@ module ObjectIdentifier =
         bytes
 
     let parseContent: Parser<ObjectIdentifier> =
-        takeAllMem |>> fromBytes
+        takeAll |>> fromBytes
 
     let parse: Parser<ObjectIdentifier> =
         parseTagged UniversalTag.ObjectIdentifier parseContent
@@ -152,7 +141,7 @@ module GraphicString =
         bytes
 
     let parseContent: Parser<GraphicString> =
-        takeAllMem |>> fromBytes
+        takeAll |>> fromBytes
 
     let parseImplicit: Parser<GraphicString> =
         parseLengthDelimited parseContent

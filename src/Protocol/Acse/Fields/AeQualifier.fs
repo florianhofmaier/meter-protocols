@@ -1,6 +1,7 @@
 namespace Metering.Dlms.Protocol.Acse.Fields
 
-open Metering.Common.Validators.Core
+open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 
 type AeQualifier =
@@ -15,6 +16,6 @@ module AeQualifier =
     let value (AeQualifier value) =
         value
 
-    let validate value =
-        value |> create |> Validation.ok
+    let validate (raw: ParsedField<Ber.OctetString>) =
+        raw.Value |> create |> passed
 

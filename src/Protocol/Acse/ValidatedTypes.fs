@@ -31,15 +31,15 @@ module Authentication =
     let private buildSelectedAuthentication mechanism value : Validation<Authentication> =
         match mechanism with
         | AuthenticationMechanism.LowestLevelSecurity ->
-            Validation.error
+            validationError
                 ["AARQ"; "mechanism-name"]
                 "lowest-level-security is invalid when sender-acse-requirements selects authentication"
 
         | AuthenticationMechanism.LowLevelSecurity ->
-            Validation.ok (Authentication.LowLevelSecurity value)
+            validationOk(Authentication.LowLevelSecurity value)
 
         | AuthenticationMechanism.HighLevelSecurity hls ->
-            Validation.ok (Authentication.HighLevelSecurity (hls, value))
+            validationOk(Authentication.HighLevelSecurity (hls, value))
 
     let private validateSelected
         (mechanismName: Ber.ObjectIdentifier option)
@@ -87,11 +87,11 @@ type AssociationResult =
 module AssociationResult =
     let fromRaw (raw: uint32) : Validation<AssociationResult> =
         match raw with
-        | 0u -> Validation.ok Accepted
-        | 1u -> Validation.ok RejectedPermanent
-        | 2u -> Validation.ok RejectedTransient
+        | 0u ->validationOk Accepted
+        | 1u ->validationOk RejectedPermanent
+        | 2u ->validationOk RejectedTransient
         | value ->
-            Validation.error
+            validationError
                 ["AARE"; "result"]
                 $"unsupported association-result value {value}"
 
@@ -115,23 +115,23 @@ type AcseServiceUserDiagnostic =
 module AcseServiceUserDiagnostic =
     let fromRaw (raw: uint32) : Validation<AcseServiceUserDiagnostic> =
         match raw with
-        | 0u -> Validation.ok Null
-        | 1u -> Validation.ok NoReasonGiven
-        | 2u -> Validation.ok ApplicationContextNameNotSupported
-        | 3u -> Validation.ok CallingApTitleNotRecognized
-        | 4u -> Validation.ok CallingApInvocationIdentifierNotRecognized
-        | 5u -> Validation.ok CallingAeQualifierNotRecognized
-        | 6u -> Validation.ok CallingAeInvocationIdentifierNotRecognized
-        | 7u -> Validation.ok CalledApTitleNotRecognized
-        | 8u -> Validation.ok CalledApInvocationIdentifierNotRecognized
-        | 9u -> Validation.ok CalledAeQualifierNotRecognized
-        | 10u -> Validation.ok CalledAeInvocationIdentifierNotRecognized
-        | 11u -> Validation.ok AuthenticationMechanismNameNotRecognized
-        | 12u -> Validation.ok AuthenticationMechanismNameRequired
-        | 13u -> Validation.ok AuthenticationFailure
-        | 14u -> Validation.ok AuthenticationRequired
+        | 0u ->validationOk Null
+        | 1u ->validationOk NoReasonGiven
+        | 2u ->validationOk ApplicationContextNameNotSupported
+        | 3u ->validationOk CallingApTitleNotRecognized
+        | 4u ->validationOk CallingApInvocationIdentifierNotRecognized
+        | 5u ->validationOk CallingAeQualifierNotRecognized
+        | 6u ->validationOk CallingAeInvocationIdentifierNotRecognized
+        | 7u ->validationOk CalledApTitleNotRecognized
+        | 8u ->validationOk CalledApInvocationIdentifierNotRecognized
+        | 9u ->validationOk CalledAeQualifierNotRecognized
+        | 10u ->validationOk CalledAeInvocationIdentifierNotRecognized
+        | 11u ->validationOk AuthenticationMechanismNameNotRecognized
+        | 12u ->validationOk AuthenticationMechanismNameRequired
+        | 13u ->validationOk AuthenticationFailure
+        | 14u ->validationOk AuthenticationRequired
         | value ->
-            Validation.error
+            validationError
                 ["AARE"; "result-source-diagnostic"; "acse-service-user"]
                 $"unsupported acse-service-user diagnostic value {value}"
 
@@ -143,11 +143,11 @@ type AcseServiceProviderDiagnostic =
 module AcseServiceProviderDiagnostic =
     let fromRaw (raw: uint32) : Validation<AcseServiceProviderDiagnostic> =
         match raw with
-        | 0u -> Validation.ok Null
-        | 1u -> Validation.ok NoReasonGiven
-        | 2u -> Validation.ok NoCommonAcseVersion
+        | 0u ->validationOk Null
+        | 1u ->validationOk NoReasonGiven
+        | 2u ->validationOk NoCommonAcseVersion
         | value ->
-            Validation.error
+            validationError
                 ["AARE"; "result-source-diagnostic"; "acse-service-provider"]
                 $"unsupported acse-service-provider diagnostic value {value}"
 
@@ -180,11 +180,11 @@ module ResponderAcseRequirements =
     let fromRaw raw : Validation<ResponderAcseRequirements> =
         match raw with
         | Some bits when isAuthenticationBitSet bits ->
-            Validation.ok AuthenticationSelected
+            validationOkAuthenticationSelected
 
         | None
         | Some _ ->
-            Validation.ok AuthenticationNotSelected
+            validationOkAuthenticationNotSelected
 
 type RespondingAuthentication =
     | NoAuthenticationFunctionalUnit

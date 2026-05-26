@@ -20,10 +20,10 @@ type DecodeContext =
 type XdlmsApduDecodeSteps =
     {
         Parser :
-            Parser<Parsed<XdlmsApduRaw>>
+            Parser<ParsedField<XdlmsApduRaw>>
 
         Decoder :
-            DecodeContext -> Parsed<XdlmsApduRaw> -> ValidationReport<XdlmsApduValidatedFields>
+            DecodeContext -> ParsedField<XdlmsApduRaw> -> ValidationReport<XdlmsApduValidatedFields>
     }
 
 module XdlmsApduDecodeStepsModule =

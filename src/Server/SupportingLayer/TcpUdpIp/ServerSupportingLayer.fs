@@ -1,7 +1,6 @@
 namespace Metering.Dlms.Server.SupportingLayer.TcpUdpIp
 
 open System
-open Metering.Common.Validators
 open Metering.Dlms.Protocol.ApplicationLayer
 
 type ServerSupportingLayer =

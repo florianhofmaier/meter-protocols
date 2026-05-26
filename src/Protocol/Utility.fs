@@ -1,9 +1,10 @@
 module Metering.Dlms.Protocol.Utility
 
 open System
-open Metering.Common.Parsers.BaseParsers
-open Metering.Common.Parsers.BinaryParsers
-open Metering.Common.Parsers.Core
+open Metering.Common.Decoding.Parsers.Binary
+open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.ErrorHandling
+open Metering.Common.Decoding.Parsers.Utility
 
 let decodeBigEndianUint64 (bytes: ReadOnlyMemory<byte>) =
     let mutable value = 0UL
@@ -20,7 +21,7 @@ let private parseLongLength firstByte: Parser<int> =
         | n when n > 4 ->
             return! fail $"BER length with {n} octets is not supported"
         | n ->
-            let! bytes = takeMem n
+            let! bytes = take n
             let value = decodeBigEndianUint64 bytes
             if value > uint64 Int32.MaxValue then
                 return! fail $"BER length too large for int32: {value}"
@@ -36,35 +37,3 @@ let parseLength : Parser<int> =
         else
             return! parseLongLength first
     }
-
-type BufferSlice private =
-    {
-        Buffer : ReadOnlyMemory<byte>
-        Start : int
-        Length : int
-    }
-
-module BufferSlice =
-    let create (buffer: ReadOnlyMemory<byte>) start length =
-        {
-            Buffer = buffer
-            Start = start
-            Length = length
-        }
-
-    let slice (slice: BufferSlice) =
-        slice.Buffer.Slice(slice.Start, slice.Length)
-
-    let parse len : Parser<BufferSlice> =
-        parser {
-            let! start = getOffset
-            let! buffer = getBuffer
-            do! skipBytes len
-            return create buffer start len
-        }
-
-    let parseRemaining : Parser<BufferSlice> =
-        parser {
-            let! len = parseLength
-            return! parse len
-        }
