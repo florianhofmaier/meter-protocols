@@ -231,8 +231,14 @@ module OctetString =
             return! take len |>> OctetString
         }
 
-    // let parseAsBufferSlice : Parser<BufferSlice> =
-    //     parser {
-    //         let! len = parseLength
-    //         return! BufferSlice.parse len
-    //     }
+    let parseContent
+        (inner: Parser<'a>)
+        : Parser<'a> =
+
+        parser {
+            let! length =
+                parseLength
+
+            return!
+                runOnSubSlice length inner
+        }

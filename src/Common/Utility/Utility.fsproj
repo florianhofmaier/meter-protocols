@@ -3,13 +3,10 @@
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <RootNamespace>Metering.Common.Security.Cryptography</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="EncryptionError.fs" />
-        <Compile Include="AesGcm.fs" />
-        <Compile Include="SensitiveBuffer.fs" />
+        <Compile Include="Result.fs" />
     </ItemGroup>
 
 </Project>

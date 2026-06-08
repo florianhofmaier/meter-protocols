@@ -8,7 +8,7 @@ type ParsedField<'a> =
         Value : 'a
     }
 
-module Field =
+module ParsedField =
 
     let value (field: ParsedField<'a>) =
         field.Value

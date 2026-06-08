@@ -30,3 +30,9 @@ let parseI16BigEndian : Parser<int16> =
         let! bytes = take 2
         return BinaryPrimitives.ReadInt16BigEndian bytes.Span
     }
+
+let parseU32BigEndian : Parser<uint32> =
+    parser {
+        let! bytes = take 4
+        return BinaryPrimitives.ReadUInt32BigEndian bytes.Span
+    }

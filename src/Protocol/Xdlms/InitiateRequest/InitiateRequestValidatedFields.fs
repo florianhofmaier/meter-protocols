@@ -1,5 +1,6 @@
 namespace Metering.Dlms.Protocol.Xdlms.InitiateRequest
 
+open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 open Metering.Dlms.Protocol.Xdlms
@@ -16,40 +17,40 @@ type InitiateRequestValidatedFields =
 
 module InitiateRequestValidatedFields =
 
-    let fromRaw
-        (raw: InitiateRequestRaw)
+    let fromParsed
+        (raw: ParsedField<InitiateRequestRaw>)
         : Validation<InitiateRequestValidatedFields> =
 
         validator {
             let! dedicatedKey =
-                raw.DedicatedKey
+                raw.Value.DedicatedKey
                 |> Axdr.Optional.validate
-                    Axdr.NoPresenceDiagnostic
+                    NoPresenceDiagnostic
                     DedicatedKey.validate
 
             and! responseAllowed =
-                raw.ResponseAllowed
+                raw.Value.ResponseAllowed
                 |> Axdr.Default.validate
                     ResponseAllowed.defaultValue
                     (Axdr.InfoWhenExplicitDefault "response-allowed is explicitly encoded with its DEFAULT value TRUE")
                     ResponseAllowed.validate
 
             and! proposedQualityOfService =
-                raw.ProposedQualityOfService
+                raw.Value.ProposedQualityOfService
                 |> Axdr.Optional.validate
-                    Axdr.NoPresenceDiagnostic
+                    NoPresenceDiagnostic
                     ProposedQualityOfService.validate
 
             and! proposedDlmsVersionNumber =
-                raw.ProposedDlmsVersionNumber
+                raw.Value.ProposedDlmsVersionNumber
                 |> DlmsVersionNumber.validate
 
             and! proposedConformance =
-                raw.ProposedConformance
+                raw.Value.ProposedConformance
                 |> Conformance.validate
 
             and! clientMaxReceivePduSize =
-                raw.ClientMaxReceivePduSize
+                raw.Value.ClientMaxReceivePduSize
                 |> ClientMaxReceivePduSize.validate
 
             return {

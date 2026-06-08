@@ -1,26 +1,31 @@
 namespace Metering.Dlms.Protocol.Acse
 
+open System
+open Metering.Common.Decoding.Decoders.Core
+open Metering.Common.Decoding.Decoders.Core.Core
 open Metering.Common.Decoding.Parsers
-open Metering.Dlms.Protocol.Acse.Aarq
+open Metering.Common.Decoding.Parsers.ErrorHandling
+open Metering.Dlms.Protocol
 
-type AcseApduRaw =
-    | Aarq of ParsedField<AarqRaw>
-    | Aare of AareRaw
-    | Rlrq of RlrqRaw
-    | Rlre of RlreRaw
+type AcseApdu =
+    | Aarq of AarqApdu
+    | Aare
+    | Rlrq
+    | Rlre
 
-module AcseApduRaw =
+module AcseApdu =
 
-    let decode =
+    let decode
+        (bytes: ParsedField<ReadOnlyMemory<byte>>)=
         decoder {
-            let! tag = Tag.peek<AcseTag>
+            let! tag = parseValue Tag.peek<AcseTag> bytes
 
             match tag with
             | AcseTag.Aarq ->
                 return! Aarq.decode |>> Aarq
 
             | AcseTag.Aare ->
-                return! fail "AARE not supported"
+                return! fail "AARE not supported" |> Aare
 
             | AcseTag.Rlrq ->
                 return! fail "RLRQ not supported"

@@ -1,12 +1,9 @@
 namespace Metering.Dlms.Protocol.Xdlms
 
 open System
-open Metering.Common.Parsers.Core
-open Metering.Common.Parsers.ParserTree
 open Metering.Dlms.Protocol
-open Metering.Dlms.Protocol.Xdlms.Common
 
-type XdlmsApduRaw =
+type XdlmsApdu =
     | InitiateRequest of InitiateRequestRaw
     | GloInitiateRequest of Axdr.OctetString
     | DedInitiateRequest of ReadOnlyMemory<byte>

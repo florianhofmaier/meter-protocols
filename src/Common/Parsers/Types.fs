@@ -37,6 +37,10 @@ type ByteReaderFactory =
 type FieldId =
     private FieldId of int
 
+module FieldId =
+
+    let create id = FieldId id
+
 type SourceSpan =
     {
         Offset : int

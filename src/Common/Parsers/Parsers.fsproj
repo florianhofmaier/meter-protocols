@@ -11,7 +11,7 @@
       <Compile Include="Core.fs" />
       <Compile Include="ErrorHandling.fs" />
       <Compile Include="Utility.fs" />
-      <Compile Include="Fields.fs" />
+      <Compile Include="ParsedField.fs" />
       <Compile Include="Binary.fs" />
       <Compile Include="ParserRunner.fs" />
     </ItemGroup>

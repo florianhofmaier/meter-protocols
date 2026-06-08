@@ -39,7 +39,7 @@ type ApduTag =
 type CosemServiceRaw =
     | OpenRequest of OpenRequestRawFields
     | OpenResponse of OpenResponseRawFields
-    | Xdlms of Xdlms.XdlmsApduRaw
+    | Xdlms of Xdlms.XdlmsApdu
 
 module CosemServiceRaw =
     let parse : Parser<CosemServiceRaw> =
@@ -79,7 +79,7 @@ type CosemServiceError =
 type CosemService =
     | OpenRequest of OpenRequest
     | OpenResponse of OpenResponse
-    | Xdlms of Xdlms.XdlmsApduRaw
+    | Xdlms of Xdlms.XdlmsApdu
 
 module CosemService =
     let fromRaw (raw: CosemServiceRaw) : Validation<CosemService> =

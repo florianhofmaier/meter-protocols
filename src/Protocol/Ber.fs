@@ -41,7 +41,7 @@ type OctetString =
 
 module OctetString =
 
-    let toBytes (OctetString bytes) =
+    let value (OctetString bytes) =
         bytes
 
     let length (OctetString bytes) =

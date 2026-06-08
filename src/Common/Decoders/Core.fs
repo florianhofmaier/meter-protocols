@@ -5,12 +5,11 @@ open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.Types
 open Metering.Common.Decoding.Validators.Core
-open Metering.Common.Security.Cryptography
 
 type DecodeFailure =
     | ParseFailed of ParserError
     | ValidationFailed of Failures
-    | EncryptionFailed of EncryptionError
+    | EncryptionFailed of Issue
 
 type DecodeResult<'a> =
     | Decoded of 'a * Notice list
@@ -18,12 +17,15 @@ type DecodeResult<'a> =
 
 type DecodeContext =
     {
-        CreateReader : ParsedField<ReadOnlyMemory<byte>> -> IByteReader
+        CreateReader : ReadOnlyMemory<byte> -> IByteReader
         Trace : IFieldTracer
     }
 
 type Decoder<'a> =
     DecodeContext -> DecodeResult<'a>
+
+type Peek<'a> =
+    ParsedField<ReadOnlyMemory<byte>> -> Result<'a, ParserError>
 
 module Core =
 
@@ -31,28 +33,39 @@ module Core =
         fun _ ->
             Decoded (value, [])
 
-    let failed failure : Decoder<'a> =
+    let error failure : Decoder<'a> =
         fun _ ->
             DecodeFailed (failure, [])
+
+    let private runParser
+        (parser: Parser<'a>)
+        (source: ParsedField<ReadOnlyMemory<byte>>)
+        : Decoder<'a> =
+
+        fun context ->
+            let reader =
+                context.CreateReader source.Value
+
+            match ParserRunner.run reader context.Trace parser with
+            | Ok value ->
+                Decoded (value, [])
+
+            | Error error ->
+                DecodeFailed (ParseFailed error, [])
 
     let parse
         (parser: Parser<ParsedField<'raw>>)
         (source: ParsedField<ReadOnlyMemory<byte>>)
         : Decoder<ParsedField<'raw>> =
 
-        fun context ->
-            let reader =
-                context.CreateReader source
+        runParser parser source
 
-            let parseResult =
-                ParserRunner.run reader context.Trace parser
+    let parseValue
+        (parser: Parser<'value>)
+        (source: ParsedField<ReadOnlyMemory<byte>>)
+        : Decoder<'value> =
 
-            match parseResult with
-            | Ok raw ->
-                Decoded (raw, [])
-
-            | Error error ->
-                DecodeFailed (ParseFailed error, [])
+        runParser parser source
 
     let validate
         (validator: ParsedField<'raw> -> Validation<'valid>)

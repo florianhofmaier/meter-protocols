@@ -1,5 +1,6 @@
 namespace Metering.Dlms.Protocol.Acse.Fields
 
+open System
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
@@ -14,7 +15,7 @@ module UserInformation =
         UserInformation value
 
     let value (UserInformation value) =
-        Ber.OctetString.toBytes value
+        Ber.OctetString.value value
 
     let validate
         (raw: ParsedField<Ber.OctetString>)
@@ -25,3 +26,12 @@ module UserInformation =
 
         else
             failed raw "user-information is empty"
+
+    let toByteField
+        (field: ParsedField<UserInformation>)
+        : ParsedField<ReadOnlyMemory<byte>> =
+
+        {
+            Id = field.Id
+            Value = value field.Value
+        }

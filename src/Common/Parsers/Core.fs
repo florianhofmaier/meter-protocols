@@ -11,7 +11,7 @@ type ParserContext =
 type Parser<'a> =
     ParserContext -> 'a
 
-let result (value: 'a) : Parser<'a> =
+let private result (value: 'a) : Parser<'a> =
     fun _ ->
         value
 

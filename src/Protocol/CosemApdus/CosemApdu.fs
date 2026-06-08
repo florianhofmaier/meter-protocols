@@ -1,5 +1,8 @@
 namespace Metering.Dlms.Protocol.CosemApdu
 
+open System
+open Metering.Common.Decoding.Decoders.Core
+open Metering.Common.Decoding.Decoders.Core.Core
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.ErrorHandling
@@ -32,23 +35,23 @@ module CosemApduTag =
                     return! fail "unknown APDU tag"
         }
 
-type CosemApduRaw =
-    | Acse of AcseApduRaw
-    | Xdlms of XdlmsApduRaw
+type CosemApdu =
+    | Acse of AcseApdu
+    | Xdlms of XdlmsApdu
 
-module CosemApduRaw =
+module CosemApdu =
 
-    let decode : Parser<ParsedField<CosemApduRaw>> =
-        parser {
-            let! tag = CosemApduTag.peek
+    let decode
+        (bytes: ParsedField<ReadOnlyMemory<byte>>)
+        : Decoder<CosemApdu> =
+
+        decoder {
+            let! tag = parseValue CosemApduTag.peek bytes
 
             match tag with
             | CosemApduTag.Acse _ ->
-                return! AcseApduRaw.parse |>> map CosemApduRaw.Acse
+                return! AcseApdu.decode
 
             | CosemApduTag.Xdlms _ ->
-                return! XdlmsApduRaw.parse |>> map CosemApduRaw.Xdlms
+                return! XdlmsApdu.decode
         }
-
-    let validate (raw: CosemApduRaw) : Result<unit, PError> =
-    let decode (raw: CosemApduRaw) : CosemApdu =
