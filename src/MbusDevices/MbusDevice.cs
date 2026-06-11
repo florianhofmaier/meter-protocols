@@ -1,10 +1,10 @@
-﻿using Mbus.Devices;
-using Mbus.Records;
-using Mbus.UserData;
+﻿using Metering.Mbus.Devices;
+using Metering.Mbus.Records;
+using Metering.Mbus.UserData;
 using Microsoft.FSharp.Collections;
 using Microsoft.FSharp.Core;
 
-namespace Mbus;
+namespace Metering.Mbus;
 
 public class MbusDevice
 {

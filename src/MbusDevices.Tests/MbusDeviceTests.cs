@@ -1,6 +1,6 @@
 using Shouldly;
 
-namespace Mbus.MbusDevices.Tests;
+namespace Metering.Mbus.MbusDevices.Tests;
 
 public class MbusDeviceTests
 {

@@ -1,4 +1,4 @@
-namespace Mbus;
+namespace Metering.Mbus;
 
 public interface IMbusUserDataBuilder
 {

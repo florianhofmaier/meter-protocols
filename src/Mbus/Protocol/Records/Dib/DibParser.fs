@@ -1,9 +1,7 @@
-module Metering.Mbus.Records.Dib.DibParser
+module Mbus.Records.DataInfoBlocks.DibParser
 
-open Mbus
-open Mbus.BaseParsers.Core
-open Mbus.Records
-open Mbus.Records.DataInfoBlocks
+open Metering.Common.Decoding.Parsers.Core
+open Metering.Mbus.Records.Dib
 
 
 type private Dife = { StNum: uint64; Tariff: uint32; SubUnit: uint16 }
@@ -14,14 +12,15 @@ let private parseExtByte (acc: Dife) i b : Dife =
     let su = acc.SubUnit ||| SubUnit.fromDife b i
     { StNum = sn; Tariff = tn; SubUnit = su }
 
-let private parseDife dif stNumSeed : Parser<Dife> = parser {
-    let seed = { StNum = stNumSeed; Tariff = 0u; SubUnit = 0us }
-    if InfoBlock.isExtended dif then
-        let! difeParsed = InfoBlock.parseExt seed parseExtByte
-        return difeParsed
-    else
-        return seed
-}
+let private parseDife dif stNumSeed : Parser<Dife> =
+    parser {
+        let seed = { StNum = stNumSeed; Tariff = 0u; SubUnit = 0us }
+        if InfoBlock.isExtended dif then
+            let! difeParsed = InfoBlock.parseExt seed parseExtByte
+            return difeParsed
+        else
+            return seed
+    }
 
 let parse dif : Parser<MbusFunctionField * StorageNumber * Tariff * SubUnit> = parser {
     let fn = FunctionField.fromDif dif

@@ -1,6 +1,6 @@
-using Mbus.Records;
+using Metering.Mbus.Records;
 
-namespace Mbus.UserData;
+namespace Metering.Mbus.UserData;
 
 public class MbusUserDataBuilder(List<RspDataRecord> userData) : IMbusUserDataBuilder
 {

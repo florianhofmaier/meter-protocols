@@ -1,4 +1,4 @@
-namespace Mbus
+namespace Metering.Mbus
 
 open System
 
