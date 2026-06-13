@@ -1,5 +1,6 @@
 module Metering.Common.Decoding.Parsers.Binary
 
+open System
 open System.Buffers.Binary
 open Metering.Common.Decoding.Parsers.Core
 open Utility
@@ -15,6 +16,12 @@ let expectU8 expected : Parser<unit> =
 
 let parseI8 : Parser<int8> =
     _.Reader.Read(1).Span[0] |>> int8
+
+let parseU16LittleEndian : Parser<uint16> =
+    parser {
+        let! bytes = take 2
+        return BinaryPrimitives.ReadUInt16LittleEndian bytes.Span
+    }
 
 let parseU16BigEndian : Parser<uint16> =
     parser {

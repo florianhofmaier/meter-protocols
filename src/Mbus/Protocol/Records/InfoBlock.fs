@@ -1,34 +1,39 @@
-module Mbus.Records.InfoBlock
+namespace Metering.Mbus.Protocol.Records
 
-open Mbus.BaseWriters.BinaryWriters
-open Mbus.BaseWriters.Core
+open System
 open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.ErrorHandling
 
-let isExtended b = (b &&& 0x80uy) <> 0uy
-let maxExtBytes = 10
+type InfoBlockRaw =
+    private InfoBlock of ReadOnlyMemory<byte>
 
-let parseExt seed f : Parser<'a> =
-    let rec loop i acc =
-        parser {
-            if i >= maxExtBytes then return! fail "too many DIB/VIB bytes (limit 11)"
-            let! b = parseU8
-            let acc' = f acc i b
-            if isExtended b then return! loop (i + 1) acc'
-            else return acc'
-        }
-    loop 0 seed
+module InfoBlockRaw =
 
-let writeExt (seed: 'a) (f: 'a -> int -> byte) : Writer<unit> =
-    let rec loop (i: int) : Writer<unit> =
-        writer {
+    let private maxExtBytes = 10
+
+    let private parseBytes : Parser<ReadOnlyMemory<byte>> =
+
+        let rec loop i acc = parser {
             if i >= maxExtBytes then
-                return! writerError "too many DIB/VIB bytes (limit 11)"
+                return! fail "too many extension bytes in info block (limit 10)"
+
+            let! b = parseU8
+            let acc = b :: acc
+
+            if (b &&& 0x80uy) <> 0uy then
+                return! loop (i + 1) acc
             else
-                let b = f seed i
-                do! writeU8 b
-                if isExtended b then
-                    do! loop (i + 1)
+                return acc |> List.rev |> List.toArray |> ReadOnlyMemory
         }
-    loop 0
+
+        loop 0 []
+
+    let value (InfoBlock raw) =
+        raw
+
+    let firstByte (InfoBlock raw) =
+        raw.Span.[0]
+
+    let parse : Parser<InfoBlockRaw> =
+        parseBytes |>> InfoBlock

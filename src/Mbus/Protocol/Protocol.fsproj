@@ -1,0 +1,47 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <RootNamespace>Metering.Mbus.Protocol</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Utility\BcdParsers.fs" />
+        <Compile Include="Records\Values.fs" />
+        <Compile Include="Records\InfoBlock.fs" />
+        <Compile Include="Records\Dib\FunctionField.fs" />
+        <Compile Include="Records\Dib\StorageNumber.fs" />
+        <Compile Include="Records\Dib\Tariff.fs" />
+        <Compile Include="Records\Dib\SubUnit.fs" />
+        <Compile Include="Records\Dib\DibParser.fs" />
+        <Compile Include="Records\Dib\ValueRaw.fs" />
+        <Compile Include="Records\RecordRaw.fs" />
+        <Compile Include="Frames\DeviceIdentification\IdNumber.fs" />
+        <Compile Include="Frames\DeviceIdentification\Manufacturer.fs" />
+        <Compile Include="Frames\DeviceIdentification\Version.fs" />
+        <Compile Include="Frames\DeviceIdentification\DeviceType.fs" />
+        <Compile Include="Frames\Tpl\CiFieldTpl.fs" />
+        <Compile Include="Frames\Tpl\AccessNumber.fs" />
+        <Compile Include="Frames\Tpl\Status.fs" />
+        <Compile Include="Frames\Tpl\Configuration.fs" />
+        <Compile Include="Frames\Tpl\TplRaw.fs" />
+        <Compile Include="Frames\Apl\AplRaw.fs"/>
+        <Compile Include="Frames\Dll\StartField.fs" />
+        <Compile Include="Frames\Dll\LField.fs" />
+        <Compile Include="Frames\Dll\CField.fs" />
+        <Compile Include="Frames\Dll\AField.fs" />
+        <Compile Include="Frames\Dll\LinkUserData.fs" />
+        <Compile Include="Frames\Dll\UserData.fs" />
+        <Compile Include="Frames\Dll\Crc.fs" />
+        <Compile Include="Frames\Dll\EndField.fs" />
+        <Compile Include="Frames\Dll\FrameRaw.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\Common\Parsers\Parsers.fsproj" />
+      <ProjectReference Include="..\..\PublicTypes\PublicTypes.fsproj" />
+      <ProjectReference Include="..\..\Records\Records.fsproj" />
+    </ItemGroup>
+
+</Project>
