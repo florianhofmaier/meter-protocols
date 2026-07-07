@@ -4,3 +4,15 @@ obj/
 riderModule.iml
 /_ReSharper.Caches/
 .idea/
+
+# Local standards and private review artefacts must never be committed.
+.local/
+standards/
+rag-index/
+*.pdf
+*.docx
+*.xlsx
+
+# opencode local/runtime artefacts
+.opencode/sessions/
+.opencode/cache/
