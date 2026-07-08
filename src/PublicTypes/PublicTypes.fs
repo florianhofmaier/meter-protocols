@@ -87,11 +87,15 @@ type MbusDataType =
     | Real32Bit
     | Text
 
+/// <summary>
+/// Represents the Function Field of the Data Information Block (DIB).
+/// It gives the type of value as specified in EN 13757-3.
+/// </summary>
 type MbusFunctionField =
-    | InstValue
-    | MinValue
-    | MaxValue
-    | ValueInErrorState
+    | InstValue = 0
+    | MaxValue = 1
+    | MinValue = 2
+    | ValueInErrorState = 3
 
 type MbusValueType =
     | Energy
@@ -171,6 +175,7 @@ type MbusValueType =
     | ListeningWindowManagement
     | NumberOfTimesTheMeterWasStopped
     | DataContainerForManufacturerSpecificProtocol
+    | DataContainerForMbusUpperLayers
     | ManufacturerSpecific
     | DurationOfTariff
     | ReactiveEnergy
@@ -185,6 +190,48 @@ type MbusValueType =
     | CumulativeMaximumOfActivePower
     | UnitsForHca
     | Pressure
+    | CurrentSelectedApplication
+    | SubDeviceType
+    | NumberOfAvailableCommunicationCreditsOnTheLocalInterface
+    | NumberOfAvailableCommunicationCreditsOnTheWirelessMbusInterface
+    | InstallationConditions
+    | Co2Content
+    | CoContent
+    | VocContent
+    | ParticlesUnspecifiedRange
+    | ParticlesPm1
+    | ParticlesPm2_5
+    | ParticlesPm10
+    | Illuminance
+    | LuminousIntensity
+    | Irradiance
+    | WindSpeed
+    | Rainfall
+    | Noise
+    | Turbidity
+    | PhValue
+    | NumberOfDismounts
+    | NumberOfTestButtonOperatedCounter
+    | NumberOfAlarms
+    | NumberOfAlarmMuteSwitchOperatedCounter
+    | NumberOfObstacleDetectedCounter
+    | SmokeEntriesBlockingCumulatedCounter
+    | SmokeChamberDefectCumulatedCounter
+    | NumberOfSelfTestFailedCounter
+    | NumberOfSounderDefectCounter
+    | NumberOfCoAlarmsLowLevel
+    | NumberOfCoAlarmsMediumLevel
+    | NumberOfCoAlarmsHighLevel
+    | BatteryStatus
+    | ChamberPollutionLevel
+    | Distance
+    | MoistureLevel
+    | TypeOrClassOfApproval
+    | StatusBitsForPressureDevices
+    | StatusBitsForSmokeAlarmDevices
+    | StatusBitsForCoAlarmDevices
+    | StatusBitsForHeatAlarmDevices
+    | StatusBitsForDoorContactSensorAndLockedDoorDetector
 
 type MbusActionCode =
     | Set = 0x00uy
@@ -299,8 +346,20 @@ type MbusUnit =
     | VoltAmpereReactive
     | VoltAmpere
     | Percent
+    | Ppm
+    | Ppb
     | CubicFeet
     | Bar
+    | MicroGramsPerCubicMeter
+    | MillionUnitsPerCubicMeter
+    | Lux
+    | Candela
+    | WattsPerSquareMeter
+    | KilometersPerHour
+    | LiterPerSquareMillimeter
+    | DecibelAWeighted
+    | FormazinNephelometricUnit
+    | Millimeter
 
 // module MbusUnit =
 //     let toText unit =

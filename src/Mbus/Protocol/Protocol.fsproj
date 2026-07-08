@@ -7,39 +7,65 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="Utility\Bcd.fs" />
         <Compile Include="Utility\BcdParsers.fs" />
-        <Compile Include="Records\Values.fs" />
         <Compile Include="Records\InfoBlock.fs" />
-        <Compile Include="Records\Dib\FunctionField.fs" />
-        <Compile Include="Records\Dib\StorageNumber.fs" />
-        <Compile Include="Records\Dib\Tariff.fs" />
-        <Compile Include="Records\Dib\SubUnit.fs" />
-        <Compile Include="Records\Dib\DibParser.fs" />
-        <Compile Include="Records\Dib\ValueRaw.fs" />
+        <Compile Include="Records\DataInfoBlocks\Dife.fs" />
+        <Compile Include="Records\DataInfoBlocks\DataField.fs" />
+        <Compile Include="Records\DataInfoBlocks\FunctionField.fs" />
+        <Compile Include="Records\DataInfoBlocks\StorageNumber.fs" />
+        <Compile Include="Records\DataInfoBlocks\Tariff.fs" />
+        <Compile Include="Records\DataInfoBlocks\SubUnit.fs" />
+        <Compile Include="Records\DataInfoBlocks\Dib.fs" />
+        <Compile Include="Records\ValueInfoBlocks\Utility.fs" />
+        <Compile Include="Records\ValueInfoBlocks\Vif.fs" />
+        <Compile Include="Records\ValueInfoBlocks\VifExtensions.fs" />
+        <Compile Include="Records\ValueInfoBlocks\ActionCodes.fs" />
+        <Compile Include="Records\ValueInfoBlocks\RecordErrors.fs" />
+        <Compile Include="Records\ValueInfoBlocks\Vib.fs" />
+        <Compile Include="Records\ValueInfoBlocks\TextVib.fs" />
+        <Compile Include="Records\ValueInfoBlocks\VibRsp.fs" />
+        <Compile Include="Records\ValueInfoBlocks\VibCmd.fs" />
+        <Compile Include="Records\Values\Converters.fs" />
+        <Compile Include="Records\Values\ValueRaw.fs" />
+        <Compile Include="Records\Values\Value.fs" />
         <Compile Include="Records\RecordRaw.fs" />
+        <Compile Include="Records\Record.fs" />
         <Compile Include="Frames\DeviceIdentification\IdNumber.fs" />
         <Compile Include="Frames\DeviceIdentification\Manufacturer.fs" />
         <Compile Include="Frames\DeviceIdentification\Version.fs" />
         <Compile Include="Frames\DeviceIdentification\DeviceType.fs" />
-        <Compile Include="Frames\Tpl\CiFieldTpl.fs" />
-        <Compile Include="Frames\Tpl\AccessNumber.fs" />
-        <Compile Include="Frames\Tpl\Status.fs" />
-        <Compile Include="Frames\Tpl\Configuration.fs" />
-        <Compile Include="Frames\Tpl\TplRaw.fs" />
-        <Compile Include="Frames\Apl\AplRaw.fs"/>
-        <Compile Include="Frames\Dll\StartField.fs" />
-        <Compile Include="Frames\Dll\LField.fs" />
-        <Compile Include="Frames\Dll\CField.fs" />
-        <Compile Include="Frames\Dll\AField.fs" />
-        <Compile Include="Frames\Dll\LinkUserData.fs" />
-        <Compile Include="Frames\Dll\UserData.fs" />
-        <Compile Include="Frames\Dll\Crc.fs" />
-        <Compile Include="Frames\Dll\EndField.fs" />
-        <Compile Include="Frames\Dll\FrameRaw.fs" />
+        <Compile Include="Frames\DeviceIdentification\DeviceIdentification.fs" />
+        <Compile Include="Frames\CiFieldTpl.fs" />
+        <Compile Include="Frames\Application\MbusProtocol.fs" />
+        <Compile Include="Frames\Application\AlarmProtocol.fs" />
+        <Compile Include="Frames\Application\SelectionOfDevice.fs" />
+        <Compile Include="Frames\Application\Apl.fs" />
+        <Compile Include="Frames\Transport\AccessNumbers.fs" />
+        <Compile Include="Frames\Transport\StatusByte.fs" />
+        <Compile Include="Frames\Transport\ContentOfMessage.fs" />
+        <Compile Include="Frames\Transport\Mode.fs" />
+        <Compile Include="Frames\Transport\ConfigurationField.fs" />
+        <Compile Include="Frames\Transport\ConfigurationFieldExtension.fs" />
+        <Compile Include="Frames\Transport\ShortHeader.fs" />
+        <Compile Include="Frames\Transport\LongHeader.fs" />
+        <Compile Include="Frames\Transport\AplData.fs" />
+        <Compile Include="Frames\Transport\TplNone.fs" />
+        <Compile Include="Frames\Transport\Tpl.fs" />
+        <Compile Include="Frames\DataLinkLayer\StartField.fs" />
+        <Compile Include="Frames\DataLinkLayer\LField.fs" />
+        <Compile Include="Frames\DataLinkLayer\CField.fs" />
+        <Compile Include="Frames\DataLinkLayer\AField.fs" />
+        <Compile Include="Frames\DataLinkLayer\LinkUserData.fs" />
+        <Compile Include="Frames\DataLinkLayer\UserData.fs" />
+        <Compile Include="Frames\DataLinkLayer\Crc.fs" />
+        <Compile Include="Frames\DataLinkLayer\EndField.fs" />
+        <Compile Include="Frames\DataLinkLayer\FrameRaw.fs" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\..\Common\Parsers\Parsers.fsproj" />
+      <ProjectReference Include="..\..\Common\Validators\Validators.fsproj" />
       <ProjectReference Include="..\..\PublicTypes\PublicTypes.fsproj" />
       <ProjectReference Include="..\..\Records\Records.fsproj" />
     </ItemGroup>

@@ -10,6 +10,12 @@ type InfoBlockRaw =
 
 module InfoBlockRaw =
 
+    let bytes (InfoBlock raw) =
+        raw
+
+    let firstByte (InfoBlock raw) =
+        raw.Span.[0]
+
     let private maxExtBytes = 10
 
     let private parseBytes : Parser<ReadOnlyMemory<byte>> =
@@ -28,12 +34,6 @@ module InfoBlockRaw =
         }
 
         loop 0 []
-
-    let value (InfoBlock raw) =
-        raw
-
-    let firstByte (InfoBlock raw) =
-        raw.Span.[0]
 
     let parse : Parser<InfoBlockRaw> =
         parseBytes |>> InfoBlock

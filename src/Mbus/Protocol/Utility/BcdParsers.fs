@@ -7,11 +7,12 @@ open Metering.Common.Decoding.Parsers.ErrorHandling
 let parseBcd2Digit: Parser<uint8> =
     parser {
         let! b = parseU8
-        let lowNibble = b &&& 0x0Fuy
-        let highNibble = b >>> 4
-        if highNibble <= 9uy && lowNibble <= 9uy then
-            return highNibble * 10uy + lowNibble
-        else
+
+        match Bcd.tryDecodeByte b with
+        | Some value ->
+            return value
+
+        | None ->
             return! failBefore 1 $"invalid BCD byte: 0x{b:X2}"
     }
 

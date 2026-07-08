@@ -16,8 +16,7 @@
       <Compile Include="DataInfoBlocks\SubUnits.fs" />
       <Compile Include="DataInfoBlocks\DibParser.fs" />
       <Compile Include="DataInfoBlocks\DibWriter.fs" />
-      <Compile Include="ValeInfoBlocks\VifDef.fs" />
-      <Compile Include="ValeInfoBlocks\Vib.fs" />
+      <Folder Include="ValeInfoBlocks\" />
       <Compile Include="Records.fs" />
       <Compile Include="RecordBuilders.fs" />
     </ItemGroup>
