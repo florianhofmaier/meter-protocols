@@ -72,7 +72,7 @@
       <ProjectReference Include="..\..\Common\Decoders\Decoders.fsproj" />
       <ProjectReference Include="..\..\Common\Security\Cryptography\Cryptography.fsproj" />
       <ProjectReference Include="..\..\Common\Validators\Validators.fsproj" />
-      <ProjectReference Include="..\..\PublicTypes\PublicTypes.fsproj" />
+      <ProjectReference Include="..\PublicTypes\PublicTypes.fsproj" />
     </ItemGroup>
 
 </Project>

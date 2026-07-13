@@ -74,10 +74,10 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Common\Decoders\Decoders.fsproj" />
-      <ProjectReference Include="..\Common\Parsers\Parsers.fsproj" />
-      <ProjectReference Include="..\Common\Utility\Utility.fsproj" />
-      <ProjectReference Include="..\Common\Validators\Validators.fsproj" />
+      <ProjectReference Include="..\..\Common\Decoders\Decoders.fsproj" />
+      <ProjectReference Include="..\..\Common\Parsers\Parsers.fsproj" />
+      <ProjectReference Include="..\..\Common\Utility\Utility.fsproj" />
+      <ProjectReference Include="..\..\Common\Validators\Validators.fsproj" />
     </ItemGroup>
 
 </Project>

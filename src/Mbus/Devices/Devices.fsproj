@@ -13,8 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Io\Io.fsproj" />
-    <ProjectReference Include="..\Messages\Messages.fsproj" />
+    <ProjectReference Include="..\..\Common\Io\Io.fsproj" />
   </ItemGroup>
 
 </Project>
