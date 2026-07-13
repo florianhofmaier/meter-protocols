@@ -2,16 +2,31 @@ namespace Metering.Common.Decoding.Parsers.Types
 
 open System
 
-type ParserError =
+[<Struct>]
+type SourceId =
     {
-        Pos : int
-        Msg : string
+        Value : int
     }
 
-type ParserException(error: ParserError) =
-    inherit Exception(error.Msg)
+module SourceId =
 
-    member _.Error = error
+    let root =
+        {
+            Value = 0
+        }
+
+    let unknown =
+        {
+            Value = -1
+        }
+
+    let create value =
+        {
+            Value = value
+        }
+
+    let isUnknown source =
+        source = unknown
 
 type IByteReader =
 
@@ -34,6 +49,29 @@ type IByteReader =
 type ByteReaderFactory =
     ReadOnlyMemory<byte> -> IByteReader
 
+type ParserError =
+    {
+        Source : SourceId
+        Pos : int
+        Msg : string
+    }
+
+type ParserException(error: ParserError) =
+    inherit Exception(error.Msg)
+
+    member _.Error = error
+
+module ParserError =
+
+    let withDefaultSource source error =
+        if error.Source |> SourceId.isUnknown then
+            {
+                error with
+                    Source = source
+            }
+        else
+            error
+
 type FieldId =
     private FieldId of int
 
@@ -43,14 +81,33 @@ module FieldId =
 
 type SourceSpan =
     {
+        Source : SourceId
         Offset : int
         Length : int
     }
 
+type SourceTransform =
+    | Root
+    | Decrypt of algorithm: string
+    | Decompress of algorithm: string
+
+type SourceInfo =
+    {
+        Id : SourceId
+        Name : string
+        Origin : SourceSpan option
+        Transform : SourceTransform
+        Length : int
+        Sensitive : bool
+    }
+
 type IFieldTracer =
 
+    abstract SourceCreated :
+        source: SourceInfo -> unit
+
     abstract BeginField :
-        name: string * offset: int -> FieldId
+        name: string * start: SourceSpan -> FieldId
 
     abstract EndField :
         id: FieldId * span: SourceSpan -> unit

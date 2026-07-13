@@ -55,6 +55,7 @@ module Optional =
                 let present =
                     {
                         Id = raw.Id
+                        Span = raw.Span
                         Value = value
                     }
 
@@ -134,6 +135,7 @@ module Default =
                 let explicitField: ParsedField<'raw> =
                     {
                         Id = raw.Id
+                        Span = raw.Span
                         Value = value
                     }
 

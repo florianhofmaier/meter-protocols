@@ -16,7 +16,7 @@ public class ByteReader(ReadOnlyMemory<byte> buffer, int offset) : IByteReader
     {
         if ((uint) count > (uint) Remaining)
             throw new ParserException(
-                new ParserError(Position,
+                new ParserError(new SourceId(-1), Position,
                 $"Unexpected end of buffer. Requested {count} byte(s), remaining {Remaining}."));
     }
 

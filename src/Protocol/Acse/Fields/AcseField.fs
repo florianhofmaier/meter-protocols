@@ -21,6 +21,7 @@ module AcseField =
                 let present =
                     {
                         Id = raw.Id
+                        Span = raw.Span
                         Value = value
                     }
 
@@ -49,6 +50,7 @@ module AcseField =
                 let present: ParsedField<'raw> =
                     {
                         Id = raw.Id
+                        Span = raw.Span
                         Value = value
                     }
 
@@ -69,6 +71,7 @@ module AcseField =
             return
                 {
                     Id = raw.Id
+                    Span = raw.Span
                     Value = valid
                 }
         }
@@ -89,6 +92,7 @@ module AcseField =
                 let present: ParsedField<'raw> =
                     {
                         Id = raw.Id
+                        Span = raw.Span
                         Value = value
                     }
 
@@ -115,6 +119,7 @@ module AcseField =
             return
                 {
                     Id = raw.Id
+                    Span = raw.Span
                     Value = valid
                 }
         }

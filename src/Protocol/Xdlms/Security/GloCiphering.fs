@@ -15,6 +15,7 @@ let private toByteField
     : ParsedField<ReadOnlyMemory<byte>> =
     {
         Id = source.Id
+        Span = source.Span
         Value = bytes
     }
 
@@ -94,6 +95,9 @@ let private mapAesGcmError
 
         | EncryptionError.InvalidNonceLength length ->
             $"invalid AES-GCM nonce length: {length} byte(s)"
+
+        | EncryptionError.InvalidInitializationVectorLength length ->
+            $"invalid initialization vector length: {length} byte(s)"
 
         | EncryptionError.InvalidTagLength length ->
             $"invalid AES-GCM authentication tag length: {length} byte(s)"
@@ -239,7 +243,7 @@ let private unprotectServiceSpecific
             if securityControl.CompressionApplied then
                 Error (
                     issue
-                        protectedApdu
+                        payload
                         "compression is not supported for service-specific glo-ciphering"
                 )
             else
@@ -249,7 +253,7 @@ let private unprotectServiceSpecific
             selectEncryptionKey
                 cipherContext
                 securityControl
-                protectedApdu
+                payload
 
         let iv =
             buildIv
@@ -263,7 +267,7 @@ let private unprotectServiceSpecific
                 | ProtectionMode.NoProtection ->
                     Error (
                         issue
-                            protectedApdu
+                            payload
                             "glo-ciphered APDU has neither authentication nor encryption applied"
                     )
 

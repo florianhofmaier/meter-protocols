@@ -37,52 +37,52 @@ module Failures =
 let passed value =
     Passed (value, [])
 
-let failed field message =
+let failed (field: ParsedField<_>) message =
     Failed (
         Failures.single
-            {
+            ({
                 FieldId = field.Id
                 Message = message
-            },
+            }: Issue),
         []
     )
 
-let info field message =
+let info (field: ParsedField<_>) message =
     Passed (
         (),
         [
             Info
-                {
+                ({
                     FieldId = field.Id
                     Message = message
-                }
+                }: Issue)
         ]
     )
 
-let warning field message =
+let warning (field: ParsedField<_>) message =
     Passed (
         (),
         [
             Warning
-                {
+                ({
                     FieldId = field.Id
                     Message = message
-                }
+                }: Issue)
         ]
     )
 
-let ensure field message condition =
+let ensure (field: ParsedField<_>) message condition =
     if condition then
         passed ()
     else
         failed field message
 
-let requireSome message field  =
+let requireSome message (field: ParsedField<_>) =
     match field.Value with
     | Some x -> passed x
     | None -> failed field message
 
-let requireNone message field =
+let requireNone message (field: ParsedField<_>) =
     match field.Value  with
     | Some _ -> failed field message
     | None -> passed ()

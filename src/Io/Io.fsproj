@@ -11,8 +11,4 @@
         <Compile Include="StreamWriter.fs" />
     </ItemGroup>
 
-    <ItemGroup>
-      <ProjectReference Include="..\Frames\Frames.fsproj" />
-    </ItemGroup>
-
 </Project>

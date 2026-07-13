@@ -1,6 +1,4 @@
-﻿using Metering.Mbus.Records;
-
-namespace Metering.Mbus.UserData;
+﻿namespace Metering.Mbus.UserData;
 
 public class RecordBuilderWithValue(MbusValue value) : IMbusRecordWithValueBuilder
 {

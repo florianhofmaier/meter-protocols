@@ -14,8 +14,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\BaseWriters\BaseWriters.fsproj" />
-      <ProjectReference Include="..\Frames\Frames.fsproj" />
-      <ProjectReference Include="..\Records\Records.fsproj" />
     </ItemGroup>
 
 </Project>

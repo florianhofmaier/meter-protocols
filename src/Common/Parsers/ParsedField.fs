@@ -5,6 +5,7 @@ open Metering.Common.Decoding.Parsers.Types
 type ParsedField<'a> =
     {
         Id : FieldId
+        Span : SourceSpan
         Value : 'a
     }
 
@@ -16,9 +17,13 @@ module ParsedField =
     let id (field: ParsedField<'a>) =
         field.Id
 
+    let span (field: ParsedField<'a>) =
+        field.Span
+
     let map f (field: ParsedField<'a>) =
         {
             Id = field.Id
+            Span = field.Span
             Value = f field.Value
         }
 
@@ -35,8 +40,15 @@ module FieldParser =
             let start =
                 ctx.Reader.Position
 
+            let startSpan =
+                {
+                    Source = ctx.Source
+                    Offset = start
+                    Length = 0
+                }
+
             let id =
-                ctx.Trace.BeginField(name, start)
+                ctx.Trace.BeginField(name, startSpan)
 
             try
                 let value =
@@ -44,6 +56,7 @@ module FieldParser =
 
                 let span =
                     {
+                        Source = ctx.Source
                         Offset = start
                         Length = ctx.Reader.Position - start
                     }
@@ -52,10 +65,15 @@ module FieldParser =
 
                 {
                     Id = id
+                    Span = span
                     Value = value
                 }
 
             with
             | :? ParserException as ex ->
-                ctx.Trace.FailField(id, ex.Error)
-                reraise()
+                let error =
+                    ex.Error
+                    |> ParserError.withDefaultSource ctx.Source
+
+                ctx.Trace.FailField(id, error)
+                raise (ParserException error)

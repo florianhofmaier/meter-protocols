@@ -15,9 +15,32 @@ type DecodeResult<'a> =
     | Decoded of 'a * Notice list
     | DecodeFailed of DecodeFailure * Notice list
 
+type ReaderFactory =
+    ReadOnlyMemory<byte> -> int -> IByteReader
+
+type ISourceStore =
+
+    abstract AddRoot :
+        name: string ->
+        bytes: ReadOnlyMemory<byte> ->
+        sensitive: bool ->
+        SourceInfo
+
+    abstract AddDerived :
+        name: string ->
+        origin: SourceSpan ->
+        transform: SourceTransform ->
+        bytes: ReadOnlyMemory<byte> ->
+        sensitive: bool ->
+        SourceInfo
+
+    abstract CreateReader :
+        source: SourceId -> IByteReader
+
 type DecodeContext =
     {
-        CreateReader : ReadOnlyMemory<byte> -> IByteReader
+        CreateReader : ReaderFactory
+        Sources : ISourceStore option
         Trace : IFieldTracer
     }
 
@@ -44,9 +67,9 @@ module Core =
 
         fun context ->
             let reader =
-                context.CreateReader source.Value
+                context.CreateReader source.Value source.Span.Offset
 
-            match ParserRunner.run reader context.Trace parser with
+            match ParserRunner.runWithSource source.Span.Source reader context.Trace parser with
             | Ok value ->
                 Decoded (value, [])
 
@@ -79,6 +102,50 @@ module Core =
 
             | Failed (failures, notices) ->
                 DecodeFailed (ValidationFailed failures, notices)
+
+    let createDerivedSource
+        (name: string)
+        (transform: SourceTransform)
+        (sensitive: bool)
+        (origin: ParsedField<_>)
+        (bytes: ReadOnlyMemory<byte>)
+        : Decoder<ParsedField<ReadOnlyMemory<byte>>> =
+
+        fun context ->
+            match context.Sources with
+            | None ->
+                let issue =
+                    {
+                        FieldId = origin.Id
+                        Message = "decode source store is required to register a derived source"
+                    }
+
+                DecodeFailed (EncryptionFailed issue, [])
+
+            | Some sources ->
+                let source =
+                    sources.AddDerived
+                        name
+                        origin.Span
+                        transform
+                        bytes
+                        sensitive
+
+                context.Trace.SourceCreated source
+
+                Decoded (
+                    {
+                        Id = origin.Id
+                        Span =
+                            {
+                                Source = source.Id
+                                Offset = 0
+                                Length = bytes.Length
+                            }
+                        Value = bytes
+                    },
+                    []
+                )
 
 type DecoderBuilder() =
 

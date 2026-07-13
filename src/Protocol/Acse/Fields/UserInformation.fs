@@ -33,5 +33,6 @@ module UserInformation =
 
         {
             Id = field.Id
+            Span = field.Span
             Value = value field.Value
         }

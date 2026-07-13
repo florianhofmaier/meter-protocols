@@ -52,6 +52,9 @@
         <Compile Include="Frames\Transport\LongHeader.fs" />
         <Compile Include="Frames\Transport\AplData.fs" />
         <Compile Include="Frames\Transport\Tpl.fs" />
+        <Compile Include="Security\SecurityContext.fs" />
+        <Compile Include="Security\Mode5.fs" />
+        <Compile Include="Security\AplProtection.fs" />
         <Compile Include="Frames\DataLinkLayer\StartField.fs" />
         <Compile Include="Frames\DataLinkLayer\LField.fs" />
         <Compile Include="Frames\DataLinkLayer\CField.fs" />
@@ -61,13 +64,15 @@
         <Compile Include="Frames\DataLinkLayer\Crc.fs" />
         <Compile Include="Frames\DataLinkLayer\EndField.fs" />
         <Compile Include="Frames\DataLinkLayer\Frame.fs" />
+        <Compile Include="Frames\DataLinkLayer\FrameDecode.fs" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\..\Common\Parsers\Parsers.fsproj" />
+      <ProjectReference Include="..\..\Common\Decoders\Decoders.fsproj" />
+      <ProjectReference Include="..\..\Common\Security\Cryptography\Cryptography.fsproj" />
       <ProjectReference Include="..\..\Common\Validators\Validators.fsproj" />
       <ProjectReference Include="..\..\PublicTypes\PublicTypes.fsproj" />
-      <ProjectReference Include="..\..\Records\Records.fsproj" />
     </ItemGroup>
 
 </Project>

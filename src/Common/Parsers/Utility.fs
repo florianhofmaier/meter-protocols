@@ -51,6 +51,7 @@ let bufferSliceAt (start: int) (count: int) : Parser<ReadOnlyMemory<byte>> =
             raise (
                 ParserException
                     {
+                        Source = ctx.Source
                         Pos = ctx.Reader.Position
                         Msg =
                             $"Cannot slice buffer at absolute offset {start} with length {count}. Current buffer starts at offset {bufferAbsoluteStart} and has length {ctx.Reader.Buffer.Length}."
@@ -71,6 +72,7 @@ let runOnSubSlice (count: int) (parse: Parser<'a>) : Parser<'a> =
             raise (
                 ParserException
                     {
+                        Source = ctx.Source
                         Pos = subReader.Position
                         Msg = $"Sub-slice not fully consumed. {subReader.Remaining} byte(s) remaining."
                     }
@@ -93,6 +95,7 @@ let parseUntilEnd (p: Parser<'a>) : Parser<'a list> =
                     raise (
                         ParserException
                             {
+                                Source = ctx.Source
                                 Pos = before
                                 Msg = "Parser did not consume any input in parseUntilEnd."
                             }

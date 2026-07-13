@@ -5,6 +5,7 @@ open Metering.Common.Decoding.Parsers.Types
 type ParserContext =
     {
         Reader : IByteReader
+        Source : SourceId
         Trace : IFieldTracer
     }
 

@@ -17,7 +17,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Messages\Messages.fsproj" />
-      <ProjectReference Include="..\Records\Records.fsproj" />
     </ItemGroup>
 
     <ItemGroup>

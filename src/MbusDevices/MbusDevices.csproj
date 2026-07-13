@@ -10,7 +10,6 @@
     <ItemGroup>
       <ProjectReference Include="..\Messages\Messages.fsproj" />
       <ProjectReference Include="..\PublicTypes\PublicTypes.fsproj" />
-      <ProjectReference Include="..\Records\Records.fsproj" />
       <ProjectReference Include="..\Devices\Devices.fsproj" />
     </ItemGroup>
 

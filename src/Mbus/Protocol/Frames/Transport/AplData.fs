@@ -14,6 +14,10 @@ module AplDataRaw =
     let bytes (RawAplData bytes) =
         bytes
 
+    let toByteField (field: ParsedField<AplDataRaw>) =
+        field
+        |> ParsedField.map bytes
+
     let parse : Parser<ParsedField<AplDataRaw>> =
         parseField
             "APL Data"

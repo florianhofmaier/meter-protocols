@@ -8,6 +8,7 @@ let fail<'a> message : Parser<'a> =
         raise (
             ParserException
                 {
+                    Source = ctx.Source
                     Msg = message
                     Pos = ctx.Reader.Position
                 }
@@ -18,6 +19,7 @@ let failBefore<'a> n message : Parser<'a> =
         raise (
             ParserException
                 {
+                    Source = ctx.Source
                     Msg = message
                     Pos = ctx.Reader.Position - n
                 }

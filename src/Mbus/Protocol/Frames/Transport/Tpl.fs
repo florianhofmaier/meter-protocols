@@ -5,22 +5,18 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
 open Metering.Mbus.Protocol.Frames
-open Metering.Mbus.Protocol.Frames.Application
 
 type TplWithNoneHeaderRaw =
     {
         Ci: ParsedField<NoneHeaderCiField>
-        AplData: ParsedField<AplRaw>
+        AplData: ParsedField<AplDataRaw>
     }
 
 module TplWithNoneHeaderRaw =
 
     let parse ci : Parser<TplWithNoneHeaderRaw> =
         parser {
-            let! aplData =
-                ci.Value
-                |> NoneTplHeader
-                |> AplRaw.parse
+            let! aplData = AplDataRaw.parse
 
             return
                 {
@@ -33,7 +29,7 @@ type TplWithShortHeaderRaw =
     {
         Ci: ParsedField<ShortHeaderCiField>
         Header: ParsedField<ShortHeaderRaw>
-        AplData: ParsedField<AplRaw>
+        AplData: ParsedField<AplDataRaw>
     }
 
 module TplWithShortHeaderRaw =
@@ -41,10 +37,7 @@ module TplWithShortHeaderRaw =
     let parse ci : Parser<TplWithShortHeaderRaw> =
         parser {
             let! header = ShortHeaderRaw.parse
-            let! aplData =
-                ci.Value
-                |> ShortTplHeader
-                |> AplRaw.parse
+            let! aplData = AplDataRaw.parse
 
             return {
                 Ci = ci
@@ -57,7 +50,7 @@ type TplWithLongHeaderRaw =
     {
         Ci: ParsedField<LongHeaderCiField>
         Header: ParsedField<LongHeaderRaw>
-        AplData: ParsedField<AplRaw>
+        AplData: ParsedField<AplDataRaw>
     }
 
 module TplWithLongHeaderRaw =
@@ -65,10 +58,7 @@ module TplWithLongHeaderRaw =
     let parse ci : Parser<TplWithLongHeaderRaw> =
         parser {
             let! header = LongHeaderRaw.parse
-            let! aplData =
-                ci.Value
-                |> LongTplHeader
-                |> AplRaw.parse
+            let! aplData = AplDataRaw.parse
 
             return {
                 Ci = ci
@@ -116,7 +106,7 @@ module TplRaw =
 type TplNone =
     {
         Ci: NoneHeaderCiField
-        AplData: Apl
+        AplData: ParsedField<AplDataRaw>
     }
 
 module TplNone =
@@ -126,11 +116,9 @@ module TplNone =
         : Validation<TplNone> =
 
         validator {
-            let! aplData = Apl.fromRaw raw.AplData
-
             return {
                 Ci = raw.Ci.Value
-                AplData = aplData
+                AplData = raw.AplData
             }
         }
 
@@ -138,7 +126,7 @@ type TplShort =
     {
         Ci: ShortHeaderCiField
         Header: ShortHeader
-        AplData: Apl
+        AplData: ParsedField<AplDataRaw>
     }
 
 module TplShort =
@@ -149,13 +137,12 @@ module TplShort =
 
         validator {
             let! header = ShortHeader.fromRaw raw.Header
-            let! aplData = Apl.fromRaw raw.AplData
 
             return
                 {
                     Ci = raw.Ci.Value
                     Header = header
-                    AplData = aplData
+                    AplData = raw.AplData
                 }
         }
 
@@ -163,7 +150,7 @@ type TplLong =
     {
         Ci: LongHeaderCiField
         Header: LongHeader
-        AplData: Apl
+        AplData: ParsedField<AplDataRaw>
     }
 
 module TplLong =
@@ -174,13 +161,12 @@ module TplLong =
 
         validator {
             let! header = LongHeader.fromRaw raw.Header
-            let! aplData = Apl.fromRaw raw.AplData
 
             return
                 {
                     Ci = raw.Ci.Value
                     Header = header
-                    AplData = aplData
+                    AplData = raw.AplData
                 }
         }
 
@@ -190,6 +176,28 @@ type Tpl =
     | LongHeader of TplLong
 
 module Tpl =
+
+    let ci =
+        function
+        | Tpl.NoneHeader tpl ->
+            NoneTplHeader tpl.Ci
+
+        | Tpl.ShortHeader tpl ->
+            ShortTplHeader tpl.Ci
+
+        | Tpl.LongHeader tpl ->
+            LongTplHeader tpl.Ci
+
+    let aplData =
+        function
+        | Tpl.NoneHeader tpl ->
+            tpl.AplData
+
+        | Tpl.ShortHeader tpl ->
+            tpl.AplData
+
+        | Tpl.LongHeader tpl ->
+            tpl.AplData
 
     let fromRaw
         (raw: ParsedField<TplRaw>)
