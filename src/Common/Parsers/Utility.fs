@@ -23,11 +23,41 @@ let skip (count: int) : Parser<unit> =
 let remaining : Parser<int> =
     _.Reader.Remaining
 
+let position : Parser<int> =
+    _.Reader.Position
+
 let take (count: int) : Parser<ReadOnlyMemory<byte>> =
     _.Reader.Read(count)
 
 let takeAll : Parser<ReadOnlyMemory<byte>> =
     remaining >>= take
+
+let bufferSliceAt (start: int) (count: int) : Parser<ReadOnlyMemory<byte>> =
+    fun ctx ->
+        let bufferAbsoluteStart =
+            int64 ctx.Reader.Position
+            - (int64 ctx.Reader.Buffer.Length - int64 ctx.Reader.Remaining)
+
+        let localStart =
+            int64 start - bufferAbsoluteStart
+
+        let localEnd =
+            localStart + int64 count
+
+        if count < 0
+           || localStart < 0L
+           || localEnd > int64 ctx.Reader.Buffer.Length then
+
+            raise (
+                ParserException
+                    {
+                        Pos = ctx.Reader.Position
+                        Msg =
+                            $"Cannot slice buffer at absolute offset {start} with length {count}. Current buffer starts at offset {bufferAbsoluteStart} and has length {ctx.Reader.Buffer.Length}."
+                    }
+            )
+
+        ctx.Reader.Buffer.Slice(int localStart, count)
 
 let runOnSubSlice (count: int) (parse: Parser<'a>) : Parser<'a> =
     fun ctx ->

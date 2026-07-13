@@ -19,6 +19,5 @@ type StartVariableLength =
 
 module StartVariableLength =
 
-    let parse : Parser<ParsedField<StartVariableLength>> =
+    let parse : Parser<ParsedField<Unit>> =
         parseField "Start Field" (expectU8 0x68uy)
-        |>> ParsedField.map StartVariableLength

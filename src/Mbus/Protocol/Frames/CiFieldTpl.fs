@@ -9,40 +9,38 @@ open Metering.Common.Decoding.Parsers.FieldParser
 type NoneHeaderCiField =
     | Command
     | SelectionOfDevice
-    | ApplicationReset
+    | ApplicationResetOrSelectNoHeader
 
 module NoneHeaderCiField =
-
-    let value =
-        function
-        | Command -> 0x51uy
-        | SelectionOfDevice -> 0x52uy
-        | ApplicationReset -> 0x50uy
 
     let tryMap =
         function
         | 0x51uy -> Some Command
         | 0x52uy -> Some SelectionOfDevice
-        | 0x50uy -> Some ApplicationReset
+        | 0x50uy -> Some ApplicationResetOrSelectNoHeader
         | _ -> None
 
 type ShortHeaderCiField =
     | ResponseShortHeader
+    | ApplicationResetOrSelectShortHeader
 
 module ShortHeaderCiField =
 
     let value =
         function
         | ResponseShortHeader -> 0x7Auy
+        | ApplicationResetOrSelectShortHeader -> 0x57uy
 
     let tryMap =
         function
         | 0x7Auy -> Some ResponseShortHeader
+        | 0x57uy -> Some ApplicationResetOrSelectShortHeader
         | _ -> None
 
 type LongHeaderCiField =
     | ResponseLongHeader
     | AlarmLongHeader
+    | ApplicationResetOrSelectLongHeader
 
 module LongHeaderCiField =
 
@@ -50,11 +48,13 @@ module LongHeaderCiField =
         function
         | ResponseLongHeader -> 0x72uy
         | AlarmLongHeader -> 0x75uy
+        | ApplicationResetOrSelectLongHeader -> 0x53uy
 
     let tryMap =
         function
         | 0x72uy -> Some ResponseLongHeader
         | 0x75uy -> Some AlarmLongHeader
+        | 0x53uy -> Some ApplicationResetOrSelectLongHeader
         | _ -> None
 
 type CiFieldTpl =

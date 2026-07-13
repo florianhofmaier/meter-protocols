@@ -10,7 +10,8 @@ type LField =
 
 module LField =
 
-    let value (LField v) = v
+    let value (LField v) =
+        v
 
     let parse : Parser<ParsedField<LField>> =
         parseField "Length Field"

@@ -40,6 +40,7 @@
         <Compile Include="Frames\Application\MbusProtocol.fs" />
         <Compile Include="Frames\Application\AlarmProtocol.fs" />
         <Compile Include="Frames\Application\SelectionOfDevice.fs" />
+        <Compile Include="Frames\Application\ApplicationResetOrSelect.fs" />
         <Compile Include="Frames\Application\Apl.fs" />
         <Compile Include="Frames\Transport\AccessNumbers.fs" />
         <Compile Include="Frames\Transport\StatusByte.fs" />
@@ -50,7 +51,6 @@
         <Compile Include="Frames\Transport\ShortHeader.fs" />
         <Compile Include="Frames\Transport\LongHeader.fs" />
         <Compile Include="Frames\Transport\AplData.fs" />
-        <Compile Include="Frames\Transport\TplNone.fs" />
         <Compile Include="Frames\Transport\Tpl.fs" />
         <Compile Include="Frames\DataLinkLayer\StartField.fs" />
         <Compile Include="Frames\DataLinkLayer\LField.fs" />
@@ -60,7 +60,7 @@
         <Compile Include="Frames\DataLinkLayer\UserData.fs" />
         <Compile Include="Frames\DataLinkLayer\Crc.fs" />
         <Compile Include="Frames\DataLinkLayer\EndField.fs" />
-        <Compile Include="Frames\DataLinkLayer\FrameRaw.fs" />
+        <Compile Include="Frames\DataLinkLayer\Frame.fs" />
     </ItemGroup>
 
     <ItemGroup>

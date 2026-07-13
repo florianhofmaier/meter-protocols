@@ -3,13 +3,12 @@ namespace Metering.Mbus.Protocol.Frames.DataLinkLayer
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
-open Metering.Mbus.Protocol.Frames.Apl
-open Metering.Mbus.Protocol.Frames.Tpl
+open Metering.Common.Decoding.Validators.Core
+open Metering.Mbus.Protocol.Frames.Transport
 
 type LinkUserDataRaw =
     {
         Tpl: ParsedField<TplRaw>
-        Apl: ParsedField<AplRaw>
     }
 
 module LinkUserDataRaw =
@@ -18,11 +17,26 @@ module LinkUserDataRaw =
         parseField "User Data"
         <| parser {
             let! tpl = TplRaw.parse
-            let! apl = AplRaw.parse tpl.Value
 
             return
                 {
                     Tpl = tpl
-                    Apl = apl
+                }
+        }
+
+type LinkUserData =
+    {
+        Tpl: Tpl
+    }
+
+module LinkUserData =
+
+    let fromRaw (raw: ParsedField<LinkUserDataRaw>) =
+        validator {
+            let! tpl = Tpl.fromRaw raw.Value.Tpl
+
+            return
+                {
+                    Tpl = tpl
                 }
         }

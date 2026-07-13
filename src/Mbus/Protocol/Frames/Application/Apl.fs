@@ -11,7 +11,7 @@ type AplRaw =
     | AlarmBits of ParsedField<Alarms>
     | SelectedDevice of ParsedField<SelectionOfDeviceRaw>
     | SndUdData of RecordsRaw
-    | NoneApl
+    | ApplicationResetOrSelect of ParsedField<ApplicationResetOrSelectRaw>
 
 module AplRaw =
 
@@ -24,22 +24,31 @@ module AplRaw =
             match ci with
             | NoneTplHeader noneCi ->
                 match noneCi with
-                | ApplicationReset ->
-                    return NoneApl
+                | ApplicationResetOrSelectNoHeader ->
+                    return! ApplicationResetOrSelectRaw.parse |>> ApplicationResetOrSelect
+
                 | Command ->
                     return! RecordsRaw.parse |>> SndUdData
+
                 | SelectionOfDevice ->
                     return! SelectionOfDeviceRaw.parse |>> SelectedDevice
 
             | ShortTplHeader shortCi ->
                 match shortCi with
+                | ApplicationResetOrSelectShortHeader ->
+                    return! ApplicationResetOrSelectRaw.parse |>> ApplicationResetOrSelect
+
                 | ResponseShortHeader ->
                     return! RecordsRaw.parse |>> RspUdData
 
             | LongTplHeader longCi ->
                 match longCi with
+                | ApplicationResetOrSelectLongHeader ->
+                    return! ApplicationResetOrSelectRaw.parse |>> ApplicationResetOrSelect
+
                 | ResponseLongHeader ->
                     return! RecordsRaw.parse |>> RspUdData
+
                 | AlarmLongHeader ->
                     return! Alarms.parse |>> AlarmBits
         }
@@ -49,7 +58,7 @@ type Apl =
     | AlarmBits of Alarms
     | SelectedDevice of SelectionOfDevice
     | SndUdData of SndUdData
-    | NoneApl
+    | ApplicationResetOrSelect of ApplicationResetOrSelect
 
 module Apl =
 
@@ -74,6 +83,7 @@ module Apl =
                 let! selection = SelectionOfDevice.fromRaw selection
                 return SelectedDevice selection
 
-            | AplRaw.NoneApl ->
-                return NoneApl
+            | AplRaw.ApplicationResetOrSelect raw ->
+                let! resetOrSelect = ApplicationResetOrSelect.fromRaw raw
+                return ApplicationResetOrSelect resetOrSelect
         }
