@@ -69,7 +69,7 @@ module Core =
             let reader =
                 context.CreateReader source.Value source.Span.Offset
 
-            match ParserRunner.runWithSource source.Span.Source reader context.Trace parser with
+            match ParserRunner.runExactlyWithSource source.Span.Source reader context.Trace parser with
             | Ok value ->
                 Decoded (value, [])
 

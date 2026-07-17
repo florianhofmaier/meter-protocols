@@ -12,7 +12,7 @@ module NumberOfEncryptedBlocks =
         v
 
     let tryCreate v =
-        if v >= 0 && v < 0x0F
+        if v >= 0 && v <= 0x0F
         then v |> NumberOfEncryptedBlocks |> Some
         else None
 
@@ -20,4 +20,3 @@ module NumberOfEncryptedBlocks =
         (cnf &&& mask) >>> shift
         |> int
         |> tryCreate
-

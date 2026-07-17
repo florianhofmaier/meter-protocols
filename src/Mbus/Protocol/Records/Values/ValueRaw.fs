@@ -47,12 +47,12 @@ module ValueRaw =
 
             | InRange 0xC0 0xC9 n ->
                 return!
-                    parseField "Positive BCD Number" (take ((n - 0xC0) * 2))
+                    parseField "Positive BCD Number" (take (n - 0xC0))
                     |>> PosBcd
 
             | InRange 0xD0 0xD9 n ->
                 return!
-                    parseField "Negative BCD Number" (take ((n - 0xD0) * 2))
+                    parseField "Negative BCD Number" (take (n - 0xD0))
                     |>> NegBcd
 
             | InRange 0xE0 0xEF n ->
@@ -140,5 +140,7 @@ module ValueRaw =
             return!
                 parseVarLen
 
-        | _ -> return invalidOp $"invalid data field: 0x{b:X2}"
+        | _ ->
+            return!
+                fail $"invalid data field: 0x{b:X2}"
     }

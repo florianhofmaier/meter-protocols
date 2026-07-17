@@ -4,6 +4,7 @@ open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
 open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module RequestUserData =
 
     let private addressFromAField =

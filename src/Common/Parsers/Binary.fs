@@ -49,9 +49,9 @@ let parseU24LittleEndian: Parser<uint32> =
         let! bytes = take 3
 
         let value =
-            uint32 bytes.Span[0] <<< 16
-            ||| uint32 bytes.Span[1] <<< 8
-            ||| uint32 bytes.Span[2]
+            uint32 bytes.Span[0]
+            ||| (uint32 bytes.Span[1] <<< 8)
+            ||| (uint32 bytes.Span[2] <<< 16)
 
         return value
     }
@@ -94,12 +94,12 @@ let parseU48LittleEndian : Parser<uint64> =
         let! bytes = take 6
 
         let value =
-            uint64 bytes.Span[0] <<< 40
-            ||| uint64 bytes.Span[1] <<< 32
-            ||| uint64 bytes.Span[2] <<< 24
-            ||| uint64 bytes.Span[3] <<< 16
-            ||| uint64 bytes.Span[4] <<< 8
-            ||| uint64 bytes.Span[5]
+            uint64 bytes.Span[0]
+            ||| (uint64 bytes.Span[1] <<< 8)
+            ||| (uint64 bytes.Span[2] <<< 16)
+            ||| (uint64 bytes.Span[3] <<< 24)
+            ||| (uint64 bytes.Span[4] <<< 32)
+            ||| (uint64 bytes.Span[5] <<< 40)
 
         return value
     }

@@ -3,6 +3,7 @@ namespace Metering.Mbus.Protocol.Messages
 open Metering.Common.Decoding.Validators.Core
 open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module SecondaryStationMessage =
 
     let private frameFailed frame message =

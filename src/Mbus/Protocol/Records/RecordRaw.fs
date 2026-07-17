@@ -85,7 +85,7 @@ module RecordRaw =
         (b &&& maskSpecFn) >>> shiftSpecFn
 
     let private (|IsDataRecord|_|) b =
-        if not (isSpecFn b) then Some b else None
+        if not (isSpecFn b) && not (isSelection b) then Some b else None
 
     let private (|IsSelection|_|) b =
         if isSelection b then Some b else None
@@ -106,15 +106,15 @@ module RecordRaw =
         let! dif = peekU8
 
         match dif with
-        | IsDataRecord _ ->
-            return!
-                parseField "Data Record" DataRecordRaw.parse
-                |>> Data
-
         | IsSelection _ ->
             return!
                 parseField "SelectionForReadout" SelectionRaw.parse
                 |>> Selection
+
+        | IsDataRecord _ ->
+            return!
+                parseField "Data Record" DataRecordRaw.parse
+                |>> Data
 
         | IsIdleFiller _ ->
             return!

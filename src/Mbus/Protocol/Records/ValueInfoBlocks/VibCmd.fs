@@ -5,6 +5,7 @@ open Metering.Common.Decoding.Validators.Core
 open Metering.Mbus.Protocol.Records
 open Metering.Mbus.Protocol.Records.ValueInfoBlocks.VibCommon
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module VibCmd =
 
     let fromRaw
@@ -39,4 +40,3 @@ module VibCmd =
                                 })
                         raw
         }
-

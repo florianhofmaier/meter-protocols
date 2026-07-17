@@ -57,10 +57,14 @@ module Integer24Bit =
     let private read24BitLittleEndian (bytes: ReadOnlyMemory<byte>) : int32 =
         let span = bytes.Span
         let value =
-            uint32 span[0] <<< 16
-            ||| uint32 span[1] <<< 8
-            ||| uint32 span[2]
-        int32 value
+            uint32 span[0]
+            ||| (uint32 span[1] <<< 8)
+            ||| (uint32 span[2] <<< 16)
+
+        if (value &&& (1u <<< 23)) <> 0u then
+            int32 (value - (1u <<< 24))
+        else
+            int32 value
 
     let fromBytes bytes: Validation<int32> =
         Utility.convert bytes 3 read24BitLittleEndian
@@ -75,13 +79,17 @@ module Integer48Bit =
     let private read48BitLittleEndian (bytes: ReadOnlyMemory<byte>) : int64 =
         let span = bytes.Span
         let value =
-            uint64 span[0] <<< 40
-            ||| uint64 span[1] <<< 32
-            ||| uint64 span[2] <<< 24
-            ||| uint64 span[3] <<< 16
-            ||| uint64 span[4] <<< 8
-            ||| uint64 span[5]
-        int64 value
+            uint64 span[0]
+            ||| (uint64 span[1] <<< 8)
+            ||| (uint64 span[2] <<< 16)
+            ||| (uint64 span[3] <<< 24)
+            ||| (uint64 span[4] <<< 32)
+            ||| (uint64 span[5] <<< 40)
+
+        if (value &&& (1UL <<< 47)) <> 0UL then
+            int64 (value - (1UL <<< 48))
+        else
+            int64 value
 
     let fromBytes bytes: Validation<int64> =
         Utility.convert bytes 6 read48BitLittleEndian

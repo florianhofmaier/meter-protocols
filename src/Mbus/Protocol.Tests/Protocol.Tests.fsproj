@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <GenerateProgramFile>false</GenerateProgramFile>
+        <RootNamespace>Metering.Mbus.Protocol.Tests</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="TestSupport.fs" />
+        <Compile Include="ValueConverterTests.fs" />
+        <Compile Include="VariableLengthValueTests.fs" />
+        <Compile Include="RecordRawTests.fs" />
+        <Compile Include="NumberOfEncryptedBlocksTests.fs" />
+        <Compile Include="Mode5Tests.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+        <PackageReference Include="xunit.v3" Version="3.0.1" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" PrivateAssets="all" />
+        <PackageReference Include="FsUnit.Xunit" Version="7.1.1" />
+        <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\Common\ByteReaders\ByteReaders.csproj" />
+        <ProjectReference Include="..\..\Common\Decoders\Decoders.fsproj" />
+        <ProjectReference Include="..\..\Common\Parsers\Parsers.fsproj" />
+        <ProjectReference Include="..\..\Common\Validators\Validators.fsproj" />
+        <ProjectReference Include="..\Protocol\Protocol.fsproj" />
+    </ItemGroup>
+
+</Project>

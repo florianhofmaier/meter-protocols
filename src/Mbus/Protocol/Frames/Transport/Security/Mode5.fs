@@ -98,54 +98,29 @@ module Mode5 =
         iv.AsSpan(8, 8).Fill(acc)
         ReadOnlyMemory iv
 
-    let private validateAplLength
-        (aplData: Field<ReadOnlyMemory<byte>>)
-        : Validation<unit> =
-
-        if aplData.Value.Length % encryptedBlockLength <> 0 then
-            failed
-                aplData
-                $"APL data length is not a multiple of {encryptedBlockLength} byte(s). Partial encryption is not supported."
-        else
-            passed ()
-
-    let private validateNumberOfEncryptedBlocks
-        (cnf: Field<ConfigurationFieldMode5>)
-        (aplData: Field<ReadOnlyMemory<byte>>)
-        : Validation<int> =
-
-        let blocks =
-            cnf.Value.NumberOfEncryptedBlocks
-
-        match NumberOfEncryptedBlocks.value blocks with
-        | v when v < aplData.Value.Length ->
-            failed
-                aplData
-                "partial encryption is not supported"
-
-        | 0x0F ->
-            aplData.Value.Length
-            |> int
-            |> passed
-
-        | value ->
-            value * encryptedBlockLength
-            |> passed
-
     let private validateEncryptedLength
         (cnf: Field<ConfigurationFieldMode5>)
         (aplData: Field<ReadOnlyMemory<byte>>)
         : Validation<int> =
 
-        validator {
-            let! _ =
-                validateAplLength aplData
+        let encryptedLength =
+            cnf.Value.NumberOfEncryptedBlocks
+            |> NumberOfEncryptedBlocks.value
+            |> (*) encryptedBlockLength
 
-            and! encryptedLength =
-                validateNumberOfEncryptedBlocks cnf aplData
+        let availableLength =
+            aplData.Value.Length
 
-            return encryptedLength
-        }
+        if encryptedLength > availableLength then
+            failed
+                aplData
+                $"Declared encrypted length is {encryptedLength} byte(s), but only {availableLength} byte(s) are available."
+        elif encryptedLength < availableLength then
+            failed
+                aplData
+                $"Security mode 5 partial encryption is standard-defined but currently unsupported. Declared encrypted length is {encryptedLength} byte(s), available payload is {availableLength} byte(s)."
+        else
+            passed encryptedLength
 
     let unprotect
         (ctx: SecurityContext)
@@ -159,14 +134,14 @@ module Mode5 =
             let! mode5 =
                 validate (fun field -> validateCtx field ctx) aplData
 
-            let! _encryptedLength =
+            let! encryptedLength =
                 validate (validateEncryptedLength cnf) aplData
 
             let iv =
                 buildIv meterAddress acc.Value
 
             let cipherText =
-                aplData.Value
+                aplData.Value.Slice(0, encryptedLength)
 
             let key =
                 Mode5SecurityContext.value mode5
@@ -189,11 +164,14 @@ module Mode5 =
                         "security mode 5 AES check failed"
 
             | Ok plain ->
+                let applicationBytes =
+                    plain.Slice(2)
+
                 return!
                     createDerivedSource
                         "Decrypted APL Data"
                         (SourceTransform.Decrypt "M-Bus security mode 5 AES-CBC-128")
                         true
                         aplData
-                        plain
+                        applicationBytes
         }
