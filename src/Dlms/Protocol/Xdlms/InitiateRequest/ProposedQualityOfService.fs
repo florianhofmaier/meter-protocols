@@ -16,7 +16,10 @@ module ProposedQualityOfService =
         value
 
     let validate
-        (raw: ParsedField<Axdr.Integer8>)
-        : Validation<ProposedQualityOfService> =
+        (raw: Field<Axdr.Integer8>)
+        : Validation<Field<ProposedQualityOfService>> =
 
-        raw.Value |> create |> passed
+        raw.Value
+        |> create
+        |> fun value -> Field.withValue value raw
+        |> passed

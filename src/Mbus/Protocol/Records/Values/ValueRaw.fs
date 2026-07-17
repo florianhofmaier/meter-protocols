@@ -11,22 +11,22 @@ open Metering.Mbus.Protocol.Records.DataInfoBlocks
 
 type ValueRaw =
     | NoData
-    | Int8 of ParsedField<ReadOnlyMemory<byte>>
-    | Int16 of ParsedField<ReadOnlyMemory<byte>>
-    | Int24 of ParsedField<ReadOnlyMemory<byte>>
-    | Int32 of ParsedField<ReadOnlyMemory<byte>>
-    | Int48 of ParsedField<ReadOnlyMemory<byte>>
-    | Int64 of ParsedField<ReadOnlyMemory<byte>>
-    | Real32 of ParsedField<ReadOnlyMemory<byte>>
-    | Bcd2Digit of ParsedField<ReadOnlyMemory<byte>>
-    | Bcd4Digit of ParsedField<ReadOnlyMemory<byte>>
-    | Bcd6Digit of ParsedField<ReadOnlyMemory<byte>>
-    | Bcd8Digit of ParsedField<ReadOnlyMemory<byte>>
-    | Bcd12Digit of ParsedField<ReadOnlyMemory<byte>>
-    | Text of ParsedField<ReadOnlyMemory<byte>>
-    | PosBcd of ParsedField<ReadOnlyMemory<byte>>
-    | NegBcd of ParsedField<ReadOnlyMemory<byte>>
-    | Binary of ParsedField<ReadOnlyMemory<byte>>
+    | Int8 of Field<ReadOnlyMemory<byte>>
+    | Int16 of Field<ReadOnlyMemory<byte>>
+    | Int24 of Field<ReadOnlyMemory<byte>>
+    | Int32 of Field<ReadOnlyMemory<byte>>
+    | Int48 of Field<ReadOnlyMemory<byte>>
+    | Int64 of Field<ReadOnlyMemory<byte>>
+    | Real32 of Field<ReadOnlyMemory<byte>>
+    | Bcd2Digit of Field<ReadOnlyMemory<byte>>
+    | Bcd4Digit of Field<ReadOnlyMemory<byte>>
+    | Bcd6Digit of Field<ReadOnlyMemory<byte>>
+    | Bcd8Digit of Field<ReadOnlyMemory<byte>>
+    | Bcd12Digit of Field<ReadOnlyMemory<byte>>
+    | Text of Field<ReadOnlyMemory<byte>>
+    | PosBcd of Field<ReadOnlyMemory<byte>>
+    | NegBcd of Field<ReadOnlyMemory<byte>>
+    | Binary of Field<ReadOnlyMemory<byte>>
     | SelectionForReadout
 
 module ValueRaw =

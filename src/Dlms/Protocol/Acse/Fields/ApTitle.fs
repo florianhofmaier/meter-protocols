@@ -16,5 +16,5 @@ module ApTitle =
     let value (ApTitle value) =
         value
 
-    let validate (raw: ParsedField<Ber.OctetString>) =
+    let validate (raw: Field<Ber.OctetString>) =
         raw.Value |> create |> passed

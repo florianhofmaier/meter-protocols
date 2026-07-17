@@ -12,23 +12,23 @@ type AuthenticationFunctionalUnit =
 
 module AuthenticationFunctionalUnit =
     let private validateMechanism
-        (value: ParsedField<MechanismName option>)
+        (value: Field<MechanismName option>)
         : Validation<MechanismName> =
         requireSome
             "missing mechanism-name although authentication is selected"
             value
 
     let private validateValue
-        (value: ParsedField<AuthenticationValue option>)
+        (value: Field<AuthenticationValue option>)
         : Validation<AuthenticationValue> =
         requireSome
             "missing calling-authentication-value although authentication is selected"
             value
 
     let private buildSelectedAuthentication
-        (mechanism: ParsedField<MechanismName>)
-        (value: ParsedField<AuthenticationValue>)
-        : Validation<ParsedField<AuthenticationFunctionalUnit>> =
+        (mechanism: Field<MechanismName>)
+        (value: Field<AuthenticationValue>)
+        : Validation<Field<AuthenticationFunctionalUnit>> =
 
         match mechanism.Value with
         | MechanismName.LowestLevelSecurity ->
@@ -43,9 +43,9 @@ module AuthenticationFunctionalUnit =
             passed (AuthenticationFunctionalUnit.HighLevelSecurity (hls, value.Value))
 
     let private validateSelected
-        (mechanismName: ParsedField<MechanismName option>)
-        (callingAuthenticationValue: ParsedField<AuthenticationValue option>)
-        : Validation<ParsedField<AuthenticationFunctionalUnit>> =
+        (mechanismName: Field<MechanismName option>)
+        (callingAuthenticationValue: Field<AuthenticationValue option>)
+        : Validation<Field<AuthenticationFunctionalUnit>> =
         validator {
             let! mechanism =
                 validateMechanism mechanismName

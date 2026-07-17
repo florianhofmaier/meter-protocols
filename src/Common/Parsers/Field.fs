@@ -2,30 +2,52 @@ namespace Metering.Common.Decoding.Parsers
 
 open Metering.Common.Decoding.Parsers.Types
 
-type ParsedField<'a> =
+type Field<'a> =
     {
         Id : FieldId
         Span : SourceSpan
         Value : 'a
     }
 
-module ParsedField =
+module Field =
 
-    let value (field: ParsedField<'a>) =
+    let value (field: Field<'a>) =
         field.Value
 
-    let id (field: ParsedField<'a>) =
+    let id (field: Field<'a>) =
         field.Id
 
-    let span (field: ParsedField<'a>) =
+    let span (field: Field<'a>) =
         field.Span
 
-    let map f (field: ParsedField<'a>) =
+    let map f (field: Field<'a>) =
         {
             Id = field.Id
             Span = field.Span
             Value = f field.Value
         }
+
+    let withValue value field =
+        map (fun _ -> value) field
+
+type ParsedField<'a> = Field<'a>
+
+module ParsedField =
+
+    let value field =
+        Field.value field
+
+    let id field =
+        Field.id field
+
+    let span field =
+        Field.span field
+
+    let map f field =
+        Field.map f field
+
+    let withValue value field =
+        Field.withValue value field
 
 module FieldParser =
 
@@ -34,7 +56,7 @@ module FieldParser =
     let parseField
         (name: string)
         (inner: Parser<'a>)
-        : Parser<ParsedField<'a>> =
+        : Parser<Field<'a>> =
 
         fun ctx ->
             let start =

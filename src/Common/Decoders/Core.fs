@@ -48,7 +48,7 @@ type Decoder<'a> =
     DecodeContext -> DecodeResult<'a>
 
 type Peek<'a> =
-    ParsedField<ReadOnlyMemory<byte>> -> Result<'a, ParserError>
+    Field<ReadOnlyMemory<byte>> -> Result<'a, ParserError>
 
 module Core =
 
@@ -62,7 +62,7 @@ module Core =
 
     let private runParser
         (parser: Parser<'a>)
-        (source: ParsedField<ReadOnlyMemory<byte>>)
+        (source: Field<ReadOnlyMemory<byte>>)
         : Decoder<'a> =
 
         fun context ->
@@ -77,22 +77,22 @@ module Core =
                 DecodeFailed (ParseFailed error, [])
 
     let parse
-        (parser: Parser<ParsedField<'raw>>)
-        (source: ParsedField<ReadOnlyMemory<byte>>)
-        : Decoder<ParsedField<'raw>> =
+        (parser: Parser<Field<'raw>>)
+        (source: Field<ReadOnlyMemory<byte>>)
+        : Decoder<Field<'raw>> =
 
         runParser parser source
 
     let parseValue
         (parser: Parser<'value>)
-        (source: ParsedField<ReadOnlyMemory<byte>>)
+        (source: Field<ReadOnlyMemory<byte>>)
         : Decoder<'value> =
 
         runParser parser source
 
     let validate
-        (validator: ParsedField<'raw> -> Validation<'valid>)
-        (raw: ParsedField<'raw>)
+        (validator: Field<'raw> -> Validation<'valid>)
+        (raw: Field<'raw>)
         : Decoder<'valid> =
 
         fun _ ->
@@ -107,9 +107,9 @@ module Core =
         (name: string)
         (transform: SourceTransform)
         (sensitive: bool)
-        (origin: ParsedField<_>)
+        (origin: Field<_>)
         (bytes: ReadOnlyMemory<byte>)
-        : Decoder<ParsedField<ReadOnlyMemory<byte>>> =
+        : Decoder<Field<ReadOnlyMemory<byte>>> =
 
         fun context ->
             match context.Sources with

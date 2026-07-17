@@ -24,7 +24,7 @@ type CosemAddress =
 
 type XxDataIndication =
     {
-        Payload : ParsedField<ReadOnlyMemory<byte>>
+        Payload : Field<ReadOnlyMemory<byte>>
         Address : CosemAddress
     }
 

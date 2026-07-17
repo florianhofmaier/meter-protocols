@@ -7,18 +7,18 @@ open Metering.Dlms.Protocol.Xdlms
 
 type InitiateRequestValidatedFields =
     {
-        DedicatedKey : DedicatedKey option
-        ResponseAllowed : ResponseAllowed
-        ProposedQualityOfService : ProposedQualityOfService option
-        ProposedDlmsVersionNumber : DlmsVersionNumber
-        ProposedConformance : Conformance
-        ClientMaxReceivePduSize : ClientMaxReceivePduSize
+        DedicatedKey : Field<DedicatedKey> option
+        ResponseAllowed : Field<ResponseAllowed>
+        ProposedQualityOfService : Field<ProposedQualityOfService> option
+        ProposedDlmsVersionNumber : Field<DlmsVersionNumber>
+        ProposedConformance : Field<Conformance>
+        ClientMaxReceivePduSize : Field<ClientMaxReceivePduSize>
     }
 
 module InitiateRequestValidatedFields =
 
     let fromParsed
-        (raw: ParsedField<InitiateRequestRaw>)
+        (raw: Field<InitiateRequestRaw>)
         : Validation<InitiateRequestValidatedFields> =
 
         validator {
@@ -30,10 +30,10 @@ module InitiateRequestValidatedFields =
 
             and! responseAllowed =
                 raw.Value.ResponseAllowed
-                |> Axdr.Default.validate
+                |> Axdr.Default.validateField
                     ResponseAllowed.defaultValue
                     (Axdr.InfoWhenExplicitDefault "response-allowed is explicitly encoded with its DEFAULT value TRUE")
-                    ResponseAllowed.validate
+                    (ResponseAllowed.validate >> map Field.value)
 
             and! proposedQualityOfService =
                 raw.Value.ProposedQualityOfService

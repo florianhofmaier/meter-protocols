@@ -17,9 +17,9 @@ module VersionRaw =
     let value (RawVersion value) =
         value
 
-    let parse : Parser<ParsedField<VersionRaw>> =
+    let parse : Parser<Field<VersionRaw>> =
         parseField "Version" parseU8
-        |>> ParsedField.map RawVersion
+        |>> Field.map RawVersion
 
 module Version =
 
@@ -27,14 +27,15 @@ module Version =
         value
 
     let fromRaw
-        (raw: ParsedField<VersionRaw>)
-        : Validation<Version> =
+        (raw: Field<VersionRaw>)
+        : Validation<Field<Version>> =
 
         let value = VersionRaw.value raw.Value
 
         if value = 0xFFuy then
             failed raw "Wildcard byte 0xFF is not allowed in version identification"
         else
-            passed (Version value)
-
+            raw
+            |> Field.withValue (Version value)
+            |> passed
 

@@ -56,7 +56,7 @@ module ActionCode =
             | None -> None, pos
 
     let map
-        (infoBlock: ParsedField<InfoBlockRaw>)
+        (infoBlock: Field<InfoBlockRaw>)
         (pos: int)
         : Validation<ActionCode> * int =
 

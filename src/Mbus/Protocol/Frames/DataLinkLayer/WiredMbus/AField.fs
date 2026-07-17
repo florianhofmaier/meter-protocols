@@ -14,9 +14,9 @@ module AFieldRaw =
     let value (PrimaryAddress value) =
         value
 
-    let parse : Parser<ParsedField<AFieldRaw>> =
+    let parse : Parser<Field<AFieldRaw>> =
         parseField "PrimaryAddress" parseU8
-        |>> ParsedField.map PrimaryAddress
+        |>> Field.map PrimaryAddress
 
 type PrimAdr =
     private PrimAdr of uint8
@@ -46,31 +46,33 @@ type AField =
 module AField =
 
     let fromRaw
-        (raw: ParsedField<AFieldRaw>)
-        : Validation<AField> =
+        (raw: Field<AFieldRaw>)
+        : Validation<Field<AField>> =
 
         let value = AFieldRaw.value raw.Value
 
         match AFieldRaw.value raw.Value with
             | 0uy ->
-                passed Unconfigured
+                raw |> Field.withValue Unconfigured |> passed
 
             | 251uy ->
-                passed RepeaterMgmt
+                raw |> Field.withValue RepeaterMgmt |> passed
 
             | 253uy ->
-                passed SelectionOfDevice
+                raw |> Field.withValue SelectionOfDevice |> passed
 
             | 254uy ->
-                passed Diagnosis
+                raw |> Field.withValue Diagnosis |> passed
 
             | 255uy ->
-                passed Broadcast
+                raw |> Field.withValue Broadcast |> passed
 
             | _ ->
                 match PrimAdr.tryCreate value with
                 | Some adr ->
-                    passed (Configured adr)
+                    raw
+                    |> Field.withValue (Configured adr)
+                    |> passed
 
                 | None ->
                     failed raw $"Invalid AField value: 0x{value:X2}"

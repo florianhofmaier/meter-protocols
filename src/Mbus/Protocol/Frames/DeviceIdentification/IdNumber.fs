@@ -19,9 +19,9 @@ module IdNumberRaw =
     let value (RawIdNumber value) =
         value
 
-    let parse : Parser<ParsedField<IdNumberRaw>> =
+    let parse : Parser<Field<IdNumberRaw>> =
         parseField "Identification Number" parseU32LittleEndian
-        |>> ParsedField.map RawIdNumber
+        |>> Field.map RawIdNumber
 
 module IdNumber =
 
@@ -34,8 +34,8 @@ module IdNumber =
         Bcd.encodeUInt32 digitCount value
 
     let fromRaw
-        (raw: ParsedField<IdNumberRaw>)
-        : Validation<IdNumber> =
+        (raw: Field<IdNumberRaw>)
+        : Validation<Field<IdNumber>> =
 
         let value = IdNumberRaw.value raw.Value
 
@@ -47,6 +47,6 @@ module IdNumber =
             value
             |> Bcd.decodeUInt32 digitCount
             |> IdNumber
+            |> fun value -> Field.withValue value raw
             |> passed
-
 

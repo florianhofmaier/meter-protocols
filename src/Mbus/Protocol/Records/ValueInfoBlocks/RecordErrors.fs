@@ -57,7 +57,7 @@ module RecordError =
         Utility.tryMap table bytes pos
 
     let map
-        (infoBlock: ParsedField<InfoBlockRaw>)
+        (infoBlock: Field<InfoBlockRaw>)
         (pos: int)
         : Validation<RecordError> * int =
 

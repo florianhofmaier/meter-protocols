@@ -15,7 +15,7 @@ type Dib =
 module Dib =
 
     let fromRaw
-        (raw: ParsedField<InfoBlockRaw>)
+        (raw: Field<InfoBlockRaw>)
         : Validation<Dib> =
 
         let bytes = InfoBlockRaw.bytes raw.Value

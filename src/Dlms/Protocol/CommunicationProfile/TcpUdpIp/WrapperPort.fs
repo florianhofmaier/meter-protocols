@@ -1,5 +1,6 @@
 namespace Metering.Dlms.Protocol.CommunicationProfile.TcpUdpIp
 
+open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
 
 type WrapperPort =
@@ -23,25 +24,29 @@ module ClientWrapperPort =
         (0x0002us <= value && value <= 0x000Fus)
         || (0x0011us <= value && value <= 0x00FFus)
 
-    let fromRaw (raw: WrapperPort) : Validation<ClientWrapperPort> =
-        let value = WrapperPort.value raw
+    let fromRaw
+        (raw: Field<WrapperPort>)
+        : Validation<Field<ClientWrapperPort>> =
+
+        let value = WrapperPort.value raw.Value
 
         match value with
         | 0x0000us ->
-            validationOkClientNoStation
+            raw |> Field.withValue ClientNoStation |> passed
 
         | 0x0001us ->
-            validationOkClientManagementProcess
+            raw |> Field.withValue ClientManagementProcess |> passed
 
         | 0x0010us ->
-            validationOkPublicClient
+            raw |> Field.withValue PublicClient |> passed
 
         | value when isAssignedClientApplicationProcess value ->
-            validationOk(AssignedClientApplicationProcess raw)
+            raw
+            |> Field.withValue (AssignedClientApplicationProcess raw.Value)
+            |> passed
 
         | other ->
-            validationError
-                $"invalid client wrapper port 0x{other:X4}"
+            failed raw $"invalid client wrapper port 0x{other:X4}"
 
 type ServerWrapperPort =
     | ServerNoStation
@@ -53,26 +58,29 @@ module ServerWrapperPort =
     let private isAssignedLogicalDevice value =
         0x0010us <= value && value <= 0x007Eus
 
-    let fromRaw (raw: WrapperPort) : Validation<ServerWrapperPort> =
-        let value = WrapperPort.value raw
+    let fromRaw
+        (raw: Field<WrapperPort>)
+        : Validation<Field<ServerWrapperPort>> =
+
+        let value = WrapperPort.value raw.Value
 
         match value with
         | 0x0000us ->
-            validationOkServerNoStation
+            raw |> Field.withValue ServerNoStation |> passed
 
         | 0x0001us ->
-            validationOkManagementLogicalDevice
+            raw |> Field.withValue ManagementLogicalDevice |> passed
 
         | value when 0x0002us <= value && value <= 0x000Fus ->
-            validationError
-                $"server wrapper port 0x{value:X4} is reserved"
+            failed raw $"server wrapper port 0x{value:X4} is reserved"
 
         | value when isAssignedLogicalDevice value ->
-            validationOk(AssignedLogicalDevice raw)
+            raw
+            |> Field.withValue (AssignedLogicalDevice raw.Value)
+            |> passed
 
         | 0x007Fus ->
-            validationOkAllStationBroadcast
+            raw |> Field.withValue AllStationBroadcast |> passed
 
         | other ->
-            validationError
-                $"invalid server wrapper port 0x{other:X4}"
+            failed raw $"invalid server wrapper port 0x{other:X4}"

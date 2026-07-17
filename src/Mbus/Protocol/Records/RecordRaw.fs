@@ -11,9 +11,9 @@ open Metering.Mbus.Protocol.Records
 
 type DataRecordRaw =
     {
-        Value: ParsedField<ValueRaw>
-        Dib: ParsedField<InfoBlockRaw>
-        Vib: ParsedField<InfoBlockRaw>
+        Value: Field<ValueRaw>
+        Dib: Field<InfoBlockRaw>
+        Vib: Field<InfoBlockRaw>
     }
 
 module DataRecordRaw =
@@ -36,8 +36,8 @@ module DataRecordRaw =
 
 type SelectionRaw =
     {
-        Dib: ParsedField<InfoBlockRaw>
-        Vib: ParsedField<InfoBlockRaw>
+        Dib: Field<InfoBlockRaw>
+        Vib: Field<InfoBlockRaw>
     }
 
 module SelectionRaw =
@@ -55,16 +55,16 @@ module SelectionRaw =
 
 type MfrSpecificDataRaw =
     {
-        Mdh: ParsedField<uint8>
-        Data: ParsedField<ReadOnlyMemory<byte>>
+        Mdh: Field<uint8>
+        Data: Field<ReadOnlyMemory<byte>>
     }
 
 type RecordRaw =
-    | Data of ParsedField<DataRecordRaw>
-    | IdleFiller of ParsedField<unit>
-    | Selection of ParsedField<SelectionRaw>
-    | MfrData of ParsedField<ReadOnlyMemory<byte>>
-    | MfrDataMoreFollows of ParsedField<ReadOnlyMemory<byte>>
+    | Data of Field<DataRecordRaw>
+    | IdleFiller of Field<unit>
+    | Selection of Field<SelectionRaw>
+    | MfrData of Field<ReadOnlyMemory<byte>>
+    | MfrDataMoreFollows of Field<ReadOnlyMemory<byte>>
 
 module RecordRaw =
 

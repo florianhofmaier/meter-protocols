@@ -19,9 +19,9 @@ module ManufacturerRaw =
     let value (RawManufacturer value) =
         value
 
-    let parse : Parser<ParsedField<ManufacturerRaw>> =
+    let parse : Parser<Field<ManufacturerRaw>> =
         parseField "Manufacturer" parseU16LittleEndian
-        |>> ParsedField.map RawManufacturer
+        |>> Field.map RawManufacturer
 
 module private ManufacturerBytes =
 
@@ -40,14 +40,15 @@ module Manufacturer =
         value
 
     let fromRaw
-        (raw: ParsedField<ManufacturerRaw>)
-        : Validation<Manufacturer> =
+        (raw: Field<ManufacturerRaw>)
+        : Validation<Field<Manufacturer>> =
 
         let value = ManufacturerRaw.value raw.Value
 
         if ManufacturerBytes.containsWildcard value then
             failed raw "Wildcard byte 0xFF is not allowed in manufacturer identification"
         else
-            passed (Manufacturer value)
-
+            raw
+            |> Field.withValue (Manufacturer value)
+            |> passed
 

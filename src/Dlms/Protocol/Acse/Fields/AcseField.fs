@@ -8,8 +8,8 @@ module AcseField =
 
     let optional
         (presenceDiagnostic: PresenceDiagnostic)
-        (validatePresent: ParsedField<'raw> -> Validation<'valid>)
-        (raw: ParsedField<'raw option>)
+        (validatePresent: Field<'raw> -> Validation<'valid>)
+        (raw: Field<'raw option>)
         : Validation<'valid option> =
 
         validator {
@@ -34,10 +34,23 @@ module AcseField =
                 return Some valid
         }
 
+    let optionalField
+        (presenceDiagnostic: PresenceDiagnostic)
+        (validatePresent: Field<'raw> -> Validation<'valid>)
+        (raw: Field<'raw option>)
+        : Validation<Field<'valid option>> =
+
+        validator {
+            let! valid =
+                optional presenceDiagnostic validatePresent raw
+
+            return raw |> Field.withValue valid
+        }
+
     let required
         (missingMessage: string)
-        (validatePresent: ParsedField<'raw> -> Validation<'valid>)
-        (raw: ParsedField<'raw option>)
+        (validatePresent: Field<'raw> -> Validation<'valid>)
+        (raw: Field<'raw option>)
         : Validation<'valid> =
 
         validator {
@@ -47,7 +60,7 @@ module AcseField =
                     failed raw missingMessage
 
             | Some value ->
-                let present: ParsedField<'raw> =
+                let present: Field<'raw> =
                     {
                         Id = raw.Id
                         Span = raw.Span
@@ -60,9 +73,9 @@ module AcseField =
 
     let requiredField
         (missingMessage: string)
-        (validatePresent: ParsedField<'raw> -> Validation<'valid>)
-        (raw: ParsedField<'raw option>)
-        : Validation<ParsedField<'valid>> =
+        (validatePresent: Field<'raw> -> Validation<'valid>)
+        (raw: Field<'raw option>)
+        : Validation<Field<'valid>> =
 
         validator {
             let! valid =
@@ -79,8 +92,8 @@ module AcseField =
     let defaulted
         (defaultValue: 'valid)
         (presenceDiagnostic: PresenceDiagnostic)
-        (validatePresent: ParsedField<'raw> -> Validation<'valid>)
-        (raw: ParsedField<'raw option>)
+        (validatePresent: Field<'raw> -> Validation<'valid>)
+        (raw: Field<'raw option>)
         : Validation<'valid> =
 
         validator {
@@ -89,7 +102,7 @@ module AcseField =
                 return defaultValue
 
             | Some value ->
-                let present: ParsedField<'raw> =
+                let present: Field<'raw> =
                     {
                         Id = raw.Id
                         Span = raw.Span
@@ -108,9 +121,9 @@ module AcseField =
     let defaultedField
         (defaultValue: 'valid)
         (presenceDiagnostic: PresenceDiagnostic)
-        (validatePresent: ParsedField<'raw> -> Validation<'valid>)
-        (raw: ParsedField<'raw option>)
-        : Validation<ParsedField<'valid>> =
+        (validatePresent: Field<'raw> -> Validation<'valid>)
+        (raw: Field<'raw option>)
+        : Validation<Field<'valid>> =
 
         validator {
             let! valid =

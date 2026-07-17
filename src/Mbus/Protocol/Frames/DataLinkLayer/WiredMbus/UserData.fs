@@ -7,13 +7,13 @@ open Metering.Common.Decoding.Validators.Core
 
 type FixedLengthUserDataRaw =
     {
-        CField: ParsedField<CFieldRaw>
-        AField: ParsedField<AFieldRaw>
+        CField: Field<CFieldRaw>
+        AField: Field<AFieldRaw>
     }
 
 module FixedLengthUserDataRaw =
 
-    let parse : Parser<ParsedField<FixedLengthUserDataRaw>> =
+    let parse : Parser<Field<FixedLengthUserDataRaw>> =
         parseField "User Data"
         <| parser {
             let! cField = CFieldRaw.parse
@@ -27,33 +27,38 @@ module FixedLengthUserDataRaw =
 
 type FixedLengthUserData =
     {
-        CField: CField
-        AField: AField
+        CField: Field<CField>
+        AField: Field<AField>
     }
 
 module FixedLengthUserData =
 
-    let fromRaw (raw: ParsedField<FixedLengthUserDataRaw>) =
+    let fromRaw
+        (raw: Field<FixedLengthUserDataRaw>)
+        : Validation<Field<FixedLengthUserData>> =
+
         validator {
             let! cField = CField.fromRaw raw.Value.CField
             let! aField = AField.fromRaw raw.Value.AField
 
-            return {
-                CField = cField
-                AField = aField
-            }
+            return
+                raw
+                |> Field.withValue {
+                    CField = cField
+                    AField = aField
+                }
         }
 
 type VariableLengthUserDataRaw =
     {
-        CField: ParsedField<CFieldRaw>
-        AField: ParsedField<AFieldRaw>
-        LinkUserData: ParsedField<LinkUserDataRaw>
+        CField: Field<CFieldRaw>
+        AField: Field<AFieldRaw>
+        LinkUserData: Field<LinkUserDataRaw>
     }
 
 module VariableLengthUserDataRaw =
 
-    let parse : Parser<ParsedField<VariableLengthUserDataRaw>> =
+    let parse : Parser<Field<VariableLengthUserDataRaw>> =
         parseField "User Data"
         <| parser {
             let! cField = CFieldRaw.parse
@@ -69,22 +74,27 @@ module VariableLengthUserDataRaw =
 
 type VariableLengthUserData =
     {
-        CField: CField
-        AField: AField
-        LinkUserData: LinkUserData
+        CField: Field<CField>
+        AField: Field<AField>
+        LinkUserData: Field<LinkUserData>
     }
 
 module VariableLengthUserData =
 
-    let fromRaw (raw: ParsedField<VariableLengthUserDataRaw>) =
+    let fromRaw
+        (raw: Field<VariableLengthUserDataRaw>)
+        : Validation<Field<VariableLengthUserData>> =
+
         validator {
             let! cField = CField.fromRaw raw.Value.CField
             let! aField = AField.fromRaw raw.Value.AField
             let! linkUserData = LinkUserData.fromRaw raw.Value.LinkUserData
 
-            return {
-                CField = cField
-                AField = aField
-                LinkUserData = linkUserData
-            }
+            return
+                raw
+                |> Field.withValue {
+                    CField = cField
+                    AField = aField
+                    LinkUserData = linkUserData
+                }
         }

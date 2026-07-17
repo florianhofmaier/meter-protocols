@@ -15,5 +15,5 @@ module InvocationIdentifier =
     let value (InvocationIdentifier value) =
         value
 
-    let validate (raw: ParsedField<uint32>) =
+    let validate (raw: Field<uint32>) =
         raw.Value |> create |> passed

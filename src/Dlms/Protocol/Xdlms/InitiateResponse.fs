@@ -7,11 +7,11 @@ open Metering.Dlms.Protocol
 
 type InitiateResponseRawFields =
     {
-        NegotiatedQualityOfService : ParsedField<Axdr.Optional<Axdr.Integer8>>
-        NegotiatedDlmsVersionNumber : ParsedField<Axdr.Unsigned8>
-        NegotiatedConformance : ParsedField<ConformanceRaw>
-        ServerMaxReceivePduSize : ParsedField<Axdr.Unsigned16>
-        VaaName : ParsedField<Axdr.Integer16>
+        NegotiatedQualityOfService : Field<Axdr.Optional<Axdr.Integer8>>
+        NegotiatedDlmsVersionNumber : Field<Axdr.Unsigned8>
+        NegotiatedConformance : Field<ConformanceRaw>
+        ServerMaxReceivePduSize : Field<Axdr.Unsigned16>
+        VaaName : Field<Axdr.Integer16>
     }
 
 module InitiateResponseRawFields =
@@ -79,31 +79,34 @@ module VaaName =
 
 type InitiateResponseValidatedFields =
     {
-        NegotiatedQualityOfService : NegotiatedQualityOfService option
-        NegotiatedDlmsVersionNumber : DlmsVersionNumber
-        NegotiatedConformance : Conformance
-        ServerMaxReceivePduSize : ServerMaxReceivePduSize
-        VaaName : VaaName
+        NegotiatedQualityOfService : Field<NegotiatedQualityOfService option>
+        NegotiatedDlmsVersionNumber : Field<DlmsVersionNumber>
+        NegotiatedConformance : Field<Conformance>
+        ServerMaxReceivePduSize : Field<ServerMaxReceivePduSize>
+        VaaName : Field<VaaName>
     }
 
 module InitiateResponseValidatedFields =
     let fromRaw (raw: InitiateResponseRawFields) : Validation<InitiateResponseValidatedFields> =
         validator {
             let negotiatedQualityOfService =
-                raw.NegotiatedQualityOfService
+                raw.NegotiatedQualityOfService.Value
                 |> Axdr.Optional.toOption NegotiatedQualityOfService.create
+                |> fun value -> Field.withValue value raw.NegotiatedQualityOfService
 
-            let negotiatedDlmsVersionNumber =
+            let! negotiatedDlmsVersionNumber =
                 raw.NegotiatedDlmsVersionNumber
-                |> DlmsVersionNumber.create
+                |> Metering.Dlms.Protocol.Xdlms.InitiateRequest.DlmsVersionNumber.validate
 
             let serverMaxReceivePduSize =
-                raw.ServerMaxReceivePduSize
+                raw.ServerMaxReceivePduSize.Value
                 |> ServerMaxReceivePduSize.create
+                |> fun value -> Field.withValue value raw.ServerMaxReceivePduSize
 
             let vaaName =
-                raw.VaaName
+                raw.VaaName.Value
                 |> VaaName.create
+                |> fun value -> Field.withValue value raw.VaaName
 
             let! negotiatedConformance =
                 Conformance.validate raw.NegotiatedConformance

@@ -24,8 +24,8 @@ type Conformance =
 
 module Conformance =
     let validate
-        (raw: ParsedField<ConformanceRaw>)
-        : Validation<Conformance> =
+        (raw: Field<ConformanceRaw>)
+        : Validation<Field<Conformance>> =
 
         validator {
             let bits = raw.Value |> ConformanceRaw.value
@@ -42,7 +42,9 @@ module Conformance =
                     <| "conformance must contain exactly 24 bits / 3 octets"
                     <| (bits.Payload.Length = 3)
 
-            return Conformance bits
+            return
+                raw
+                |> Field.withValue (Conformance bits)
         }
 
     let private isSet bit (Conformance bits) =

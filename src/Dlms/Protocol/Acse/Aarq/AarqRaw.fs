@@ -10,25 +10,25 @@ open Metering.Dlms.Protocol.Acse.Fields
 
 type AarqRaw =
     {
-        ProtocolVersion : ParsedField<Ber.BitString option>
-        ApplicationContextName : ParsedField<Ber.ObjectIdentifier option>
+        ProtocolVersion : Field<Ber.BitString option>
+        ApplicationContextName : Field<Ber.ObjectIdentifier option>
 
-        CalledApTitle : ParsedField<Ber.OctetString option>
-        CalledAeQualifier : ParsedField<Ber.OctetString option>
-        CalledApInvocationId : ParsedField<uint32 option>
-        CalledAeInvocationId : ParsedField<uint32 option>
+        CalledApTitle : Field<Ber.OctetString option>
+        CalledAeQualifier : Field<Ber.OctetString option>
+        CalledApInvocationId : Field<uint32 option>
+        CalledAeInvocationId : Field<uint32 option>
 
-        CallingApTitle : ParsedField<Ber.OctetString option>
-        CallingAeQualifier : ParsedField<Ber.OctetString option>
-        CallingApInvocationId : ParsedField<uint32 option>
-        CallingAeInvocationId : ParsedField<uint32 option>
+        CallingApTitle : Field<Ber.OctetString option>
+        CallingAeQualifier : Field<Ber.OctetString option>
+        CallingApInvocationId : Field<uint32 option>
+        CallingAeInvocationId : Field<uint32 option>
 
-        SenderAcseRequirements : ParsedField<Ber.BitString option>
-        MechanismName : ParsedField<Ber.ObjectIdentifier option>
-        ImplementationInformation : ParsedField<Ber.GraphicString option>
-        CallingAuthenticationValue : ParsedField<AuthenticationValueRaw option>
+        SenderAcseRequirements : Field<Ber.BitString option>
+        MechanismName : Field<Ber.ObjectIdentifier option>
+        ImplementationInformation : Field<Ber.GraphicString option>
+        CallingAuthenticationValue : Field<AuthenticationValueRaw option>
 
-        UserInformation : ParsedField<Ber.OctetString option>
+        UserInformation : Field<Ber.OctetString option>
     }
 
 module AarqRaw =
@@ -149,7 +149,7 @@ module AarqRaw =
                 }
             }
 
-    let parse : Parser<ParsedField<AarqRaw>> =
+    let parse : Parser<Field<AarqRaw>> =
         parseField "AARQ" <|
             parser {
                 do! Tag.expect<AcseTag> AcseTag.Aarq

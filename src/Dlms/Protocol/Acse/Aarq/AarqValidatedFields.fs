@@ -23,13 +23,13 @@ type AarqValidatedFields =
         MechanismName : MechanismName option
         CallingAuthenticationValue : AuthenticationValue option
 
-        UserInformation : ParsedField<UserInformation>
+        UserInformation : Field<UserInformation>
     }
 
 module AarqValidatedFields =
 
     let fromParsed
-        (raw: ParsedField<AarqRaw>)
+        (raw: Field<AarqRaw>)
         : Validation<AarqValidatedFields> =
 
         validator {

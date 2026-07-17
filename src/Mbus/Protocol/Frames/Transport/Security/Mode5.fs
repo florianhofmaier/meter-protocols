@@ -20,7 +20,7 @@ module Mode5 =
         16
 
     let private validateCtx
-        (field: ParsedField<_>)
+        (field: Field<_>)
         (securityContext: SecurityContext)
         : Validation<Mode5SecurityContext> =
 
@@ -29,7 +29,7 @@ module Mode5 =
         | _ -> failed field "security mode 5 context is required"
 
     let private issue
-        (field: ParsedField<_>)
+        (field: Field<_>)
         (message: string)
         : Issue =
 
@@ -44,7 +44,7 @@ module Mode5 =
         |> decodeError
 
     let private mapEncryptionError
-        (field: ParsedField<_>)
+        (field: Field<_>)
         (error: EncryptionError)
         : DecodeFailure =
 
@@ -81,16 +81,16 @@ module Mode5 =
 
         BinaryPrimitives.WriteUInt16LittleEndian(
             iv.AsSpan(0, 2),
-            Manufacturer.value meterAddress.Mfr
+            Manufacturer.value meterAddress.Mfr.Value
         )
 
         BinaryPrimitives.WriteUInt32LittleEndian(
             iv.AsSpan(2, 4),
-            IdNumber.toBcd meterAddress.IdNum
+            IdNumber.toBcd meterAddress.IdNum.Value
         )
 
-        iv[6] <- Version.value meterAddress.Version
-        iv[7] <- DeviceType.value meterAddress.DevType
+        iv[6] <- Version.value meterAddress.Version.Value
+        iv[7] <- DeviceType.value meterAddress.DevType.Value
 
         let acc =
             AccessNumber.value accessNumber
@@ -99,7 +99,7 @@ module Mode5 =
         ReadOnlyMemory iv
 
     let private validateAplLength
-        (aplData: ParsedField<ReadOnlyMemory<byte>>)
+        (aplData: Field<ReadOnlyMemory<byte>>)
         : Validation<unit> =
 
         if aplData.Value.Length % encryptedBlockLength <> 0 then
@@ -110,12 +110,12 @@ module Mode5 =
             passed ()
 
     let private validateNumberOfEncryptedBlocks
-        (cnf: ConfigurationFieldMode5)
-        (aplData: ParsedField<ReadOnlyMemory<byte>>)
+        (cnf: Field<ConfigurationFieldMode5>)
+        (aplData: Field<ReadOnlyMemory<byte>>)
         : Validation<int> =
 
         let blocks =
-            cnf.NumberOfEncryptedBlocks
+            cnf.Value.NumberOfEncryptedBlocks
 
         match NumberOfEncryptedBlocks.value blocks with
         | v when v < aplData.Value.Length ->
@@ -133,8 +133,8 @@ module Mode5 =
             |> passed
 
     let private validateEncryptedLength
-        (cnf: ConfigurationFieldMode5)
-        (aplData: ParsedField<ReadOnlyMemory<byte>>)
+        (cnf: Field<ConfigurationFieldMode5>)
+        (aplData: Field<ReadOnlyMemory<byte>>)
         : Validation<int> =
 
         validator {
@@ -150,10 +150,10 @@ module Mode5 =
     let unprotect
         (ctx: SecurityContext)
         (meterAddress: DeviceIdentification)
-        (acc: AccessNumber)
-        (cnf: ConfigurationFieldMode5)
-        (aplData: ParsedField<ReadOnlyMemory<byte>>)
-        : Decoder<ParsedField<ReadOnlyMemory<byte>>> =
+        (acc: Field<AccessNumber>)
+        (cnf: Field<ConfigurationFieldMode5>)
+        (aplData: Field<ReadOnlyMemory<byte>>)
+        : Decoder<Field<ReadOnlyMemory<byte>>> =
 
         decoder {
             let! mode5 =
@@ -163,7 +163,7 @@ module Mode5 =
                 validate (validateEncryptedLength cnf) aplData
 
             let iv =
-                buildIv meterAddress acc
+                buildIv meterAddress acc.Value
 
             let cipherText =
                 aplData.Value

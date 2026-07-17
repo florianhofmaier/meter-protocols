@@ -8,7 +8,7 @@ open Metering.Mbus.Protocol.Records.ValueInfoBlocks.VibCommon
 module VibCmd =
 
     let fromRaw
-        (raw: ParsedField<InfoBlockRaw>)
+        (raw: Field<InfoBlockRaw>)
         : Validation<VibCmd> =
 
         validator {

@@ -7,7 +7,7 @@ open Metering.Mbus.Protocol.Records
 open Metering.Mbus.Protocol.Records.ValueInfoBlocks.VibCommon
 
 let fromRaw
-    (raw: ParsedField<InfoBlockRaw>)
+    (raw: Field<InfoBlockRaw>)
     : Validation<string> =
 
     let bytes = vibBytes raw

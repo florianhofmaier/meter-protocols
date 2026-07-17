@@ -6,16 +6,16 @@ open Metering.Common.Decoding.Validators.Core
 
 type ProtectedApduValidatedFields =
     {
-        SecurityControl : SecurityControl
-        InvocationCounter : InvocationCounter
-        Payload : ParsedField<ReadOnlyMemory<byte>>
+        SecurityControl : Field<SecurityControl>
+        InvocationCounter : Field<InvocationCounter>
+        Payload : Field<ReadOnlyMemory<byte>>
     }
 
 module ProtectedApduValidatedFields =
 
     let private validatePayload
-        (payload: ParsedField<ReadOnlyMemory<byte>>)
-        : Validation<ParsedField<ReadOnlyMemory<byte>>> =
+        (payload: Field<ReadOnlyMemory<byte>>)
+        : Validation<Field<ReadOnlyMemory<byte>>> =
 
         validator {
             if payload.Value.Length = 0 then
@@ -26,8 +26,8 @@ module ProtectedApduValidatedFields =
 
     let fromRaw
         (apduKind: ProtectedApduKind)
-        (raw: ParsedField<ProtectedApduRaw>)
-        : Validation<ProtectedApduValidatedFields> =
+        (raw: Field<ProtectedApduRaw>)
+        : Validation<Field<ProtectedApduValidatedFields>> =
 
         validator {
             let! securityControl =
@@ -36,9 +36,11 @@ module ProtectedApduValidatedFields =
             let! payload =
                 validatePayload raw.Value.protectedPayload
 
-            return {
-                SecurityControl = securityControl
-                InvocationCounter = raw.Value.InvocationCounter.Value
-                Payload = payload
-            }
+            return
+                raw
+                |> Field.withValue {
+                    SecurityControl = securityControl
+                    InvocationCounter = raw.Value.InvocationCounter
+                    Payload = payload
+                }
         }

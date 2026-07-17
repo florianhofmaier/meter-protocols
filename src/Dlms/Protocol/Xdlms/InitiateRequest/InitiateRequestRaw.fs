@@ -7,12 +7,12 @@ open Metering.Dlms.Protocol.Xdlms
 
 type InitiateRequestRaw =
     {
-        DedicatedKey : ParsedField<Axdr.Optional<Axdr.OctetString>>
-        ResponseAllowed : ParsedField<Axdr.Default<Axdr.Boolean>>
-        ProposedQualityOfService : ParsedField<Axdr.Optional<Axdr.Integer8>>
-        ProposedDlmsVersionNumber : ParsedField<Axdr.Unsigned8>
-        ProposedConformance : ParsedField<ConformanceRaw>
-        ClientMaxReceivePduSize : ParsedField<Axdr.Unsigned16>
+        DedicatedKey : Field<Axdr.Optional<Axdr.OctetString>>
+        ResponseAllowed : Field<Axdr.Default<Axdr.Boolean>>
+        ProposedQualityOfService : Field<Axdr.Optional<Axdr.Integer8>>
+        ProposedDlmsVersionNumber : Field<Axdr.Unsigned8>
+        ProposedConformance : Field<ConformanceRaw>
+        ClientMaxReceivePduSize : Field<Axdr.Unsigned16>
     }
 
 module InitiateRequestRaw =
@@ -52,7 +52,7 @@ module InitiateRequestRaw =
             }
         }
 
-    let parse : Parser<ParsedField<InitiateRequestRaw>> =
+    let parse : Parser<Field<InitiateRequestRaw>> =
         parseField "initiate-request" <|
             parser {
                 do! Tag.expect XdlmsTag.InitiateRequest

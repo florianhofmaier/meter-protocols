@@ -40,7 +40,7 @@ module internal VibCommon =
             Codes: 'code list
         }
 
-    let vibBytes (raw: ParsedField<InfoBlockRaw>) =
+    let vibBytes (raw: Field<InfoBlockRaw>) =
         InfoBlockRaw.bytes raw.Value
 
     let hex (bytes: ReadOnlyMemory<byte>) =
@@ -50,7 +50,7 @@ module internal VibCommon =
         failed raw message
 
     let private invalidVifExtension
-        (raw: ParsedField<InfoBlockRaw>)
+        (raw: Field<InfoBlockRaw>)
         (bytes: ReadOnlyMemory<byte>)
         (pos: int)
         (nextPos: int)
@@ -65,7 +65,7 @@ module internal VibCommon =
         failed raw $"Invalid VIB extension byte 0x{bytes.Span[invalidPos]:X2} at index {invalidPos} in VIB {hex bytes}"
 
     let private unknownCode
-        (raw: ParsedField<InfoBlockRaw>)
+        (raw: Field<InfoBlockRaw>)
         (bytes: ReadOnlyMemory<byte>)
         (unknownCodeDescription: string)
         (pos: int)
@@ -83,7 +83,7 @@ module internal VibCommon =
     let scanExtensions
         (tryMapCode: ReadOnlyMemory<byte> -> int -> 'code option * int)
         (unknownCodeDescription: string)
-        (raw: ParsedField<InfoBlockRaw>)
+        (raw: Field<InfoBlockRaw>)
         (start: int)
         : Validation<ExtensionScan<'code>> =
 
@@ -118,7 +118,7 @@ module internal VibCommon =
         (tryMapCode: ReadOnlyMemory<byte> -> int -> 'code option * int)
         (unknownCodeDescription: string)
         (build: Vif -> VifExtension list -> 'code list -> 'result)
-        (raw: ParsedField<InfoBlockRaw>)
+        (raw: Field<InfoBlockRaw>)
         : Validation<'result> =
 
         validator {

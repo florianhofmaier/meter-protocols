@@ -13,9 +13,9 @@ module AccessNumberRaw =
 
     let value (AccessNumber v) = v
 
-    let parse : Parser<ParsedField<AccessNumberRaw>> =
+    let parse : Parser<Field<AccessNumberRaw>> =
         parseField "AccessNumber" parseU8
-        |>> ParsedField.map AccessNumber
+        |>> Field.map AccessNumber
 
 type AccessNumber =
     private AccessNumber of uint8
@@ -25,5 +25,10 @@ module AccessNumber =
     let value (AccessNumber v) =
         v
 
-    let fromRaw (raw: ParsedField<AccessNumberRaw>) =
-        passed (AccessNumber (AccessNumberRaw.value raw.Value))
+    let fromRaw
+        (raw: Field<AccessNumberRaw>)
+        : Validation<Field<AccessNumber>> =
+
+        raw
+        |> Field.withValue (AccessNumber (AccessNumberRaw.value raw.Value))
+        |> passed

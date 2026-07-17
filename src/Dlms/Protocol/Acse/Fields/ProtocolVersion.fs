@@ -15,7 +15,7 @@ module ProtocolVersion =
         && bits.Payload.Span[0] = 0x80uy
 
     let validateValue
-        (raw: ParsedField<Ber.BitString>)
+        (raw: Field<Ber.BitString>)
         : Validation<ProtocolVersion> =
 
         validator {

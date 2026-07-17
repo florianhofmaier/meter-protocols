@@ -42,7 +42,7 @@ type CosemApdu =
 module CosemApdu =
 
     let decode
-        (bytes: ParsedField<ReadOnlyMemory<byte>>)
+        (bytes: Field<ReadOnlyMemory<byte>>)
         : Decoder<CosemApdu> =
 
         decoder {

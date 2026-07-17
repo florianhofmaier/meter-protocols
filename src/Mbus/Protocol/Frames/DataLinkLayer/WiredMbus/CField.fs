@@ -14,9 +14,9 @@ module CFieldRaw =
     let value (CField v) =
         v
 
-    let parse : Parser<ParsedField<CFieldRaw>> =
+    let parse : Parser<Field<CFieldRaw>> =
         parseField "CField" parseU8
-        |>> ParsedField.map CField
+        |>> Field.map CField
 
 type PrimaryFunction =
     | LinkReset
@@ -27,22 +27,22 @@ type PrimaryFunction =
 
 module PrimaryFunction =
 
-    let validate raw =
+    let validate raw : Validation<Field<PrimaryFunction>> =
         let b = CFieldRaw.value raw.Value
 
         match b &&& 0x0Fuy with
-        | 0x00uy -> passed LinkReset
-        | 0x04uy -> passed SendUserDataNoResponse
-        | 0x03uy -> passed SendUserData
-        | 0x0Auy -> passed RequestUserDataClass1
-        | 0x0Buy -> passed RequestUserDataClass2
+        | 0x00uy -> raw |> Field.withValue LinkReset |> passed
+        | 0x04uy -> raw |> Field.withValue SendUserDataNoResponse |> passed
+        | 0x03uy -> raw |> Field.withValue SendUserData |> passed
+        | 0x0Auy -> raw |> Field.withValue RequestUserDataClass1 |> passed
+        | 0x0Buy -> raw |> Field.withValue RequestUserDataClass2 |> passed
         | _ -> failed raw $"Invalid function code in CField with PRM=1: {b:X2}"
 
 type PrimaryCField =
     {
         Fcb: bool
         Fcv: bool
-        Func: PrimaryFunction
+        Func: Field<PrimaryFunction>
     }
 
 type SecondaryFunction =
@@ -50,18 +50,18 @@ type SecondaryFunction =
 
 module SecondaryFunction =
 
-    let validate raw =
+    let validate raw : Validation<Field<SecondaryFunction>> =
         let b = CFieldRaw.value raw.Value
 
         match b &&& 0x0Fuy with
-        | 0x00uy -> passed ResponseUserData
+        | 0x00uy -> raw |> Field.withValue ResponseUserData |> passed
         | _ -> failed raw $"Invalid function code in CField with PRM=0: {b:X2}"
 
 type SecondaryCField =
     {
         Acd: bool
         Dfc: bool
-        Func: SecondaryFunction
+        Func: Field<SecondaryFunction>
     }
 
 type CField =
@@ -105,11 +105,14 @@ module CField =
             and! func = PrimaryFunction.validate raw
 
             return
-                Primary {
+                raw
+                |> Field.withValue (
+                    Primary {
                     Fcb = fcbAcd
                     Fcv = fcvDfc
                     Func = func
-                }
+                    }
+                )
         }
 
     let private validateSecondary raw fcbAcd fcvDfc =
@@ -118,16 +121,19 @@ module CField =
             and! func = SecondaryFunction.validate raw
 
             return
-                Secondary {
+                raw
+                |> Field.withValue (
+                    Secondary {
                     Acd = fcbAcd
                     Dfc = fcvDfc
                     Func = func
-                }
+                    }
+                )
         }
 
     let fromRaw
-        (raw: ParsedField<CFieldRaw>)
-        : Validation<CField> =
+        (raw: Field<CFieldRaw>)
+        : Validation<Field<CField>> =
 
         validator {
             let b = CFieldRaw.value raw.Value

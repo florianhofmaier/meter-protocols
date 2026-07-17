@@ -8,14 +8,14 @@ open Metering.Common.Decoding.Parsers.Utility
 
 type ProtectedApduRaw =
     {
-        SecurityControl : ParsedField<SecurityControlRaw>
-        InvocationCounter : ParsedField<InvocationCounter>
-        protectedPayload : ParsedField<ReadOnlyMemory<byte>>
+        SecurityControl : Field<SecurityControlRaw>
+        InvocationCounter : Field<InvocationCounter>
+        protectedPayload : Field<ReadOnlyMemory<byte>>
     }
 
 module ProtectedApduRaw =
 
-    let parse : Parser<ParsedField<ProtectedApduRaw>> =
+    let parse : Parser<Field<ProtectedApduRaw>> =
         parseField "protected-apdu"
         <| parser {
             let! securityControl =

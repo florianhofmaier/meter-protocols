@@ -21,7 +21,7 @@ type MechanismName =
 module MechanismName =
 
     let validate
-        (raw: ParsedField<Ber.ObjectIdentifier>)
+        (raw: Field<Ber.ObjectIdentifier>)
         : Validation<MechanismName> =
 
         let prefix =

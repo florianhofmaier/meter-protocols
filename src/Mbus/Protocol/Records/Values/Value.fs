@@ -27,7 +27,7 @@ type Value =
 
 module Value =
 
-    let fromRaw (raw: ParsedField<ValueRaw>) : Validation<Value> =
+    let fromRaw (raw: Field<ValueRaw>) : Validation<Value> =
         validator {
             match raw.Value with
             | ValueRaw.NoData ->

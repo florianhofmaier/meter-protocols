@@ -21,7 +21,7 @@ module ApplicationContextName =
         Ber.ObjectIdentifier.parseContent
 
     let validate
-        (raw: ParsedField<Ber.ObjectIdentifier>)
+        (raw: Field<Ber.ObjectIdentifier>)
         : Validation<ApplicationContextName> =
 
         validator {

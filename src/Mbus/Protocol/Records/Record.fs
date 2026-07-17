@@ -44,7 +44,7 @@ type RecordCmd =
 module DataRecordRsp =
 
     let fromRaw
-        (raw: ParsedField<DataRecordRaw>)
+        (raw: Field<DataRecordRaw>)
         : Validation<DataRecordRsp> =
 
         validator {
@@ -63,7 +63,7 @@ module DataRecordRsp =
 module DataRecordCmd =
 
     let fromRaw
-        (raw: ParsedField<DataRecordRaw>)
+        (raw: Field<DataRecordRaw>)
         : Validation<DataRecordCmd> =
 
         validator {

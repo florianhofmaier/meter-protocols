@@ -16,7 +16,7 @@ type AcseApdu =
 module AcseApdu =
 
     let decode
-        (bytes: ParsedField<ReadOnlyMemory<byte>>)=
+        (bytes: Field<ReadOnlyMemory<byte>>)=
         decoder {
             let! tag = parseValue Tag.peek<AcseTag> bytes
 

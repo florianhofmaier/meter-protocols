@@ -16,5 +16,5 @@ module ImplementationInformation =
     let value (ImplementationInformation value) =
         value
 
-    let validate (raw: ParsedField<Ber.GraphicString>) =
+    let validate (raw: Field<Ber.GraphicString>) =
         raw.Value |> create |> passed

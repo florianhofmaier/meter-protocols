@@ -24,7 +24,7 @@ type OpenRequestValidatedFields =
 module OpenRequestValidatedFields =
 
     let fromRaw
-        (raw: ParsedField<OpenRequestRawFields>)
+        (raw: Field<OpenRequestRawFields>)
         : Validation<OpenRequestValidatedFields> =
 
         validator {

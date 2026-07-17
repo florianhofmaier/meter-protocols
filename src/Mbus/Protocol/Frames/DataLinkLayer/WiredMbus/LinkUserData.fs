@@ -8,12 +8,12 @@ open Metering.Mbus.Protocol.Frames.Transport
 
 type LinkUserDataRaw =
     {
-        Tpl: ParsedField<TplRaw>
+        Tpl: Field<TplRaw>
     }
 
 module LinkUserDataRaw =
 
-    let parse : Parser<ParsedField<LinkUserDataRaw>> =
+    let parse : Parser<Field<LinkUserDataRaw>> =
         parseField "User Data"
         <| parser {
             let! tpl = TplRaw.parse
@@ -26,17 +26,21 @@ module LinkUserDataRaw =
 
 type LinkUserData =
     {
-        Tpl: Tpl
+        Tpl: Field<Tpl>
     }
 
 module LinkUserData =
 
-    let fromRaw (raw: ParsedField<LinkUserDataRaw>) =
+    let fromRaw
+        (raw: Field<LinkUserDataRaw>)
+        : Validation<Field<LinkUserData>> =
+
         validator {
             let! tpl = Tpl.fromRaw raw.Value.Tpl
 
             return
-                {
+                raw
+                |> Field.withValue {
                     Tpl = tpl
                 }
         }

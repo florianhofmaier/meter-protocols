@@ -406,7 +406,7 @@ module Vif =
             | _ -> tryMapPrim bytes pos
 
     let map
-        (infoBlock: ParsedField<InfoBlockRaw>)
+        (infoBlock: Field<InfoBlockRaw>)
         (pos: int)
         : Validation<Vif> * int =
 

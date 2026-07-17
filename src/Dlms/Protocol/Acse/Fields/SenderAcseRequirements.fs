@@ -15,7 +15,7 @@ module SenderAcseRequirements =
         && (bits.Payload.Span[0] &&& 0x80uy) <> 0uy
 
     let validate
-        (raw: ParsedField<Ber.BitString>)
+        (raw: Field<Ber.BitString>)
         : Validation<SenderAcseRequirements> =
 
         validator {

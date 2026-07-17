@@ -5,19 +5,19 @@ open Metering.Common.Decoding.Validators.Core
 
 type DeviceIdentification =
     {
-        IdNum: IdNumber
-        Mfr: Manufacturer
-        Version: Version
-        DevType: DeviceType
+        IdNum: Field<IdNumber>
+        Mfr: Field<Manufacturer>
+        Version: Field<Version>
+        DevType: Field<DeviceType>
     }
 
 module DeviceIdentification =
 
     let fromRaw
-        (idNum: ParsedField<IdNumberRaw>)
-        (mfr: ParsedField<ManufacturerRaw>)
-        (version: ParsedField<VersionRaw>)
-        (devType: ParsedField<DeviceTypeRaw>)
+        (idNum: Field<IdNumberRaw>)
+        (mfr: Field<ManufacturerRaw>)
+        (version: Field<VersionRaw>)
+        (devType: Field<DeviceTypeRaw>)
         : Validation<DeviceIdentification> =
 
         validator {
@@ -34,4 +34,3 @@ module DeviceIdentification =
                     DevType = devType
                 }
         }
-

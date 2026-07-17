@@ -16,6 +16,6 @@ module AeQualifier =
     let value (AeQualifier value) =
         value
 
-    let validate (raw: ParsedField<Ber.OctetString>) =
+    let validate (raw: Field<Ber.OctetString>) =
         raw.Value |> create |> passed
 

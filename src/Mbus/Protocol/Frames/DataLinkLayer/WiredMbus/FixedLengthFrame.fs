@@ -8,15 +8,15 @@ open Metering.Common.Decoding.Validators.Core
 
 type FixedLengthFrameRaw =
     {
-        UserData: ParsedField<FixedLengthUserDataRaw>
+        UserData: Field<FixedLengthUserDataRaw>
         CrcBytes: CrcBytes
-        Crc: ParsedField<Crc>
-        End: ParsedField<EndFieldRaw>
+        Crc: Field<Crc>
+        End: Field<EndFieldRaw>
     }
 
 module FixedLengthFrameRaw =
 
-    let parse : Parser<ParsedField<FixedLengthFrameRaw>> =
+    let parse : Parser<Field<FixedLengthFrameRaw>> =
         parseField "Fixed Length"
         <| parser {
             let! _ = StartFixedLength.parse
@@ -43,15 +43,15 @@ module FixedLengthFrameRaw =
 
 type FixedLengthFrame =
     {
-        CField: CField
-        AField: AField
+        CField: Field<CField>
+        AField: Field<AField>
     }
 
 module FixedLengthFrame =
 
     let fromRaw
-        (raw: ParsedField<FixedLengthFrameRaw>)
-        : Validation<FixedLengthFrame> =
+        (raw: Field<FixedLengthFrameRaw>)
+        : Validation<Field<FixedLengthFrame>> =
 
         validator {
             let! userData = FixedLengthUserData.fromRaw raw.Value.UserData
@@ -60,8 +60,10 @@ module FixedLengthFrame =
 
             and! () = EndField.validate raw.Value.End
 
-            return! passed {
-                CField = userData.CField
-                AField = userData.AField
-            }
+            return
+                raw
+                |> Field.withValue {
+                    CField = userData.Value.CField
+                    AField = userData.Value.AField
+                }
         }

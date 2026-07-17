@@ -7,7 +7,7 @@ open Metering.Dlms.Protocol.ApplicationLayer
 open Metering.Dlms.Protocol.SupportingLayer.TcpUdpIp
 
 let toXxDataIndication
-    (raw: ParsedField<WrapperPduRaw>)
+    (raw: Field<WrapperPduRaw>)
     : Validation<XxDataIndication> =
 
     validator {

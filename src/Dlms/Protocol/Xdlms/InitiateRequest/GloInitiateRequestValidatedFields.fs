@@ -5,7 +5,7 @@ open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol.Security.ProtectedApdus
 
 type GloInitiateRequestValidatedFields =
-    private ProtectedApdu of ProtectedApduValidatedFields
+    private ProtectedApdu of Field<ProtectedApduValidatedFields>
 
 module GloInitiateRequestValidatedFields =
 
@@ -16,7 +16,7 @@ module GloInitiateRequestValidatedFields =
         protectedApdu
 
     let fromRaw
-        (raw: ParsedField<GloInitiateRequestRaw>)
+        (raw: Field<GloInitiateRequestRaw>)
         : Validation<GloInitiateRequestValidatedFields> =
 
         validator {

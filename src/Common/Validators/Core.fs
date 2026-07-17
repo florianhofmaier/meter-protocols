@@ -37,7 +37,7 @@ module Failures =
 let passed value =
     Passed (value, [])
 
-let failed (field: ParsedField<_>) message =
+let failed (field: Field<_>) message =
     Failed (
         Failures.single
             ({
@@ -47,7 +47,7 @@ let failed (field: ParsedField<_>) message =
         []
     )
 
-let info (field: ParsedField<_>) message =
+let info (field: Field<_>) message =
     Passed (
         (),
         [
@@ -59,7 +59,7 @@ let info (field: ParsedField<_>) message =
         ]
     )
 
-let warning (field: ParsedField<_>) message =
+let warning (field: Field<_>) message =
     Passed (
         (),
         [
@@ -71,18 +71,18 @@ let warning (field: ParsedField<_>) message =
         ]
     )
 
-let ensure (field: ParsedField<_>) message condition =
+let ensure (field: Field<_>) message condition =
     if condition then
         passed ()
     else
         failed field message
 
-let requireSome message (field: ParsedField<_>) =
+let requireSome message (field: Field<_>) =
     match field.Value with
     | Some x -> passed x
     | None -> failed field message
 
-let requireNone message (field: ParsedField<_>) =
+let requireNone message (field: Field<_>) =
     match field.Value  with
     | Some _ -> failed field message
     | None -> passed ()

@@ -46,6 +46,14 @@ type RequestAlarms =
         Address: RequestUserDataAddress
     }
 
+type MeterAddress =
+    {
+        IdNum: IdNumber
+        Mfr: Manufacturer
+        Version: Version
+        DevType: DeviceType
+    }
+
 type PrimaryStationMessage =
     // | LinkLayerReset of LinkLayerReset
     // | SelectionOfDevice of SelectionOfDevice
@@ -59,7 +67,7 @@ type ResponseUserData =
         Dfc: bool
         Status: StatusByte
         AccessNumber: AccessNumber
-        MeterAddress: DeviceIdentification
+        MeterAddress: MeterAddress
         UserData: DataRecordRsp seq
         MfrData: MfrSpecificData option
         MoreFollows: bool
@@ -71,7 +79,7 @@ type ResponseAlarms =
         Dfc: bool
         Status: StatusByte
         AccessNumber: AccessNumber
-        MeterAddress: DeviceIdentification
+        MeterAddress: MeterAddress
         Alarms: Alarms
     }
 

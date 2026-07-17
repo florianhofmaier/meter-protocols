@@ -14,15 +14,15 @@ open Metering.Mbus.Protocol.Security
 
 type VariableLengthFrameRaw =
     {
-        UserData: ParsedField<VariableLengthUserDataRaw>
+        UserData: Field<VariableLengthUserDataRaw>
         CrcBytes: CrcBytes
-        Crc: ParsedField<Crc>
-        End: ParsedField<EndFieldRaw>
+        Crc: Field<Crc>
+        End: Field<EndFieldRaw>
     }
 
 module VariableLengthFrameRaw =
 
-    let parse : Parser<ParsedField<VariableLengthFrameRaw>> =
+    let parse : Parser<Field<VariableLengthFrameRaw>> =
         parseField "Variable Length"
         <| parser {
             let! _ = StartVariableLength.parse
@@ -57,9 +57,9 @@ module VariableLengthFrameRaw =
 
 type private VariableLengthEnvelope =
     {
-        CField: CField
-        AField: AField
-        Tpl: Tpl
+        CField: Field<CField>
+        AField: Field<AField>
+        Tpl: Field<Tpl>
     }
 
 module private VariableLengthEnvelope =
@@ -75,54 +75,47 @@ module private VariableLengthEnvelope =
             passed ()
 
     let fromRaw
-        (raw: ParsedField<VariableLengthFrameRaw>)
-        : Validation<VariableLengthEnvelope> =
+        (raw: Field<VariableLengthFrameRaw>)
+        : Validation<Field<VariableLengthEnvelope>> =
 
         validator {
-            let userData =
-                raw.Value.UserData.Value
-
-            let! cField =
-                CField.fromRaw userData.CField
-
-            and! aField =
-                AField.fromRaw userData.AField
-
-            and! tpl =
-                Tpl.fromRaw userData.LinkUserData.Value.Tpl
+            let! userData =
+                VariableLengthUserData.fromRaw raw.Value.UserData
 
             and! _ =
-                AvoidShortHeadersWithEncryption userData.LinkUserData.Value.Tpl
+                AvoidShortHeadersWithEncryption raw.Value.UserData.Value.LinkUserData.Value.Tpl
 
             and! () = Crc.validate raw.Value.Crc raw.Value.CrcBytes
 
             and! () = EndField.validate raw.Value.End
 
-            return {
-                CField = cField
-                AField = aField
-                Tpl = tpl
-            }
+            return
+                raw
+                |> Field.withValue {
+                    CField = userData.Value.CField
+                    AField = userData.Value.AField
+                    Tpl = userData.Value.LinkUserData.Value.Tpl
+                }
         }
 
 type VariableLengthFrame =
     {
-        CField: CField
-        AField: AField
-        Tpl: Tpl
-        Apl: Apl
+        CField: Field<CField>
+        AField: Field<AField>
+        Tpl: Field<Tpl>
+        Apl: Field<Apl>
     }
 
 module VariableLengthFrame =
 
     let private unprotectAplData
         (securityContext: SecurityContext)
-        (tpl: Tpl)
-        : Decoder<ParsedField<ReadOnlyMemory<byte>>> =
+        (tpl: Field<Tpl>)
+        : Decoder<Field<ReadOnlyMemory<byte>>> =
 
         decoder {
-            match tpl with
-            | Tpl.LongHeader ({ Header = LongHeader.Mode5 header } as longTpl) ->
+            match tpl.Value with
+            | Tpl.LongHeader ({ Header = { Value = LongHeader.Mode5 header } } as longTpl) ->
                 return!
                     Mode5.unprotect
                         securityContext
@@ -133,33 +126,35 @@ module VariableLengthFrame =
 
             | _ ->
                 return
-                    tpl
+                    tpl.Value
                     |> Tpl.aplData
                     |> AplDataRaw.toByteField
         }
 
     let decode
         (securityContext: SecurityContext)
-        (raw: ParsedField<VariableLengthFrameRaw>)
-        : Decoder<VariableLengthFrame> =
+        (raw: Field<VariableLengthFrameRaw>)
+        : Decoder<Field<VariableLengthFrame>> =
 
         decoder {
             let! envelope =
                 validate VariableLengthEnvelope.fromRaw raw
 
             let! aplData =
-                unprotectAplData securityContext envelope.Tpl
+                unprotectAplData securityContext envelope.Value.Tpl
 
             let! aplRaw =
-                parse (AplRaw.parse (Tpl.ci envelope.Tpl)) aplData
+                parse (AplRaw.parse (Tpl.ci envelope.Value.Tpl.Value)) aplData
 
             let! apl =
                 validate Apl.fromRaw aplRaw
 
-            return {
-                CField = envelope.CField
-                AField = envelope.AField
-                Tpl = envelope.Tpl
-                Apl = apl
-            }
+            return
+                raw
+                |> Field.withValue {
+                    CField = envelope.Value.CField
+                    AField = envelope.Value.AField
+                    Tpl = envelope.Value.Tpl
+                    Apl = apl
+                }
         }

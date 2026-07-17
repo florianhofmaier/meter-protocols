@@ -15,10 +15,37 @@ open Metering.Mbus.Protocol.Frames.Application
 open Metering.Mbus.Protocol.Frames.Transport
 open Metering.Mbus.Protocol.Security
 
+type FrameTplShortHeaderMode0 =
+    {
+        Ci: Field<ShortHeaderCiField>
+        Header: ShortHeaderMode0
+        AplData: Field<AplDataRaw>
+    }
+
+type FrameTplLongHeaderMode0 =
+    {
+        Ci: Field<LongHeaderCiField>
+        Header: LongHeaderMode0
+        AplData: Field<AplDataRaw>
+    }
+
+type FrameTplLongHeaderMode5 =
+    {
+        Ci: Field<LongHeaderCiField>
+        Header: LongHeaderMode5
+        AplData: Field<AplDataRaw>
+    }
+
+type FrameTpl =
+    | NoneHeader of TplWithNoneHeader
+    | ShortHeaderMode0 of FrameTplShortHeaderMode0
+    | LongHeaderMode0 of FrameTplLongHeaderMode0
+    | LongHeaderMode5 of FrameTplLongHeaderMode5
+
 module FrameTpl =
 
     let private invalidShortMode5
-        (cnf: ParsedField<ConfigurationFieldBitsRaw>)
+        (cnf: Field<ConfigurationFieldBitsRaw>)
         : Validation<_> =
 
         failed
@@ -28,16 +55,16 @@ module FrameTpl =
     let ci =
         function
         | FrameTpl.NoneHeader tpl ->
-            NoneTplHeader tpl.Ci
+            NoneTplHeader tpl.Ci.Value
 
         | FrameTpl.ShortHeaderMode0 tpl ->
-            ShortTplHeader tpl.Ci
+            ShortTplHeader tpl.Ci.Value
 
         | FrameTpl.LongHeaderMode0 tpl ->
-            LongTplHeader tpl.Ci
+            LongTplHeader tpl.Ci.Value
 
         | FrameTpl.LongHeaderMode5 tpl ->
-            LongTplHeader tpl.Ci
+            LongTplHeader tpl.Ci.Value
 
     let aplData =
         function
@@ -54,7 +81,7 @@ module FrameTpl =
             tpl.AplData
 
     let fromRaw
-        (raw: ParsedField<TplRaw>)
+        (raw: Field<TplRaw>)
         : Validation<FrameTpl> =
 
         validator {
@@ -71,7 +98,7 @@ module FrameTpl =
                     let! tpl =
                         TplWithShortHeader.fromRaw tpl
 
-                    match tpl.Header with
+                    match tpl.Header.Value with
                     | ShortHeader.Mode0 header ->
                         return
                             FrameTpl.ShortHeaderMode0
@@ -93,7 +120,7 @@ module FrameTpl =
                 let! tpl =
                     TplWithLongHeader.fromRaw tpl
 
-                match tpl.Header with
+                match tpl.Header.Value with
                 | LongHeader.Mode0 header ->
                     return
                         FrameTpl.LongHeaderMode0
@@ -117,13 +144,13 @@ module FrameTpl =
 module VariableLength =
 
     let private aplBytes
-        (aplData: ParsedField<AplDataRaw>)
-        : ParsedField<ReadOnlyMemory<byte>> =
+        (aplData: Field<AplDataRaw>)
+        : Field<ReadOnlyMemory<byte>> =
 
         AplDataRaw.toByteField aplData
 
     let private encryptionFailed
-        (field: ParsedField<_>)
+        (field: Field<_>)
         (message: string)
         : Decoder<_> =
 
@@ -135,7 +162,7 @@ module VariableLength =
         |> decodeError
 
     let private requireMode5Context
-        (field: ParsedField<_>)
+        (field: Field<_>)
         (securityContext: SecurityContext)
         : Decoder<Mode5SecurityContext> =
 
@@ -152,13 +179,13 @@ module VariableLength =
         }
 
 type FrameRaw =
-    | SingleCharacter of ParsedField<unit>
-    | FixedLength of ParsedField<FixedLengthFrameRaw>
-    | VariableLength of ParsedField<VariableLengthFrameRaw>
+    | SingleCharacter of Field<unit>
+    | FixedLength of Field<FixedLengthFrameRaw>
+    | VariableLength of Field<VariableLengthFrameRaw>
 
 module FrameRaw =
 
-    let parse : Parser<ParsedField<FrameRaw>> =
+    let parse : Parser<Field<FrameRaw>> =
         parseField "Frame"
         <| parser {
             let! startByte = peekU8
@@ -178,15 +205,15 @@ module FrameRaw =
         }
 
 type Frame =
-    | SingleCharacter
-    | FixedLength of FixedLengthFrame
-    | VariableLength of VariableLengthFrame
+    | SingleCharacter of Field<unit>
+    | FixedLength of Field<FixedLengthFrame>
+    | VariableLength of Field<VariableLengthFrame>
 
 module Frame =
 
     let decode
         (securityContext: SecurityContext)
-        (source: ParsedField<ReadOnlyMemory<byte>>)
+        (source: Field<ReadOnlyMemory<byte>>)
         : Decoder<Frame> =
 
         decoder {
@@ -194,9 +221,9 @@ module Frame =
                 parse FrameRaw.parse source
 
             match raw.Value with
-            | FrameRaw.SingleCharacter _ ->
+            | FrameRaw.SingleCharacter singleCharacter ->
                 return
-                    Frame.SingleCharacter
+                    Frame.SingleCharacter singleCharacter
 
             | FrameRaw.FixedLength fixedLength ->
                 let! fixedLength =

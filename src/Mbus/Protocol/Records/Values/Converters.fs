@@ -8,7 +8,7 @@ open Metering.Common.Decoding.Validators.Core
 module private Utility =
 
     let checkValueLength
-        (bytes: ParsedField<ReadOnlyMemory<uint8>>)
+        (bytes: Field<ReadOnlyMemory<uint8>>)
         (expected: int)
         : Validation<unit> =
 
@@ -23,7 +23,7 @@ module private Utility =
         }
 
     let convert
-        (bytes: ParsedField<ReadOnlyMemory<uint8>>)
+        (bytes: Field<ReadOnlyMemory<uint8>>)
         (len: int)
         (f: ReadOnlyMemory<uint8> -> 'a)
         : Validation<'a> =
@@ -33,9 +33,9 @@ module private Utility =
         }
 
     let convertWithValidator
-        (bytes: ParsedField<ReadOnlyMemory<uint8>>)
+        (bytes: Field<ReadOnlyMemory<uint8>>)
         (len: int)
-        (f: ParsedField<ReadOnlyMemory<uint8>> -> Validation<'a>)
+        (f: Field<ReadOnlyMemory<uint8>> -> Validation<'a>)
         : Validation<'a> =
         validator {
             do! checkValueLength bytes len

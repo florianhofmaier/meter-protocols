@@ -42,8 +42,8 @@ module Optional =
 
     let validate
         (presenceDiagnostic: PresenceDiagnostic)
-        (validatePresent: ParsedField<'raw> -> Validation<'valid>)
-        (raw: ParsedField<Optional<'raw>>)
+        (validatePresent: Field<'raw> -> Validation<'valid>)
+        (raw: Field<Optional<'raw>>)
         : Validation<'valid option> =
 
         validator {
@@ -68,6 +68,19 @@ module Optional =
                 return Some valid
         }
 
+    let validateField
+        (presenceDiagnostic: PresenceDiagnostic)
+        (validatePresent: Field<'raw> -> Validation<'valid>)
+        (raw: Field<Optional<'raw>>)
+        : Validation<Field<'valid option>> =
+
+        validator {
+            let! value =
+                validate presenceDiagnostic validatePresent raw
+
+            return raw |> Field.withValue value
+        }
+
     let toOption mapper value =
         match value with
         | Absent -> None
@@ -85,7 +98,7 @@ type ExplicitDefaultDiagnostic =
 module ExplicitDefaultDiagnostic =
 
     let emit
-        (field: ParsedField<_>)
+        (field: Field<_>)
         (diagnostic: ExplicitDefaultDiagnostic)
         : Validation<unit> =
 
@@ -121,8 +134,8 @@ module Default =
     let validate
         (defaultValue: 'valid)
         (explicitDefaultDiagnostic: ExplicitDefaultDiagnostic)
-        (validateExplicit: ParsedField<'raw> -> Validation<'valid>)
-        (raw: ParsedField<Default<'raw>>)
+        (validateExplicit: Field<'raw> -> Validation<'valid>)
+        (raw: Field<Default<'raw>>)
         : Validation<'valid>
         when 'valid : equality =
 
@@ -132,7 +145,7 @@ module Default =
                 return defaultValue
 
             | Explicit value ->
-                let explicitField: ParsedField<'raw> =
+                let explicitField: Field<'raw> =
                     {
                         Id = raw.Id
                         Span = raw.Span
@@ -149,6 +162,21 @@ module Default =
                         passed ()
 
                 return valid
+        }
+
+    let validateField
+        (defaultValue: 'valid)
+        (explicitDefaultDiagnostic: ExplicitDefaultDiagnostic)
+        (validateExplicit: Field<'raw> -> Validation<'valid>)
+        (raw: Field<Default<'raw>>)
+        : Validation<Field<'valid>>
+        when 'valid : equality =
+
+        validator {
+            let! value =
+                validate defaultValue explicitDefaultDiagnostic validateExplicit raw
+
+            return raw |> Field.withValue value
         }
 
 type Boolean =

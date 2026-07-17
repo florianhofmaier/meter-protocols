@@ -10,11 +10,13 @@ type DlmsVersionNumber =
 module DlmsVersionNumber =
 
     let validate
-        (raw: ParsedField<Axdr.Unsigned8>)
-        : Validation<DlmsVersionNumber> =
+        (raw: Field<Axdr.Unsigned8>)
+        : Validation<Field<DlmsVersionNumber>> =
 
         if Axdr.Unsigned8.value raw.Value = 6uy then
-            passed Version6
+            raw
+            |> Field.withValue Version6
+            |> passed
 
         else
             failed

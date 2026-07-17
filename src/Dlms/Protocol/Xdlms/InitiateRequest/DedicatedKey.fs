@@ -18,8 +18,8 @@ module DedicatedKey =
         bytes
 
     let validate
-        (raw: ParsedField<Axdr.OctetString>)
-        : Validation<DedicatedKey> =
+        (raw: Field<Axdr.OctetString>)
+        : Validation<Field<DedicatedKey>> =
 
         validator {
             do!
@@ -32,4 +32,5 @@ module DedicatedKey =
                 raw.Value
                 |> OctetString.toBytes
                 |> DedicatedKey
+                |> fun value -> Field.withValue value raw
         }

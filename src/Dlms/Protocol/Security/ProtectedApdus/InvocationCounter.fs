@@ -20,6 +20,6 @@ module InvocationCounter =
         BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(), value)
         ReadOnlyMemory bytes
 
-    let parse : Parser<ParsedField<InvocationCounter>> =
+    let parse : Parser<Field<InvocationCounter>> =
         parseField "invocation-counter" parseU32BigEndian
-        |>> ParsedField.map InvocationCounter
+        |>> Field.map InvocationCounter

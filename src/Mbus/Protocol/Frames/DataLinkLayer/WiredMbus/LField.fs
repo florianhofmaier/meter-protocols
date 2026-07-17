@@ -13,7 +13,7 @@ module LField =
     let value (LField v) =
         v
 
-    let parse : Parser<ParsedField<LField>> =
+    let parse : Parser<Field<LField>> =
         parseField "Length Field"
         <| parser {
             let! value = parseU8

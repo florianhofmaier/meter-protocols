@@ -9,24 +9,24 @@ open Metering.Mbus.Protocol.Frames.DeviceIdentification
 
 type LongHeaderMode0Raw =
     {
-        IdNum: ParsedField<IdNumberRaw>
-        Mfr: ParsedField<ManufacturerRaw>
-        Version: ParsedField<VersionRaw>
-        DevType: ParsedField<DeviceTypeRaw>
-        Acc: ParsedField<AccessNumberRaw>
-        Status: ParsedField<StatusByteRaw>
-        Cnf: ParsedField<ConfigurationFieldBitsRaw>
+        IdNum: Field<IdNumberRaw>
+        Mfr: Field<ManufacturerRaw>
+        Version: Field<VersionRaw>
+        DevType: Field<DeviceTypeRaw>
+        Acc: Field<AccessNumberRaw>
+        Status: Field<StatusByteRaw>
+        Cnf: Field<ConfigurationFieldBitsRaw>
     }
 
 type LongHeaderMode5Raw =
     {
-        IdNum: ParsedField<IdNumberRaw>
-        Mfr: ParsedField<ManufacturerRaw>
-        Version: ParsedField<VersionRaw>
-        DevType: ParsedField<DeviceTypeRaw>
-        Acc: ParsedField<AccessNumberRaw>
-        Status: ParsedField<StatusByteRaw>
-        Cnf: ParsedField<ConfigurationFieldBitsRaw>
+        IdNum: Field<IdNumberRaw>
+        Mfr: Field<ManufacturerRaw>
+        Version: Field<VersionRaw>
+        DevType: Field<DeviceTypeRaw>
+        Acc: Field<AccessNumberRaw>
+        Status: Field<StatusByteRaw>
+        Cnf: Field<ConfigurationFieldBitsRaw>
     }
 
 type LongHeaderRaw =
@@ -35,7 +35,7 @@ type LongHeaderRaw =
 
 module LongHeaderRaw =
 
-    let parse : Parser<ParsedField<LongHeaderRaw>> =
+    let parse : Parser<Field<LongHeaderRaw>> =
         parseField "Long Tpl Header"
         <| parser {
             let! idNum = IdNumberRaw.parse
@@ -77,17 +77,17 @@ module LongHeaderRaw =
 type LongHeaderMode0 =
     {
         Device: DeviceIdentification
-        Acc: AccessNumber
-        Status: StatusByte
-        Cnf: ConfigurationFieldMode0
+        Acc: Field<AccessNumber>
+        Status: Field<StatusByte>
+        Cnf: Field<ConfigurationFieldMode0>
     }
 
 type LongHeaderMode5 =
     {
         Device: DeviceIdentification
-        Acc: AccessNumber
-        Status: StatusByte
-        Cnf: ConfigurationFieldMode5
+        Acc: Field<AccessNumber>
+        Status: Field<StatusByte>
+        Cnf: Field<ConfigurationFieldMode5>
     }
 
 type LongHeader =
@@ -97,8 +97,8 @@ type LongHeader =
 module LongHeader =
 
     let fromRaw
-        (raw: ParsedField<LongHeaderRaw>)
-        : Validation<LongHeader> =
+        (raw: Field<LongHeaderRaw>)
+        : Validation<Field<LongHeader>> =
 
         validator {
             match raw.Value with
@@ -113,12 +113,15 @@ module LongHeader =
                 let! status = StatusByte.fromRaw header.Status
                 let! cnf = ConfigurationFieldMode0.fromRaw header.Cnf
                 return
-                    Mode0 {
-                        Device = device
-                        Acc = acc
-                        Status = status
-                        Cnf = cnf
-                    }
+                    raw
+                    |> Field.withValue (
+                        Mode0 {
+                            Device = device
+                            Acc = acc
+                            Status = status
+                            Cnf = cnf
+                        }
+                    )
 
             | Mode5Raw header ->
                 let! device =
@@ -131,10 +134,13 @@ module LongHeader =
                 let! status = StatusByte.fromRaw header.Status
                 let! cnf = ConfigurationFieldMode5.fromRaw header.Cnf
                 return
-                    Mode5 {
-                        Device = device
-                        Acc = acc
-                        Status = status
-                        Cnf = cnf
-                    }
+                    raw
+                    |> Field.withValue (
+                        Mode5 {
+                            Device = device
+                            Acc = acc
+                            Status = status
+                            Cnf = cnf
+                        }
+                    )
         }

@@ -14,9 +14,9 @@ module EndFieldRaw =
     let value (EndField v) =
         v
 
-    let parse : Parser<ParsedField<EndFieldRaw>> =
+    let parse : Parser<Field<EndFieldRaw>> =
         parseField "End Field" parseU8
-        |>> ParsedField.map EndField
+        |>> Field.map EndField
 
 module EndField =
 

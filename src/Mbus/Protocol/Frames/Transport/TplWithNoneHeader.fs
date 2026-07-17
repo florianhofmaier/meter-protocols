@@ -7,8 +7,8 @@ open Metering.Mbus.Protocol.Frames
 
 type TplWithNoneHeaderRaw =
     {
-        Ci: ParsedField<NoneHeaderCiField>
-        AplData: ParsedField<AplDataRaw>
+        Ci: Field<NoneHeaderCiField>
+        AplData: Field<AplDataRaw>
     }
 
 module TplWithNoneHeaderRaw =
@@ -26,8 +26,8 @@ module TplWithNoneHeaderRaw =
 
 type TplWithNoneHeader =
     {
-        Ci: NoneHeaderCiField
-        AplData: ParsedField<AplDataRaw>
+        Ci: Field<NoneHeaderCiField>
+        AplData: Field<AplDataRaw>
     }
 
 module TplWithNoneHeader =
@@ -38,7 +38,7 @@ module TplWithNoneHeader =
 
         validator {
             return {
-                Ci = raw.Ci.Value
+                Ci = raw.Ci
                 AplData = raw.AplData
             }
         }

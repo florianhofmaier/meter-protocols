@@ -7,9 +7,9 @@ open Metering.Mbus.Protocol.Frames
 
 type TplWithShortHeaderRaw =
     {
-        Ci: ParsedField<ShortHeaderCiField>
-        Header: ParsedField<ShortHeaderRaw>
-        AplData: ParsedField<AplDataRaw>
+        Ci: Field<ShortHeaderCiField>
+        Header: Field<ShortHeaderRaw>
+        AplData: Field<AplDataRaw>
     }
 
 module TplWithShortHeaderRaw =
@@ -28,9 +28,9 @@ module TplWithShortHeaderRaw =
 
 type TplWithShortHeader =
     {
-        Ci: ShortHeaderCiField
-        Header: ShortHeader
-        AplData: ParsedField<AplDataRaw>
+        Ci: Field<ShortHeaderCiField>
+        Header: Field<ShortHeader>
+        AplData: Field<AplDataRaw>
     }
 
 module TplWithShortHeader =
@@ -44,7 +44,7 @@ module TplWithShortHeader =
 
             return
                 {
-                    Ci = raw.Ci.Value
+                    Ci = raw.Ci
                     Header = header
                     AplData = raw.AplData
                 }

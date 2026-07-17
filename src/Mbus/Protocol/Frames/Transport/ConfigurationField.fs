@@ -11,18 +11,18 @@ type ConfigurationFieldBitsRaw =
     private ConfigurationFieldBits of uint16
 
 type ConfigurationFieldRaw =
-    | Mode0Raw of ParsedField<ConfigurationFieldBitsRaw>
-    | Mode5Raw of ParsedField<ConfigurationFieldBitsRaw>
+    | Mode0Raw of Field<ConfigurationFieldBitsRaw>
+    | Mode5Raw of Field<ConfigurationFieldBitsRaw>
 
 module ConfigurationFieldBitsRaw =
 
     let value (ConfigurationFieldBits v) = v
 
-    let parse : Parser<ParsedField<ConfigurationFieldBitsRaw>> =
+    let parse : Parser<Field<ConfigurationFieldBitsRaw>> =
         parseField
             "Configuration Field"
             parseU16LittleEndian
-        |>> ParsedField.map ConfigurationFieldBits
+        |>> Field.map ConfigurationFieldBits
 
 module ConfigurationFieldRaw =
 
@@ -37,7 +37,7 @@ module ConfigurationFieldRaw =
         |> fun raw -> raw.Value
         |> ConfigurationFieldBitsRaw.value
 
-    let parse : Parser<ParsedField<ConfigurationFieldRaw>> =
+    let parse : Parser<Field<ConfigurationFieldRaw>> =
         parser {
             let! bits = ConfigurationFieldBitsRaw.parse
 
@@ -47,10 +47,10 @@ module ConfigurationFieldRaw =
 
             match Mode.tryMap value with
             | Some Mode.Mode0 ->
-                return bits |> ParsedField.map (fun _ -> Mode0Raw bits)
+                return bits |> Field.map (fun _ -> Mode0Raw bits)
 
             | Some Mode.Mode5 ->
-                return bits |> ParsedField.map (fun _ -> Mode5Raw bits)
+                return bits |> Field.map (fun _ -> Mode5Raw bits)
 
             | None ->
                 return! failBefore 2 $"Encryption mode not supported: {value}"
@@ -117,8 +117,8 @@ type ConfigurationFieldMode0 =
 module ConfigurationFieldMode0 =
 
     let fromRaw
-        (raw: ParsedField<ConfigurationFieldBitsRaw>)
-        : Validation<ConfigurationFieldMode0> =
+        (raw: Field<ConfigurationFieldBitsRaw>)
+        : Validation<Field<ConfigurationFieldMode0>> =
 
         validator {
             let cnf = ConfigurationFieldBitsRaw.value raw.Value
@@ -128,15 +128,17 @@ module ConfigurationFieldMode0 =
                 | Some c -> passed c
                 | None -> failed raw "Invalid ContentOfMessage"
 
-            return {
-                HopCounter = BitFields.mapHopCounter cnf
-                RepeaterAccess = BitFields.mapRepeaterAccess cnf
-                ContentOfMsg = cc
-                Mode = Mode.Mode0
-                Synchronized = BitFields.mapSynchronized cnf
-                Accessibility = BitFields.mapAccessibility cnf
-                BidirectionalCommunication = BitFields.mapBidirectionalCommunication cnf
-            }
+            return
+                raw
+                |> Field.withValue {
+                    HopCounter = BitFields.mapHopCounter cnf
+                    RepeaterAccess = BitFields.mapRepeaterAccess cnf
+                    ContentOfMsg = cc
+                    Mode = Mode.Mode0
+                    Synchronized = BitFields.mapSynchronized cnf
+                    Accessibility = BitFields.mapAccessibility cnf
+                    BidirectionalCommunication = BitFields.mapBidirectionalCommunication cnf
+                }
         }
 
 type ConfigurationFieldMode5 =
@@ -154,8 +156,8 @@ type ConfigurationFieldMode5 =
 module ConfigurationFieldMode5 =
 
     let fromRaw
-        (raw: ParsedField<ConfigurationFieldBitsRaw>)
-        : Validation<ConfigurationFieldMode5> =
+        (raw: Field<ConfigurationFieldBitsRaw>)
+        : Validation<Field<ConfigurationFieldMode5>> =
 
         validator {
             let cnf = ConfigurationFieldBitsRaw.value raw.Value
@@ -170,14 +172,16 @@ module ConfigurationFieldMode5 =
                 | Some c -> passed c
                 | None -> failed raw "Invalid NumberOfEncryptedBlocks"
 
-            return {
-                HopCounter = BitFields.mapHopCounter cnf
-                RepeaterAccess = BitFields.mapRepeaterAccess cnf
-                ContentOfMsg = cc
-                NumberOfEncryptedBlocks = encryptedBlocks
-                Mode = Mode.Mode5
-                Synchronized = BitFields.mapSynchronized cnf
-                Accessibility = BitFields.mapAccessibility cnf
-                BidirectionalCommunication = BitFields.mapBidirectionalCommunication cnf
-            }
+            return
+                raw
+                |> Field.withValue {
+                    HopCounter = BitFields.mapHopCounter cnf
+                    RepeaterAccess = BitFields.mapRepeaterAccess cnf
+                    ContentOfMsg = cc
+                    NumberOfEncryptedBlocks = encryptedBlocks
+                    Mode = Mode.Mode5
+                    Synchronized = BitFields.mapSynchronized cnf
+                    Accessibility = BitFields.mapAccessibility cnf
+                    BidirectionalCommunication = BitFields.mapBidirectionalCommunication cnf
+                }
         }

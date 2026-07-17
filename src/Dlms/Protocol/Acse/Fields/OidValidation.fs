@@ -10,7 +10,7 @@ module OidValidation =
     let private validatePrefix
         (prefix: byte[])
         (fieldName: string)
-        (raw: ParsedField<Ber.ObjectIdentifier>)
+        (raw: Field<Ber.ObjectIdentifier>)
         : Validation<unit> =
 
         let bytes =
@@ -28,7 +28,7 @@ module OidValidation =
     let private validateSingleId
         (prefix: byte[])
         (fieldName: string)
-        (raw: ParsedField<Ber.ObjectIdentifier>)
+        (raw: Field<Ber.ObjectIdentifier>)
         : Validation<byte> =
 
         let bytes =
@@ -42,7 +42,7 @@ module OidValidation =
     let validatePrefixAndSingleId
         (prefix: byte[])
         (fieldName: string)
-        (raw: ParsedField<Ber.ObjectIdentifier>)
+        (raw: Field<Ber.ObjectIdentifier>)
         : Validation<byte> =
 
         validator {

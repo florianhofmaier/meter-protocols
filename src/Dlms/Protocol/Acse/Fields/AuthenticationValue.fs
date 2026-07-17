@@ -39,7 +39,7 @@ type AuthenticationValue =
 module AuthenticationValue =
 
     let validate
-        (raw: ParsedField<AuthenticationValueRaw>)
+        (raw: Field<AuthenticationValueRaw>)
         : Validation<AuthenticationValue> =
 
         validator {

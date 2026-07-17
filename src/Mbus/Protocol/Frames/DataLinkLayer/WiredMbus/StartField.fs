@@ -10,14 +10,14 @@ type StartFixedLength =
 
 module StartFixedLength =
 
-    let parse : Parser<ParsedField<StartFixedLength>> =
+    let parse : Parser<Field<StartFixedLength>> =
         parseField "Start Field" (expectU8 0x10uy)
-        |>> ParsedField.map StartFixedLength
+        |>> Field.map StartFixedLength
 
 type StartVariableLength =
     private StartVariableLength of unit
 
 module StartVariableLength =
 
-    let parse : Parser<ParsedField<Unit>> =
+    let parse : Parser<Field<Unit>> =
         parseField "Start Field" (expectU8 0x68uy)

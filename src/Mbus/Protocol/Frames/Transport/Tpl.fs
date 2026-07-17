@@ -13,11 +13,11 @@ type TplRaw =
 
 module TplRaw =
 
-    let private mapCi value (ci: ParsedField<CiFieldTpl>) =
+    let private mapCi value (ci: Field<CiFieldTpl>) =
         ci
-        |> ParsedField.map (fun _ -> value)
+        |> Field.map (fun _ -> value)
 
-    let parse : Parser<ParsedField<TplRaw>> =
+    let parse : Parser<Field<TplRaw>> =
         parseField "TPL"
         <| parser {
             let! ci = CiFieldTpl.parse
@@ -52,13 +52,13 @@ module Tpl =
     let ci =
         function
         | Tpl.NoneHeader tpl ->
-            NoneTplHeader tpl.Ci
+            NoneTplHeader tpl.Ci.Value
 
         | Tpl.ShortHeader tpl ->
-            ShortTplHeader tpl.Ci
+            ShortTplHeader tpl.Ci.Value
 
         | Tpl.LongHeader tpl ->
-            LongTplHeader tpl.Ci
+            LongTplHeader tpl.Ci.Value
 
     let aplData =
         function
@@ -72,17 +72,20 @@ module Tpl =
             tpl.AplData
 
     let fromRaw
-        (raw: ParsedField<TplRaw>)
-        : Validation<Tpl> =
+        (raw: Field<TplRaw>)
+        : Validation<Field<Tpl>> =
 
         validator {
             match raw.Value with
             | TplRaw.NoneHeader tplNone ->
-                return! tplNone |> TplWithNoneHeader.fromRaw |> map Tpl.NoneHeader
+                let! tpl = tplNone |> TplWithNoneHeader.fromRaw
+                return raw |> Field.withValue (Tpl.NoneHeader tpl)
 
             | TplRaw.ShortHeader tplShort ->
-                return! tplShort |> TplWithShortHeader.fromRaw |> map Tpl.ShortHeader
+                let! tpl = tplShort |> TplWithShortHeader.fromRaw
+                return raw |> Field.withValue (Tpl.ShortHeader tpl)
 
             | TplRaw.LongHeader tplLong ->
-                return! tplLong |> TplWithLongHeader.fromRaw |> map Tpl.LongHeader
+                let! tpl = tplLong |> TplWithLongHeader.fromRaw
+                return raw |> Field.withValue (Tpl.LongHeader tpl)
         }

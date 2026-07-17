@@ -14,9 +14,9 @@ module StatusByteRaw =
     let value (Status v) =
         v
 
-    let parse : Parser<ParsedField<StatusByteRaw>> =
+    let parse : Parser<Field<StatusByteRaw>> =
         parseField "Status" parseU8
-        |>> ParsedField.map Status
+        |>> Field.map Status
 
 type ApplicationError =
     | NoError
@@ -49,8 +49,8 @@ type StatusByte =
 module StatusByte =
 
     let fromRaw
-        (raw: ParsedField<StatusByteRaw>)
-        : Validation<StatusByte> =
+        (raw: Field<StatusByteRaw>)
+        : Validation<Field<StatusByte>> =
 
         let value = StatusByteRaw.value raw.Value
 
@@ -61,7 +61,7 @@ module StatusByte =
         let bit6 = (value &&& 0b0100_0000uy) <> 0uy
         let bit7 = (value &&& 0b1000_0000uy) <> 0uy
 
-        passed {
+        {
             ApplicationError = ApplicationError.fromByte value
             PowerLow = powerLow
             PermanentError = permanentError
@@ -70,3 +70,5 @@ module StatusByte =
             Bit6 = bit6
             Bit7 = bit7
         }
+        |> fun value -> Field.withValue value raw
+        |> passed

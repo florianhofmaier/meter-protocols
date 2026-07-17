@@ -18,7 +18,7 @@ module UserInformation =
         Ber.OctetString.value value
 
     let validate
-        (raw: ParsedField<Ber.OctetString>)
+        (raw: Field<Ber.OctetString>)
         : Validation<UserInformation> =
 
         if Ber.OctetString.length raw.Value > 0 then
@@ -28,8 +28,8 @@ module UserInformation =
             failed raw "user-information is empty"
 
     let toByteField
-        (field: ParsedField<UserInformation>)
-        : ParsedField<ReadOnlyMemory<byte>> =
+        (field: Field<UserInformation>)
+        : Field<ReadOnlyMemory<byte>> =
 
         {
             Id = field.Id

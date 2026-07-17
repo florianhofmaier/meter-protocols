@@ -7,16 +7,16 @@ open Metering.Common.Decoding.Validators.Core
 
 type ShortHeaderMode0Raw =
     {
-        Acc: ParsedField<AccessNumberRaw>
-        Status: ParsedField<StatusByteRaw>
-        Cnf: ParsedField<ConfigurationFieldBitsRaw>
+        Acc: Field<AccessNumberRaw>
+        Status: Field<StatusByteRaw>
+        Cnf: Field<ConfigurationFieldBitsRaw>
     }
 
 type ShortHeaderMode5Raw =
     {
-        Acc: ParsedField<AccessNumberRaw>
-        Status: ParsedField<StatusByteRaw>
-        Cnf: ParsedField<ConfigurationFieldBitsRaw>
+        Acc: Field<AccessNumberRaw>
+        Status: Field<StatusByteRaw>
+        Cnf: Field<ConfigurationFieldBitsRaw>
     }
 
 type ShortHeaderRaw =
@@ -25,7 +25,7 @@ type ShortHeaderRaw =
 
 module ShortHeaderRaw =
 
-    let parse : Parser<ParsedField<ShortHeaderRaw>> =
+    let parse : Parser<Field<ShortHeaderRaw>> =
         parseField "Short Tpl Header"
         <| parser {
             let! acc = AccessNumberRaw.parse
@@ -54,16 +54,16 @@ module ShortHeaderRaw =
 
 type ShortHeaderMode0 =
     {
-        Acc: AccessNumber
-        Status: StatusByte
-        Cnf: ConfigurationFieldMode0
+        Acc: Field<AccessNumber>
+        Status: Field<StatusByte>
+        Cnf: Field<ConfigurationFieldMode0>
     }
 
 type ShortHeaderMode5 =
     {
-        Acc: AccessNumber
-        Status: StatusByte
-        Cnf: ConfigurationFieldMode5
+        Acc: Field<AccessNumber>
+        Status: Field<StatusByte>
+        Cnf: Field<ConfigurationFieldMode5>
     }
 
 type ShortHeader =
@@ -73,8 +73,8 @@ type ShortHeader =
 module ShortHeader =
 
     let fromRaw
-        (raw: ParsedField<ShortHeaderRaw>)
-        : Validation<ShortHeader> =
+        (raw: Field<ShortHeaderRaw>)
+        : Validation<Field<ShortHeader>> =
 
         validator {
             match raw.Value with
@@ -83,20 +83,26 @@ module ShortHeader =
                 let! status = StatusByte.fromRaw header.Status
                 let! cnf = ConfigurationFieldMode0.fromRaw header.Cnf
                 return
-                    Mode0 {
-                        Acc = acc
-                        Status = status
-                        Cnf = cnf
-                    }
+                    raw
+                    |> Field.withValue (
+                        Mode0 {
+                            Acc = acc
+                            Status = status
+                            Cnf = cnf
+                        }
+                    )
 
             | Mode5Raw header ->
                 let! acc = AccessNumber.fromRaw header.Acc
                 let! status = StatusByte.fromRaw header.Status
                 let! cnf = ConfigurationFieldMode5.fromRaw header.Cnf
                 return
-                    Mode5 {
-                        Acc = acc
-                        Status = status
-                        Cnf = cnf
-                    }
+                    raw
+                    |> Field.withValue (
+                        Mode5 {
+                            Acc = acc
+                            Status = status
+                            Cnf = cnf
+                        }
+                    )
         }

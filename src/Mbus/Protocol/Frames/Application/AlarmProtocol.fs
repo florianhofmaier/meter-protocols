@@ -13,7 +13,7 @@ module Alarms =
     let value (Alarms value) =
         value
 
-    let parse : Parser<ParsedField<Alarms>> =
+    let parse : Parser<Field<Alarms>> =
         parseField "Alarms" parseU8
-        |>> ParsedField.map Alarms
+        |>> Field.map Alarms
 

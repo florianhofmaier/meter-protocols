@@ -10,9 +10,9 @@ open Metering.Dlms.Protocol.Security
 open Metering.Dlms.Protocol.Security.ProtectedApdus
 
 let private toByteField
-    (source: ParsedField<_>)
+    (source: Field<_>)
     (bytes: ReadOnlyMemory<byte>)
-    : ParsedField<ReadOnlyMemory<byte>> =
+    : Field<ReadOnlyMemory<byte>> =
     {
         Id = source.Id
         Span = source.Span
@@ -74,7 +74,7 @@ let private buildAuthenticationOnlyAad
 let private authenticationTagLength = 12
 
 let private issue
-    (field: ParsedField<_>)
+    (field: Field<_>)
     (message: string)
     : Issue =
     {
@@ -84,7 +84,7 @@ let private issue
 
 
 let private mapAesGcmError
-    (field: ParsedField<_>)
+    (field: Field<_>)
     (error: EncryptionError)
     : Issue =
 
@@ -118,7 +118,7 @@ let private concat
 
 
 let private splitAuthenticationTag
-    (field: ParsedField<ReadOnlyMemory<byte>>)
+    (field: Field<ReadOnlyMemory<byte>>)
     : Result<ReadOnlyMemory<byte> * ReadOnlyMemory<byte>, Issue> =
 
     let bytes =
@@ -142,7 +142,7 @@ let private splitAuthenticationTag
 let private selectEncryptionKey
     (cipherContext: GlobalCipherContext)
     (securityControl: SecurityControl)
-    (field: ParsedField<_>)
+    (field: Field<_>)
     : Result<ReadOnlyMemory<byte>, Issue> =
 
     match securityControl.KeySet with
@@ -166,8 +166,8 @@ let private unprotectAuthenticationOnly
     (encryptionKey: ReadOnlyMemory<byte>)
     (iv: ReadOnlyMemory<byte>)
     (securityControl: SecurityControl)
-    (payload: ParsedField<ReadOnlyMemory<byte>>)
-    : Result<ParsedField<ReadOnlyMemory<byte>>, Issue> =
+    (payload: Field<ReadOnlyMemory<byte>>)
+    : Result<Field<ReadOnlyMemory<byte>>, Issue> =
 
     result {
         let! information, authenticationTag =
@@ -191,7 +191,7 @@ let private unprotectAuthenticationOnly
 
         return
             payload
-            |> ParsedField.map (fun _ -> information)
+            |> Field.map (fun _ -> information)
     }
 
 let private unprotectAuthenticatedEncryption
@@ -199,8 +199,8 @@ let private unprotectAuthenticatedEncryption
     (encryptionKey: ReadOnlyMemory<byte>)
     (iv: ReadOnlyMemory<byte>)
     (securityControl: SecurityControl)
-    (payload: ParsedField<ReadOnlyMemory<byte>>)
-    : Result<ParsedField<ReadOnlyMemory<byte>>, Issue> =
+    (payload: Field<ReadOnlyMemory<byte>>)
+    : Result<Field<ReadOnlyMemory<byte>>, Issue> =
 
     result {
         let! cipherText, authenticationTag =
@@ -224,20 +224,20 @@ let private unprotectAuthenticatedEncryption
 
         return
             payload
-            |> ParsedField.map (fun _ -> plain)
+            |> Field.map (fun _ -> plain)
     }
 
 let private unprotectServiceSpecific
     (cipherContext: GlobalCipherContext)
-    (protectedApdu: ProtectedApduValidatedFields)
-    : Result<ParsedField<ReadOnlyMemory<byte>>, Issue> =
+    (protectedApdu: Field<ProtectedApduValidatedFields>)
+    : Result<Field<ReadOnlyMemory<byte>>, Issue> =
 
     result {
         let securityControl =
-            protectedApdu.SecurityControl
+            protectedApdu.Value.SecurityControl.Value
 
         let payload =
-            protectedApdu.Payload
+            protectedApdu.Value.Payload
 
         do!
             if securityControl.CompressionApplied then
@@ -258,7 +258,7 @@ let private unprotectServiceSpecific
         let iv =
             buildIv
                 cipherContext.OriginatorSystemTitle
-                protectedApdu.InvocationCounter
+                protectedApdu.Value.InvocationCounter.Value
 
         return!
             SensitiveBuffer.useZeroed iv (fun iv ->
@@ -298,8 +298,8 @@ let private unprotectServiceSpecific
 
 let unprotect
     (cipherContext: GlobalCipherContext)
-    (protectedApdu: ProtectedApduValidatedFields)
-    : Decoder<ParsedField<ReadOnlyMemory<byte>>> =
+    (protectedApdu: Field<ProtectedApduValidatedFields>)
+    : Decoder<Field<ReadOnlyMemory<byte>>> =
 
     fun _ ->
         match unprotectServiceSpecific cipherContext protectedApdu with

@@ -17,7 +17,10 @@ module ClientMaxReceivePduSize =
         value
 
     let validate
-        (raw: ParsedField<Axdr.Unsigned16>)
-        : Validation<ClientMaxReceivePduSize> =
+        (raw: Field<Axdr.Unsigned16>)
+        : Validation<Field<ClientMaxReceivePduSize>> =
 
-        raw.Value |> create |> passed
+        raw.Value
+        |> create
+        |> fun value -> Field.withValue value raw
+        |> passed

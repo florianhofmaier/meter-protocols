@@ -11,16 +11,16 @@ open Metering.Common.Decoding.Validators.Core
 
 type WrapperPduRaw =
     {
-        Version : ParsedField<uint16>
-        SourceWrapperPort : ParsedField<uint16>
-        DestinationWrapperPort : ParsedField<uint16>
-        DataLength : ParsedField<uint16>
-        Data : ParsedField<ReadOnlyMemory<byte>>
+        Version : Field<uint16>
+        SourceWrapperPort : Field<uint16>
+        DestinationWrapperPort : Field<uint16>
+        DataLength : Field<uint16>
+        Data : Field<ReadOnlyMemory<byte>>
     }
 
 module WrapperPduRaw =
 
-    let parse : Parser<ParsedField<WrapperPduRaw>> =
+    let parse : Parser<Field<WrapperPduRaw>> =
         parseField "TCP/UDP wrapper PDU" <|
             parser {
                 let! version =
@@ -50,15 +50,15 @@ module WrapperPduRaw =
 
 type WrapperPdu =
     {
-        SourceWrapperPort : WrapperPort
-        DestinationWrapperPort : WrapperPort
-        Data : ReadOnlyMemory<byte>
+        SourceWrapperPort : Field<WrapperPort>
+        DestinationWrapperPort : Field<WrapperPort>
+        Data : Field<ReadOnlyMemory<byte>>
     }
 
 module WrapperPdu =
 
     let private validateVersion
-        (rawVersion: ParsedField<uint16>)
+        (rawVersion: Field<uint16>)
         : Validation<unit> =
 
             ensure
@@ -66,17 +66,24 @@ module WrapperPdu =
                 $"unsupported wrapper version 0x{rawVersion.Value:X4}"
                 (rawVersion.Value = 0x0001us)
 
-    let fromRaw (raw: WrapperPduRaw) : Validation<WrapperPdu> =
+    let fromRaw
+        (raw: Field<WrapperPduRaw>)
+        : Validation<Field<WrapperPdu>> =
+
         validator {
-            do! validateVersion raw.Version
+            do! validateVersion raw.Value.Version
 
-            return {
-                SourceWrapperPort =
-                    WrapperPort.create raw.SourceWrapperPort.Value
+            return
+                raw
+                |> Field.withValue {
+                    SourceWrapperPort =
+                        raw.Value.SourceWrapperPort
+                        |> Field.map WrapperPort.create
 
-                DestinationWrapperPort =
-                    WrapperPort.create raw.DestinationWrapperPort.Value
+                    DestinationWrapperPort =
+                        raw.Value.DestinationWrapperPort
+                        |> Field.map WrapperPort.create
 
-                Data = raw.Data.Value
-            }
+                    Data = raw.Value.Data
+                }
         }

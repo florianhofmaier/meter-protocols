@@ -18,16 +18,16 @@ module ExtendedSelectionOfDeviceRaw =
     let bytes (RawExtendedSelectionOfDevice bytes) =
         bytes
 
-    let private parseExt : Parser<ParsedField<ExtendedSelectionOfDeviceRaw>> =
+    let private parseExt : Parser<Field<ExtendedSelectionOfDeviceRaw>> =
         parseField "Extended Selection"
         <| parser {
             do! expectU8 0x0Cuy
             do! expectU8 0x78uy
             return! take 4
         }
-        |>> ParsedField.map RawExtendedSelectionOfDevice
+        |>> Field.map RawExtendedSelectionOfDevice
 
-    let parse : Parser<ParsedField<ExtendedSelectionOfDeviceRaw> option> =
+    let parse : Parser<Field<ExtendedSelectionOfDeviceRaw> option> =
         parser {
             let! remaining = remaining
             if remaining > 0 then
@@ -45,7 +45,7 @@ module ExtendedSelectionOfDevice =
         bytes
 
     let fromRaw
-        (raw: ParsedField<ExtendedSelectionOfDeviceRaw>)
+        (raw: Field<ExtendedSelectionOfDeviceRaw>)
         : Validation<ExtendedSelectionOfDevice> =
 
         let bytes = ExtendedSelectionOfDeviceRaw.bytes raw.Value
@@ -53,16 +53,16 @@ module ExtendedSelectionOfDevice =
 
 type SelectionOfDeviceRaw =
     {
-        IdNum: ParsedField<IdNumberRaw>
-        Mfr: ParsedField<ManufacturerRaw>
-        Version: ParsedField<VersionRaw>
-        DevType: ParsedField<DeviceTypeRaw>
-        Extended: ParsedField<ExtendedSelectionOfDeviceRaw> option
+        IdNum: Field<IdNumberRaw>
+        Mfr: Field<ManufacturerRaw>
+        Version: Field<VersionRaw>
+        DevType: Field<DeviceTypeRaw>
+        Extended: Field<ExtendedSelectionOfDeviceRaw> option
     }
 
 module SelectionOfDeviceRaw =
 
-    let parse : Parser<ParsedField<SelectionOfDeviceRaw>> =
+    let parse : Parser<Field<SelectionOfDeviceRaw>> =
         parseField "Selection of Device"
         <| parser {
             let! idNum = IdNumberRaw.parse
@@ -102,7 +102,7 @@ module IdNumberSelection =
     let private digitCount = 8
 
     let fromRaw
-        (raw: ParsedField<IdNumberRaw>)
+        (raw: Field<IdNumberRaw>)
         : Validation<IdNumberSelection> =
 
         let value = IdNumberRaw.value raw.Value
@@ -141,7 +141,7 @@ module private ManufacturerSelectionBytes =
 module ManufacturerSelection =
 
     let fromRaw
-        (raw: ParsedField<ManufacturerRaw>)
+        (raw: Field<ManufacturerRaw>)
         : Validation<ManufacturerSelection> =
 
         let value = ManufacturerRaw.value raw.Value
@@ -160,7 +160,7 @@ module ManufacturerSelection =
 module VersionSelection =
 
     let fromRaw
-        (raw: ParsedField<VersionRaw>)
+        (raw: Field<VersionRaw>)
         : Validation<VersionSelection> =
 
         let value = VersionRaw.value raw.Value
@@ -181,7 +181,7 @@ module VersionSelection =
 module DeviceTypeSelection =
 
     let fromRaw
-        (raw: ParsedField<DeviceTypeRaw>)
+        (raw: Field<DeviceTypeRaw>)
         : Validation<DeviceTypeSelection> =
 
         let value = DeviceTypeRaw.value raw.Value
@@ -211,7 +211,7 @@ type SelectionOfDevice =
 module SelectionOfDevice =
 
     let private validateExtended
-        (raw: ParsedField<ExtendedSelectionOfDeviceRaw> option)
+        (raw: Field<ExtendedSelectionOfDeviceRaw> option)
         : Validation<ExtendedSelectionOfDevice option> =
 
         match raw with
@@ -224,7 +224,7 @@ module SelectionOfDevice =
             passed None
 
     let fromRaw
-        (raw: ParsedField<SelectionOfDeviceRaw>)
+        (raw: Field<SelectionOfDeviceRaw>)
         : Validation<SelectionOfDevice> =
 
         validator {
@@ -249,8 +249,7 @@ module SelectionOfDevice =
         (device: DeviceIdentification)
         : bool =
 
-        IdNumberSelection.matches selection.IdNum device.IdNum
-        && ManufacturerSelection.matches selection.Mfr device.Mfr
-        && VersionSelection.matches selection.Version device.Version
-        && DeviceTypeSelection.matches selection.DevType device.DevType
-
+        IdNumberSelection.matches selection.IdNum device.IdNum.Value
+        && ManufacturerSelection.matches selection.Mfr device.Mfr.Value
+        && VersionSelection.matches selection.Version device.Version.Value
+        && DeviceTypeSelection.matches selection.DevType device.DevType.Value

@@ -24,13 +24,13 @@ module AarqApdu =
 
     let private unprotectUserInformation
         (cipherContext: ExternalCipherContext)
-        (userInformation: ParsedField<UserInformation>)
-        : Decoder<ParsedField<ReadOnlyMemory<byte>>> =
+        (userInformation: Field<UserInformation>)
+        : Decoder<Field<ReadOnlyMemory<byte>>> =
 
         decoder {
             let bytes =
                 userInformation
-                |> ParsedField.map UserInformation.value
+                |> Field.map UserInformation.value
 
             let! tag =
                 parseValue Tag.peek<XdlmsTag> bytes
@@ -72,7 +72,7 @@ module AarqApdu =
         }
 
     let decode
-        (bytes : ParsedField<ReadOnlyMemory<byte>>)
+        (bytes : Field<ReadOnlyMemory<byte>>)
         : Decoder<AarqApdu> =
 
         decoder {

@@ -9,11 +9,11 @@ open Metering.Common.Decoding.Validators.Core
 
 type ApplicationResetOrSelectRaw =
     | ApplicationResetRaw
-    | ApplicationSelectRaw of ParsedField<ReadOnlyMemory<byte>>
+    | ApplicationSelectRaw of Field<ReadOnlyMemory<byte>>
 
 module ApplicationResetOrSelectRaw =
 
-    let parse : Parser<ParsedField<ApplicationResetOrSelectRaw>> =
+    let parse : Parser<Field<ApplicationResetOrSelectRaw>> =
         parseField "Application Reset/Select"
         <| parser {
             let! remaining = remaining
@@ -36,7 +36,7 @@ module ApplicationResetOrSelect =
     let private maxSubcodeBytes = 10
 
     let fromRaw
-        (raw: ParsedField<ApplicationResetOrSelectRaw>)
+        (raw: Field<ApplicationResetOrSelectRaw>)
         : Validation<ApplicationResetOrSelect> =
 
         validator {

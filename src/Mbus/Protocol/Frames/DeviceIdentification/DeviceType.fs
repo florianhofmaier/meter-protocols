@@ -17,9 +17,9 @@ module DeviceTypeRaw =
     let value (RawDeviceType value) =
         value
 
-    let parse : Parser<ParsedField<DeviceTypeRaw>> =
+    let parse : Parser<Field<DeviceTypeRaw>> =
         parseField "Device Type" parseU8
-        |>> ParsedField.map RawDeviceType
+        |>> Field.map RawDeviceType
 
 module DeviceType =
 
@@ -27,14 +27,15 @@ module DeviceType =
         value
 
     let fromRaw
-        (raw: ParsedField<DeviceTypeRaw>)
-        : Validation<DeviceType> =
+        (raw: Field<DeviceTypeRaw>)
+        : Validation<Field<DeviceType>> =
 
         let value = DeviceTypeRaw.value raw.Value
 
         if value = 0xFFuy then
             failed raw "Wildcard byte 0xFF is not allowed in device type identification"
         else
-            passed (DeviceType value)
-
+            raw
+            |> Field.withValue (DeviceType value)
+            |> passed
 

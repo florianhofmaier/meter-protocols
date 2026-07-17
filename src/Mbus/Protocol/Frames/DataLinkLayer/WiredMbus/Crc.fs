@@ -36,11 +36,11 @@ module Crc =
     let value (Crc v) =
         v
 
-    let parse : Parser<ParsedField<Crc>> =
+    let parse : Parser<Field<Crc>> =
         parseField "CRC" parseU8
-        |>> ParsedField.map Crc
+        |>> Field.map Crc
 
-    let validate (raw: ParsedField<Crc>) (crcBytes: CrcBytes) =
+    let validate (raw: Field<Crc>) (crcBytes: CrcBytes) =
         let expectedCrc = CrcCalculator.calculate crcBytes
         let actualCrc = value raw.Value
 

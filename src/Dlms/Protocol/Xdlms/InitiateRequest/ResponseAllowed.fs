@@ -19,10 +19,11 @@ module ResponseAllowed =
     let defaultValue = ResponseAllowed
 
     let validate
-        (raw: ParsedField<Axdr.Boolean>)
-        : Validation<ResponseAllowed> =
+        (raw: Field<Axdr.Boolean>)
+        : Validation<Field<ResponseAllowed>> =
 
         raw.Value
         |> Axdr.Boolean.value
         |> fromBool
+        |> fun value -> Field.withValue value raw
         |> passed

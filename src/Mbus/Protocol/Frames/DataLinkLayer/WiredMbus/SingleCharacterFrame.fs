@@ -5,6 +5,6 @@ open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 
-let parse : Parser<ParsedField<unit>> =
+let parse : Parser<Field<unit>> =
         parseField "Single Character Frame"
         <| expectU8 0xE5uy

@@ -8,16 +8,16 @@ open Metering.Mbus.Protocol.Frames
 
 type AplRaw =
     | RspUdData of RecordsRaw
-    | AlarmBits of ParsedField<Alarms>
-    | SelectedDevice of ParsedField<SelectionOfDeviceRaw>
+    | AlarmBits of Field<Alarms>
+    | SelectedDevice of Field<SelectionOfDeviceRaw>
     | SndUdData of RecordsRaw
-    | ApplicationResetOrSelect of ParsedField<ApplicationResetOrSelectRaw>
+    | ApplicationResetOrSelect of Field<ApplicationResetOrSelectRaw>
 
 module AplRaw =
 
     let parse
         (ci : CiFieldTpl)
-        : Parser<ParsedField<AplRaw>> =
+        : Parser<Field<AplRaw>> =
 
         parseField "APL"
         <| parser {
@@ -63,27 +63,27 @@ type Apl =
 module Apl =
 
     let fromRaw
-        (raw: ParsedField<AplRaw>)
-        : Validation<Apl> =
+        (raw: Field<AplRaw>)
+        : Validation<Field<Apl>> =
 
         validator {
             match raw.Value with
             | AplRaw.RspUdData records ->
                 let! data = RspUdData.fromRaw records
-                return RspUdData data
+                return raw |> Field.withValue (RspUdData data)
 
             | AplRaw.SndUdData records ->
                 let! data = SndUdData.fromRaw records
-                return SndUdData data
+                return raw |> Field.withValue (SndUdData data)
 
             | AplRaw.AlarmBits alarms ->
-                return AlarmBits alarms.Value
+                return raw |> Field.withValue (AlarmBits alarms.Value)
 
             | AplRaw.SelectedDevice selection ->
                 let! selection = SelectionOfDevice.fromRaw selection
-                return SelectedDevice selection
+                return raw |> Field.withValue (SelectedDevice selection)
 
             | AplRaw.ApplicationResetOrSelect raw ->
                 let! resetOrSelect = ApplicationResetOrSelect.fromRaw raw
-                return ApplicationResetOrSelect resetOrSelect
+                return raw |> Field.withValue (ApplicationResetOrSelect resetOrSelect)
         }

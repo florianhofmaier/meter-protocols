@@ -14,9 +14,9 @@ module SecurityControlRaw =
     let value (SecurityControlRaw value) =
         value
 
-    let parse : Parser<ParsedField<SecurityControlRaw>> =
+    let parse : Parser<Field<SecurityControlRaw>> =
         parseField "security-control" parseU8
-        |>> ParsedField.map SecurityControlRaw
+        |>> Field.map SecurityControlRaw
 
 type ProtectedApduKind =
     | ServiceSpecificGlobal
@@ -39,7 +39,7 @@ module SecuritySuiteId =
         | Suite2 -> 2uy
 
     let fromParsed
-        (field: ParsedField<SecurityControlRaw>)
+        (field: Field<SecurityControlRaw>)
         : Validation<SecuritySuiteId> =
 
         let value = SecurityControlRaw.value field.Value
@@ -82,7 +82,7 @@ module SecurityControl =
         | CompressionApplied = 0x80uy
 
     let private isApplied
-        (field: ParsedField<SecurityControlRaw>)
+        (field: Field<SecurityControlRaw>)
         (mask: Mask)
         : bool =
         SecurityControlRaw.value field.Value &&& byte mask <> 0uy
@@ -100,8 +100,8 @@ module SecurityControl =
 
     let fromParsed
         (apduKind: ProtectedApduKind)
-        (field: ParsedField<SecurityControlRaw>)
-        : Validation<SecurityControl> =
+        (field: Field<SecurityControlRaw>)
+        : Validation<Field<SecurityControl>> =
 
         validator {
             let! securitySuiteId =
@@ -151,11 +151,13 @@ module SecurityControl =
                 | _ ->
                     passed ()
 
-            return {
-                Raw = field.Value
-                SecuritySuiteId = securitySuiteId
-                ProtectionMode = protection
-                KeySet = keySet
-                CompressionApplied = compressionApplied
-            }
+            return
+                field
+                |> Field.withValue {
+                    Raw = field.Value
+                    SecuritySuiteId = securitySuiteId
+                    ProtectionMode = protection
+                    KeySet = keySet
+                    CompressionApplied = compressionApplied
+                }
         }
