@@ -6,67 +6,6 @@ open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
 open Metering.Mbus.Protocol.Frames
 
-type TplWithNoneHeaderRaw =
-    {
-        Ci: ParsedField<NoneHeaderCiField>
-        AplData: ParsedField<AplDataRaw>
-    }
-
-module TplWithNoneHeaderRaw =
-
-    let parse ci : Parser<TplWithNoneHeaderRaw> =
-        parser {
-            let! aplData = AplDataRaw.parse
-
-            return
-                {
-                    Ci = ci
-                    AplData = aplData
-                }
-        }
-
-type TplWithShortHeaderRaw =
-    {
-        Ci: ParsedField<ShortHeaderCiField>
-        Header: ParsedField<ShortHeaderRaw>
-        AplData: ParsedField<AplDataRaw>
-    }
-
-module TplWithShortHeaderRaw =
-
-    let parse ci : Parser<TplWithShortHeaderRaw> =
-        parser {
-            let! header = ShortHeaderRaw.parse
-            let! aplData = AplDataRaw.parse
-
-            return {
-                Ci = ci
-                Header = header
-                AplData = aplData
-            }
-        }
-
-type TplWithLongHeaderRaw =
-    {
-        Ci: ParsedField<LongHeaderCiField>
-        Header: ParsedField<LongHeaderRaw>
-        AplData: ParsedField<AplDataRaw>
-    }
-
-module TplWithLongHeaderRaw =
-
-    let parse ci : Parser<TplWithLongHeaderRaw> =
-        parser {
-            let! header = LongHeaderRaw.parse
-            let! aplData = AplDataRaw.parse
-
-            return {
-                Ci = ci
-                Header = header
-                AplData = aplData
-            }
-        }
-
 type TplRaw =
     | NoneHeader of TplWithNoneHeaderRaw
     | ShortHeader of TplWithShortHeaderRaw
@@ -103,77 +42,10 @@ module TplRaw =
                     |>> TplRaw.LongHeader
         }
 
-type TplNone =
-    {
-        Ci: NoneHeaderCiField
-        AplData: ParsedField<AplDataRaw>
-    }
-
-module TplNone =
-
-    let fromRaw
-        (raw: TplWithNoneHeaderRaw)
-        : Validation<TplNone> =
-
-        validator {
-            return {
-                Ci = raw.Ci.Value
-                AplData = raw.AplData
-            }
-        }
-
-type TplShort =
-    {
-        Ci: ShortHeaderCiField
-        Header: ShortHeader
-        AplData: ParsedField<AplDataRaw>
-    }
-
-module TplShort =
-
-    let fromRaw
-        (raw: TplWithShortHeaderRaw)
-        : Validation<TplShort> =
-
-        validator {
-            let! header = ShortHeader.fromRaw raw.Header
-
-            return
-                {
-                    Ci = raw.Ci.Value
-                    Header = header
-                    AplData = raw.AplData
-                }
-        }
-
-type TplLong =
-    {
-        Ci: LongHeaderCiField
-        Header: LongHeader
-        AplData: ParsedField<AplDataRaw>
-    }
-
-module TplLong =
-
-    let fromRaw
-        (raw: TplWithLongHeaderRaw)
-        : Validation<TplLong> =
-
-        validator {
-            let! header = LongHeader.fromRaw raw.Header
-
-            return
-                {
-                    Ci = raw.Ci.Value
-                    Header = header
-                    AplData = raw.AplData
-                }
-        }
-
 type Tpl =
-    | NoneHeader of TplNone
-    | ShortHeader of TplShort
-    | LongHeader of TplLong
+    | NoneHeader of TplWithNoneHeader
+    | ShortHeader of TplWithShortHeader
+    | LongHeader of TplWithLongHeader
 
 module Tpl =
 
@@ -206,11 +78,11 @@ module Tpl =
         validator {
             match raw.Value with
             | TplRaw.NoneHeader tplNone ->
-                return! tplNone |> TplNone.fromRaw |> map Tpl.NoneHeader
+                return! tplNone |> TplWithNoneHeader.fromRaw |> map Tpl.NoneHeader
 
             | TplRaw.ShortHeader tplShort ->
-                return! tplShort |> TplShort.fromRaw |> map Tpl.ShortHeader
+                return! tplShort |> TplWithShortHeader.fromRaw |> map Tpl.ShortHeader
 
             | TplRaw.LongHeader tplLong ->
-                return! tplLong |> TplLong.fromRaw |> map Tpl.LongHeader
+                return! tplLong |> TplWithLongHeader.fromRaw |> map Tpl.LongHeader
         }

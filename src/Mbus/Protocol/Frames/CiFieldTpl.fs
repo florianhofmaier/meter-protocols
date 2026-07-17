@@ -65,7 +65,7 @@ type CiFieldTpl =
 module CiFieldTpl =
 
     let parse : Parser<ParsedField<CiFieldTpl>> =
-        parseField "CI-Field"
+        parseField "CI-Field TPL"
         <| parser {
             let! value = parseU8
 

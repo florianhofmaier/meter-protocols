@@ -63,7 +63,7 @@ module AarqApdu =
                 return!
                     EncryptionError.create "General ciphering not supported"
                     |> EncryptionFailed
-                    |> error
+                    |> decodeError
 
             | _ ->
                 return!

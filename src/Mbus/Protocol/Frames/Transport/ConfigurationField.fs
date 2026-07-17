@@ -26,7 +26,8 @@ module ConfigurationFieldBitsRaw =
 
 module ConfigurationFieldRaw =
 
-    let bits = function
+    let bits =
+        function
         | Mode0Raw bits -> bits
         | Mode5Raw bits -> bits
 
@@ -52,7 +53,7 @@ module ConfigurationFieldRaw =
                 return bits |> ParsedField.map (fun _ -> Mode5Raw bits)
 
             | None ->
-                return! failBefore 2 $"Encryption mode not supported: 0x{value:X4}"
+                return! failBefore 2 $"Encryption mode not supported: {value}"
         }
 
 module BitFields =
@@ -138,13 +139,12 @@ module ConfigurationFieldMode0 =
             }
         }
 
-
 type ConfigurationFieldMode5 =
     {
         HopCounter: bool
         RepeaterAccess: bool
         ContentOfMsg: ContentOfMessage
-        NumberOfEncryptedBlocks: uint8
+        NumberOfEncryptedBlocks: NumberOfEncryptedBlocks
         Mode: Mode
         Synchronized: bool
         Accessibility: bool
@@ -152,13 +152,6 @@ type ConfigurationFieldMode5 =
     }
 
 module ConfigurationFieldMode5 =
-
-    let private maskNumberOfEncryptedBlocks = 0xF0us
-    let private shiftNumberOfEncryptedBlocks = 4
-
-    let private mapNumberOfEncryptedBlocks cnf =
-        (cnf &&& maskNumberOfEncryptedBlocks) >>> shiftNumberOfEncryptedBlocks
-        |> byte
 
     let fromRaw
         (raw: ParsedField<ConfigurationFieldBitsRaw>)
@@ -172,11 +165,16 @@ module ConfigurationFieldMode5 =
                 | Some c -> passed c
                 | None -> failed raw "Invalid ContentOfMessage"
 
+            let! encryptedBlocks =
+                match NumberOfEncryptedBlocks.tryMap cnf with
+                | Some c -> passed c
+                | None -> failed raw "Invalid NumberOfEncryptedBlocks"
+
             return {
                 HopCounter = BitFields.mapHopCounter cnf
                 RepeaterAccess = BitFields.mapRepeaterAccess cnf
                 ContentOfMsg = cc
-                NumberOfEncryptedBlocks = mapNumberOfEncryptedBlocks cnf
+                NumberOfEncryptedBlocks = encryptedBlocks
                 Mode = Mode.Mode5
                 Synchronized = BitFields.mapSynchronized cnf
                 Accessibility = BitFields.mapAccessibility cnf

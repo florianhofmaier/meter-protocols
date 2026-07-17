@@ -52,11 +52,11 @@ type Peek<'a> =
 
 module Core =
 
-    let passed value : Decoder<'a> =
+    let decodePassed value : Decoder<'a> =
         fun _ ->
             Decoded (value, [])
 
-    let error failure : Decoder<'a> =
+    let decodeError failure : Decoder<'a> =
         fun _ ->
             DecodeFailed (failure, [])
 
@@ -150,7 +150,7 @@ module Core =
 type DecoderBuilder() =
 
     member _.Return(value: 'a) : Decoder<'a> =
-        Core.passed value
+        Core.decodePassed value
 
     member _.ReturnFrom(decoder: Decoder<'a>) : Decoder<'a> =
         decoder
