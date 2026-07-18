@@ -40,7 +40,7 @@ type ISourceStore =
 type DecodeContext =
     {
         CreateReader : ReaderFactory
-        Sources : ISourceStore option
+        Sources : ISourceStore
         Trace : IFieldTracer
     }
 
@@ -112,40 +112,29 @@ module Core =
         : Decoder<Field<ReadOnlyMemory<byte>>> =
 
         fun context ->
-            match context.Sources with
-            | None ->
-                let issue =
-                    {
-                        FieldId = origin.Id
-                        Message = "decode source store is required to register a derived source"
-                    }
+            let source =
+                context.Sources.AddDerived
+                    name
+                    origin.Span
+                    transform
+                    bytes
+                    sensitive
 
-                DecodeFailed (EncryptionFailed issue, [])
+            context.Trace.SourceCreated source
 
-            | Some sources ->
-                let source =
-                    sources.AddDerived
-                        name
-                        origin.Span
-                        transform
-                        bytes
-                        sensitive
-
-                context.Trace.SourceCreated source
-
-                Decoded (
-                    {
-                        Id = origin.Id
-                        Span =
-                            {
-                                Source = source.Id
-                                Offset = 0
-                                Length = bytes.Length
-                            }
-                        Value = bytes
-                    },
-                    []
-                )
+            Decoded (
+                {
+                    Id = origin.Id
+                    Span =
+                        {
+                            Source = source.Id
+                            Offset = 0
+                            Length = bytes.Length
+                        }
+                    Value = bytes
+                },
+                []
+            )
 
 type DecoderBuilder() =
 
@@ -173,6 +162,9 @@ type DecoderBuilder() =
 
             | DecodeFailed (failure, notices) ->
                 DecodeFailed (failure, notices)
+
+    member _.Delay(factory: unit -> Decoder<'a>) : Decoder<'a> =
+        fun context -> factory () context
 
 let decoder =
     DecoderBuilder()

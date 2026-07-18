@@ -60,6 +60,9 @@ let private validKey =
         0x0Cuy; 0x0Duy; 0x0Euy; 0x0Fuy
     |]
 
+let private bytesFromHex (hex: string) =
+    Convert.FromHexString hex
+
 let private validCipherText =
     [|
         0x26uy; 0x06uy; 0xA6uy; 0xF4uy
@@ -107,6 +110,35 @@ let private expectedTwoBlockApplicationPlaintext =
         0x18uy; 0x19uy; 0x1Auy; 0x1Buy
         0x1Cuy; 0x1Duy
     |]
+
+let private validSixteenBlockCipherText =
+    bytesFromHex (
+        "aaa81ab26bb285ae3da10ad481a1ac2c04f32cbe18ae843d54e7ff4c7d948a74" +
+        "91a745434dd79ad4c5695053601c5928d3d76cb55bea56808012a127ec4d1f58" +
+        "fdd2416e73e931a1b902fec138bb27a9e14b08dcb9b46716958592028081d27" +
+        "f600fa30e803d8094ecd736f8e294c101d9d0ebc77520a04e80b243788e8a" +
+        "2dafb64f8e0cb2fd0a38d650b4020ebb9e1adba581e288583f36e39e1b2c" +
+        "6b2f636de9bbf80b6f2943409c40ceab098cc301654433173abdbc1f6e59e" +
+        "541be1111f2ae4d4ebc13850c026159ce4e09c44722e1d50507149fbbaefe" +
+        "675331f1cc88eaeb2594b4578c65854a117df0a21b3934685994f2694282" +
+        "a84a82504d6f2e99fd"
+    )
+
+let private expectedSixteenBlockPlaintext =
+    bytesFromHex (
+        "2f2f" +
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" +
+        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f" +
+        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f" +
+        "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f" +
+        "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f" +
+        "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf" +
+        "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf" +
+        "e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfd"
+    )
+
+let private expectedSixteenBlockApplicationPlaintext =
+    expectedSixteenBlockPlaintext[2..]
 
 let private testDevice =
     let idNum =
@@ -169,7 +201,7 @@ let private runUnprotect key encryptedLength payload =
             testAccessNumber
             (cnf encryptedLength)
             (bytesField payload)
-            (decoderContext (Some (store :> ISourceStore)))
+            (decoderContext (store :> ISourceStore))
 
     result, store
 
@@ -297,6 +329,41 @@ let ``all remaining with thirty-two bytes uses the complete payload`` () =
         failwith $"Expected successful decryption, got %A{actual}"
 
 [<Fact>]
+let ``all remaining with sixteen encrypted blocks decrypts complete payload beyond fifteen block cap`` () =
+    expectedSixteenBlockPlaintext[0..1]
+    |> should equal [| 0x2Fuy; 0x2Fuy |]
+
+    let result, store =
+        runUnprotect validKey AllRemainingDataEncrypted validSixteenBlockCipherText
+
+    match result with
+    | Decoded (apl, _) ->
+        apl.Value.ToArray() |> should equal expectedSixteenBlockApplicationPlaintext
+        apl.Value.Length |> should equal 254
+        apl.Id |> should equal (FieldId.create 1)
+        apl.Span.Source |> should equal (SourceId.create 101)
+        apl.Span.Offset |> should equal 0
+        apl.Span.Length |> should equal 254
+
+        match store.DerivedBytes with
+        | Some bytes ->
+            bytes.ToArray() |> should equal expectedSixteenBlockApplicationPlaintext
+            bytes.Length |> should equal 254
+
+        | None ->
+            failwith "Expected derived source bytes"
+
+        match store.DerivedSource with
+        | Some source ->
+            source.Length |> should equal 254
+
+        | None ->
+            failwith "Expected derived source metadata"
+
+    | actual ->
+        failwith $"Expected successful decryption, got %A{actual}"
+
+[<Fact>]
 let ``all remaining with more than two hundred forty bytes is not interpreted as fifteen blocks`` () =
     let result, _ =
         runUnprotect [||] AllRemainingDataEncrypted (Array.zeroCreate 256)
@@ -330,6 +397,17 @@ let ``all remaining with non block-aligned payload fails before cryptography`` (
 
     expectSingleValidationMessage result
     |> should equal "Security mode 5 all-remaining encrypted payload length must be a multiple of 16 byte(s), but got 17 byte(s)."
+
+[<Fact>]
+let ``all remaining with empty payload fails validation before cryptography`` () =
+    let result, store =
+        runUnprotect [||] AllRemainingDataEncrypted [||]
+
+    expectSingleValidationMessage result
+    |> should equal "mode 5 requires at least one encrypted block containing decryption-verification bytes."
+
+    store.DerivedBytes |> should equal None
+    store.DerivedSource |> should equal None
 
 [<Fact>]
 let ``invalid verification bytes fail as encryption failure`` () =

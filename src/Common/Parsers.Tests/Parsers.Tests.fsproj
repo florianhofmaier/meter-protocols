@@ -28,7 +28,6 @@
 
     <ItemGroup>
         <ProjectReference Include="..\ByteReaders\ByteReaders.csproj" />
-        <ProjectReference Include="..\Decoders\Decoders.fsproj" />
         <ProjectReference Include="..\Parsers\Parsers.fsproj" />
     </ItemGroup>
 

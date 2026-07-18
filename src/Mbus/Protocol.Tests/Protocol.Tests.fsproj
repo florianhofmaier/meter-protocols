@@ -12,6 +12,7 @@
         <Compile Include="ValueConverterTests.fs" />
         <Compile Include="VariableLengthValueTests.fs" />
         <Compile Include="RecordRawTests.fs" />
+        <Compile Include="ConfigurationFieldTests.fs" />
         <Compile Include="NumberOfEncryptedBlocksTests.fs" />
         <Compile Include="Mode5Tests.fs" />
     </ItemGroup>

@@ -67,10 +67,9 @@ let validationMessages =
     | failure ->
         failwith $"Expected validation failure, got %A{failure}"
 
-let decoderContext sourceStore =
+let decoderContext (sourceStore: ISourceStore) =
     {
         CreateReader = fun bytes offset -> ByteReaderFactory.Create(bytes, offset)
         Sources = sourceStore
         Trace = trace
     }
-

@@ -23,7 +23,10 @@ let private baseContext () =
     let tracer =
         RecordingTracer()
 
-    context None readerFactory (tracer :> IFieldTracer), readerFactory, tracer
+    let store =
+        CapturingSourceStore(SourceId.create 900)
+
+    context (store :> ISourceStore) readerFactory (tracer :> IFieldTracer), readerFactory, tracer
 
 [<Fact>]
 let ``decodePassed returns value without notices`` () =
@@ -152,22 +155,6 @@ let ``validate maps passed and failed validations while preserving notices`` () 
         failwith $"Expected validation failure, got %A{actual}"
 
 [<Fact>]
-let ``createDerivedSource without source store returns structured failure attached to origin`` () =
-    let ctx, _, _ =
-        baseContext ()
-
-    let origin =
-        sourceField 12 7 25 [| 0xAAuy |]
-
-    match DecoderCore.createDerivedSource "derived" SourceTransform.Root false origin (memory [| 0x01uy |]) ctx with
-    | DecodeFailed (EncryptionFailed issue, []) ->
-        issue.FieldId |> should equal origin.Id
-        issue.Message |> should equal "decode source store is required to register a derived source"
-
-    | actual ->
-        failwith $"Expected structured failure, got %A{actual}"
-
-[<Fact>]
 let ``createDerivedSource registers source traces creation and returns derived field`` () =
     let readerFactory =
         RecordingReaderFactory()
@@ -179,7 +166,7 @@ let ``createDerivedSource registers source traces creation and returns derived f
         CapturingSourceStore(SourceId.create 100)
 
     let ctx =
-        context (Some (store :> ISourceStore)) readerFactory (tracer :> IFieldTracer)
+        context (store :> ISourceStore) readerFactory (tracer :> IFieldTracer)
 
     let origin =
         sourceField 12 7 25 [| 0xAAuy; 0xBBuy |]
@@ -196,6 +183,9 @@ let ``createDerivedSource registers source traces creation and returns derived f
 
         store.AddDerivedArgs
         |> should equal (Some ("derived", origin.Span, SourceTransform.Decrypt "AES", [| 0x01uy; 0x02uy |], true))
+
+        store.AddDerivedCalls.Length
+        |> should equal 1
 
         tracer.Events
         |> should equal [
@@ -224,7 +214,7 @@ let ``createDerivedSource supports empty derived bytes`` () =
         CapturingSourceStore(SourceId.create 101)
 
     let ctx =
-        context (Some (store :> ISourceStore)) readerFactory (tracer :> IFieldTracer)
+        context (store :> ISourceStore) readerFactory (tracer :> IFieldTracer)
 
     let origin =
         sourceField 12 7 25 [| 0xAAuy |]
@@ -253,6 +243,68 @@ let ``decoder expression supports return returnFrom and successful bind`` () =
         return value + 1
     }) ctx
     |> should equal (Decoded (4, [ Info (issue 2 "first") ]))
+
+[<Fact>]
+let ``decoder delay does not evaluate body at creation`` () =
+    let mutable evaluations =
+        0
+
+    let delayed =
+        decoder {
+            evaluations <- evaluations + 1
+            return evaluations
+        }
+
+    evaluations |> should equal 0
+
+    let ctx, _, _ =
+        baseContext ()
+
+    delayed ctx
+    |> should equal (Decoded (1, []))
+
+    evaluations |> should equal 1
+
+[<Fact>]
+let ``decoder delay evaluates once per execution`` () =
+    let mutable evaluations =
+        0
+
+    let delayed =
+        decoder {
+            evaluations <- evaluations + 1
+            return evaluations
+        }
+
+    let ctx, _, _ =
+        baseContext ()
+
+    delayed ctx
+    |> should equal (Decoded (1, []))
+
+    delayed ctx
+    |> should equal (Decoded (2, []))
+
+    evaluations |> should equal 2
+
+[<Fact>]
+let ``decoder delay lets body exceptions escape unchanged`` () =
+    let delayed =
+        decoder {
+            let value =
+                raise (InvalidOperationException "delayed")
+
+            return value
+        }
+
+    let ctx, _, _ =
+        baseContext ()
+
+    let ex =
+        Assert.Throws<InvalidOperationException>(fun () ->
+            delayed ctx |> ignore)
+
+    ex.Message |> should equal "delayed"
 
 [<Fact>]
 let ``successful bind and later failure preserve notice order`` () =

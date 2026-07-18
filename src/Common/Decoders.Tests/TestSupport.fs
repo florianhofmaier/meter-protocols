@@ -59,10 +59,16 @@ type RecordingReaderFactory() =
         ByteReaderFactory.Create(bytes, offset)
 
 type CapturingSourceStore(sourceId: SourceId) =
-    let mutable addDerivedArgs : (string * SourceSpan * SourceTransform * byte[] * bool) option = None
+    let addDerivedCalls =
+        ResizeArray<string * SourceSpan * SourceTransform * byte[] * bool>()
 
     member _.AddDerivedArgs =
-        addDerivedArgs
+        addDerivedCalls
+        |> Seq.tryLast
+
+    member _.AddDerivedCalls =
+        addDerivedCalls
+        |> Seq.toList
 
     interface ISourceStore with
         member _.AddRoot name bytes sensitive =
@@ -76,7 +82,7 @@ type CapturingSourceStore(sourceId: SourceId) =
             }
 
         member _.AddDerived name origin transform bytes sensitive =
-            addDerivedArgs <- Some (name, origin, transform, bytes.ToArray(), sensitive)
+            addDerivedCalls.Add(name, origin, transform, bytes.ToArray(), sensitive)
 
             {
                 Id = sourceId

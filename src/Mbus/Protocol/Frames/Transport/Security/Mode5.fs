@@ -130,7 +130,11 @@ module Mode5 =
                 passed encryptedLength
 
         | AllRemainingDataEncrypted ->
-            if availableLength % encryptedBlockLength <> 0 then
+            if availableLength = 0 then
+                failed
+                    aplData
+                    "mode 5 requires at least one encrypted block containing decryption-verification bytes."
+            elif availableLength % encryptedBlockLength <> 0 then
                 failed
                     aplData
                     $"Security mode 5 all-remaining encrypted payload length must be a multiple of {encryptedBlockLength} byte(s), but got {availableLength} byte(s)."

@@ -3,17 +3,12 @@ module Metering.Common.Decoding.Parsers.Tests.ParserRunnerTests
 open System
 open Xunit
 open FsUnit.Xunit
-open Metering.Common.Decoding.ByteReaders
-open Metering.Common.Decoding.Decoders.Core
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.ParserRunner
 open Metering.Common.Decoding.Parsers.Tests.TestSupport
 open Metering.Common.Decoding.Parsers.Types
-
-module DecoderCore =
-    Metering.Common.Decoding.Decoders.Core.Core
 
 [<Fact>]
 let ``runWithSource supplies requested source to parser errors`` () =
@@ -162,35 +157,3 @@ let ``supplied tracer is visible to the parser`` () =
 
     | Error error ->
         failwith $"Unexpected parser error: {error.Msg}"
-
-[<Fact>]
-let ``decoder parseValue uses exact parser semantics`` () =
-    let sourceId = SourceId.create 7
-
-    let source =
-        {
-            Id = FieldId.create 12
-            Span =
-                {
-                    Source = sourceId
-                    Offset = 25
-                    Length = 2
-                }
-            Value = ReadOnlyMemory<byte>([| 0xAAuy; 0xBBuy |])
-        }
-
-    let context =
-        {
-            CreateReader = fun bytes offset -> ByteReaderFactory.Create(bytes, offset)
-            Sources = None
-            Trace = trace
-        }
-
-    match DecoderCore.parseValue parseU8 source context with
-    | DecodeFailed (ParseFailed error, _) ->
-        error.Source |> should equal sourceId
-        error.Pos |> should equal 26
-        error.Msg |> should equal "Exact parsing left trailing input. 1 byte(s) remaining."
-
-    | actual ->
-        failwith $"Expected decoder parse failure, got %A{actual}"
