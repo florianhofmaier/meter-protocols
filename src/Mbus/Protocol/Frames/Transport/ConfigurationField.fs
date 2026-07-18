@@ -146,7 +146,7 @@ type ConfigurationFieldMode5 =
         HopCounter: bool
         RepeaterAccess: bool
         ContentOfMsg: ContentOfMessage
-        NumberOfEncryptedBlocks: NumberOfEncryptedBlocks
+        EncryptedLength: EncryptedLengthIndicator
         Mode: Mode
         Synchronized: bool
         Accessibility: bool
@@ -167,10 +167,8 @@ module ConfigurationFieldMode5 =
                 | Some c -> passed c
                 | None -> failed raw "Invalid ContentOfMessage"
 
-            let! encryptedBlocks =
-                match NumberOfEncryptedBlocks.tryMap cnf with
-                | Some c -> passed c
-                | None -> failed raw "Invalid NumberOfEncryptedBlocks"
+            let encryptedLength =
+                EncryptedLengthIndicator.map cnf
 
             return
                 raw
@@ -178,7 +176,7 @@ module ConfigurationFieldMode5 =
                     HopCounter = BitFields.mapHopCounter cnf
                     RepeaterAccess = BitFields.mapRepeaterAccess cnf
                     ContentOfMsg = cc
-                    NumberOfEncryptedBlocks = encryptedBlocks
+                    EncryptedLength = encryptedLength
                     Mode = Mode.Mode5
                     Synchronized = BitFields.mapSynchronized cnf
                     Accessibility = BitFields.mapAccessibility cnf

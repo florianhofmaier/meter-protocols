@@ -64,7 +64,8 @@ type ParserBuilder() =
         bind first (fun () -> second)
 
     member _.Delay(factory: unit -> Parser<'a>) : Parser<'a> =
-        factory ()
+        fun ctx ->
+            factory () ctx
 
 let parser =
     ParserBuilder()

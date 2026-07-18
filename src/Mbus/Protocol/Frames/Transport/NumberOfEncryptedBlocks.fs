@@ -1,22 +1,37 @@
 namespace Metering.Mbus.Protocol.Frames.Transport
 
-type NumberOfEncryptedBlocks =
-    private NumberOfEncryptedBlocks of int
+type EncryptedBlockCount =
+    private EncryptedBlockCount of int
 
-module NumberOfEncryptedBlocks =
+type EncryptedLengthIndicator =
+    | NoEncryptedData
+    | FixedEncryptedBlocks of EncryptedBlockCount
+    | AllRemainingDataEncrypted
+
+module EncryptedBlockCount =
+
+    let value (EncryptedBlockCount v) =
+        v
+
+    let tryCreate v =
+        if v >= 1 && v <= 0x0E
+        then v |> EncryptedBlockCount |> Some
+        else None
+
+module EncryptedLengthIndicator =
 
     let private mask = 0xF0us
     let private shift = 4
 
-    let value (NumberOfEncryptedBlocks v) =
-        v
+    let map cnf =
+        match (cnf &&& mask) >>> shift |> int with
+        | 0 ->
+            NoEncryptedData
 
-    let tryCreate v =
-        if v >= 0 && v <= 0x0F
-        then v |> NumberOfEncryptedBlocks |> Some
-        else None
+        | 0x0F ->
+            AllRemainingDataEncrypted
 
-    let tryMap cnf =
-        (cnf &&& mask) >>> shift
-        |> int
-        |> tryCreate
+        | value ->
+            value
+            |> EncryptedBlockCount
+            |> FixedEncryptedBlocks

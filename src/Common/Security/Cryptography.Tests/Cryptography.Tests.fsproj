@@ -4,18 +4,13 @@
         <TargetFramework>net10.0</TargetFramework>
         <IsPackable>false</IsPackable>
         <GenerateProgramFile>false</GenerateProgramFile>
-        <RootNamespace>Metering.Common.Decoding.Parsers.Tests</RootNamespace>
+        <RootNamespace>Metering.Common.Security.Cryptography.Tests</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="TestSupport.fs" />
-        <Compile Include="TypesTests.fs" />
-        <Compile Include="CoreParserTests.fs" />
-        <Compile Include="ErrorHandlingTests.fs" />
-        <Compile Include="UtilityParserTests.fs" />
-        <Compile Include="FieldTests.fs" />
-        <Compile Include="BinaryParserTests.fs" />
-        <Compile Include="ParserRunnerTests.fs" />
+        <Compile Include="AesCbcTests.fs" />
+        <Compile Include="AesGcmTests.fs" />
+        <Compile Include="SensitiveBufferTests.fs" />
     </ItemGroup>
 
     <ItemGroup>
@@ -27,9 +22,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\ByteReaders\ByteReaders.csproj" />
-        <ProjectReference Include="..\Decoders\Decoders.fsproj" />
-        <ProjectReference Include="..\Parsers\Parsers.fsproj" />
+        <ProjectReference Include="..\Cryptography\Cryptography.fsproj" />
     </ItemGroup>
 
 </Project>

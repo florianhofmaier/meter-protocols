@@ -103,24 +103,39 @@ module Mode5 =
         (aplData: Field<ReadOnlyMemory<byte>>)
         : Validation<int> =
 
-        let encryptedLength =
-            cnf.Value.NumberOfEncryptedBlocks
-            |> NumberOfEncryptedBlocks.value
-            |> (*) encryptedBlockLength
-
         let availableLength =
             aplData.Value.Length
 
-        if encryptedLength > availableLength then
+        match cnf.Value.EncryptedLength with
+        | NoEncryptedData ->
             failed
                 aplData
-                $"Declared encrypted length is {encryptedLength} byte(s), but only {availableLength} byte(s) are available."
-        elif encryptedLength < availableLength then
-            failed
-                aplData
-                $"Security mode 5 partial encryption is standard-defined but currently unsupported. Declared encrypted length is {encryptedLength} byte(s), available payload is {availableLength} byte(s)."
-        else
-            passed encryptedLength
+                "Security mode 5 with no encrypted data is standard-defined but currently unsupported."
+
+        | FixedEncryptedBlocks blockCount ->
+            let encryptedLength =
+                blockCount
+                |> EncryptedBlockCount.value
+                |> (*) encryptedBlockLength
+
+            if encryptedLength > availableLength then
+                failed
+                    aplData
+                    $"Declared encrypted length is {encryptedLength} byte(s), but only {availableLength} byte(s) are available."
+            elif encryptedLength < availableLength then
+                failed
+                    aplData
+                    $"Security mode 5 partial encryption is standard-defined but currently unsupported. Declared encrypted length is {encryptedLength} byte(s), available payload is {availableLength} byte(s)."
+            else
+                passed encryptedLength
+
+        | AllRemainingDataEncrypted ->
+            if availableLength % encryptedBlockLength <> 0 then
+                failed
+                    aplData
+                    $"Security mode 5 all-remaining encrypted payload length must be a multiple of {encryptedBlockLength} byte(s), but got {availableLength} byte(s)."
+            else
+                passed availableLength
 
     let unprotect
         (ctx: SecurityContext)

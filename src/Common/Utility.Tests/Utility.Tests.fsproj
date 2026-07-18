@@ -4,18 +4,11 @@
         <TargetFramework>net10.0</TargetFramework>
         <IsPackable>false</IsPackable>
         <GenerateProgramFile>false</GenerateProgramFile>
-        <RootNamespace>Metering.Common.Decoding.Parsers.Tests</RootNamespace>
+        <RootNamespace>Metering.Common.Utility.Tests</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="TestSupport.fs" />
-        <Compile Include="TypesTests.fs" />
-        <Compile Include="CoreParserTests.fs" />
-        <Compile Include="ErrorHandlingTests.fs" />
-        <Compile Include="UtilityParserTests.fs" />
-        <Compile Include="FieldTests.fs" />
-        <Compile Include="BinaryParserTests.fs" />
-        <Compile Include="ParserRunnerTests.fs" />
+        <Compile Include="ResultBuilderTests.fs" />
     </ItemGroup>
 
     <ItemGroup>
@@ -27,9 +20,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\ByteReaders\ByteReaders.csproj" />
-        <ProjectReference Include="..\Decoders\Decoders.fsproj" />
-        <ProjectReference Include="..\Parsers\Parsers.fsproj" />
+        <ProjectReference Include="..\Utility\Utility.fsproj" />
     </ItemGroup>
 
 </Project>
