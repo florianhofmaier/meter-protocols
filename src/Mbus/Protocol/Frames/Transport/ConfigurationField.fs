@@ -53,7 +53,10 @@ module ConfigurationFieldRaw =
                 return bits |> Field.map (fun _ -> Mode5Raw bits)
 
             | None ->
-                return! failBefore 2 $"Encryption mode not supported: {value}"
+                let mode =
+                    Mode.rawValue value
+
+                return! failBefore 2 $"Unsupported security mode {mode} in configuration field 0x{value:X4}."
         }
 
 module BitFields =

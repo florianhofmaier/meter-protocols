@@ -16,6 +16,14 @@ let private expectPlain key iv cipherText =
     | Error error ->
         failwith $"Unexpected encryption error: %A{error}"
 
+let private nistFourBlockPlaintext =
+    Convert.FromHexString(
+        "6bc1bee22e409f96e93d7e117393172a" +
+        "ae2d8a571e03ac9c9eb76fac45af8e51" +
+        "30c81c46a35ce411e5fbc1191a0a52ef" +
+        "f69f2445df4f9b17ad2b417be66c3710"
+    )
+
 [<Fact>]
 let ``valid AES-128-CBC NIST vector decrypts`` () =
     expectPlain
@@ -29,16 +37,26 @@ let ``valid AES-192-CBC NIST vector decrypts`` () =
     expectPlain
         "8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b"
         "000102030405060708090a0b0c0d0e0f"
-        "4f021db243bc633d7178183a9fa071e8"
-    |> should equal (Convert.FromHexString("6bc1bee22e409f96e93d7e117393172a"))
+        (
+            "4f021db243bc633d7178183a9fa071e8" +
+            "b4d9ada9ad7dedf4e5e738763f69145a" +
+            "571b242012fb7ae07fa9baac3df102e0" +
+            "08b0e27988598881d920a9e64f5615cd"
+        )
+    |> should equal nistFourBlockPlaintext
 
 [<Fact>]
 let ``valid AES-256-CBC NIST vector decrypts`` () =
     expectPlain
         "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4"
         "000102030405060708090a0b0c0d0e0f"
-        "f58c4c04d6e5f1ba779eabfb5f7bfbd6"
-    |> should equal (Convert.FromHexString("6bc1bee22e409f96e93d7e117393172a"))
+        (
+            "f58c4c04d6e5f1ba779eabfb5f7bfbd6" +
+            "9cfc4e967edb808d679f777bc6702c7d" +
+            "39f23369a9d9bacfa530e26304231461" +
+            "b2eb05e2c39be9fcda6c19078c6a9d1b"
+        )
+    |> should equal nistFourBlockPlaintext
 
 [<Fact>]
 let ``multiple CBC blocks preserve order and exact output length`` () =

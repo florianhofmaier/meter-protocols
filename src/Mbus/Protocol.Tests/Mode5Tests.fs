@@ -60,6 +60,14 @@ let private validKey =
         0x0Cuy; 0x0Duy; 0x0Euy; 0x0Fuy
     |]
 
+let private mode5Key bytes =
+    match Mode5Key.create (memory bytes) with
+    | Ok key ->
+        key
+
+    | Error error ->
+        failwith $"Invalid test Mode 5 key: %A{error}"
+
 let private bytesFromHex (hex: string) =
     Convert.FromHexString hex
 
@@ -196,7 +204,7 @@ let private runUnprotect key encryptedLength payload =
 
     let result =
         Mode5.unprotect
-            (SecurityContext.mode5 (memory key))
+            (SecurityContext.mode5 (mode5Key key))
             testDevice
             testAccessNumber
             (cnf encryptedLength)
@@ -232,18 +240,18 @@ let private expectSingleValidationMessage result =
 [<Fact>]
 let ``fixed count one resolves to sixteen encrypted bytes`` () =
     let result, _ =
-        runUnprotect [||] (fixedBlocks 1) (Array.zeroCreate 16)
+        runUnprotect validKey (fixedBlocks 1) (Array.zeroCreate 16)
 
     expectEncryptionFailure result
-    |> should equal "invalid AES-CBC key length: 0 byte(s)"
+    |> should equal "security mode 5 AES check failed"
 
 [<Fact>]
 let ``fixed count fourteen resolves to two hundred twenty-four encrypted bytes`` () =
     let result, _ =
-        runUnprotect [||] (fixedBlocks 14) (Array.zeroCreate 224)
+        runUnprotect validKey (fixedBlocks 14) (Array.zeroCreate 224)
 
     expectEncryptionFailure result
-    |> should equal "invalid AES-CBC key length: 0 byte(s)"
+    |> should equal "security mode 5 AES check failed"
 
 [<Fact>]
 let ``fixed count larger than available payload is validation failure`` () =
@@ -276,10 +284,14 @@ let ``fixed count smaller than payload reports unsupported partial encryption`` 
 [<Fact>]
 let ``fixed count equal to payload length uses fully encrypted path`` () =
     let result, _ =
-        runUnprotect [||] (fixedBlocks 1) validCipherText
+        runUnprotect validKey (fixedBlocks 1) validCipherText
 
-    expectEncryptionFailure result
-    |> should equal "invalid AES-CBC key length: 0 byte(s)"
+    match result with
+    | Decoded (apl, _) ->
+        apl.Value.ToArray() |> should equal expectedApplicationPlaintext
+
+    | actual ->
+        failwith $"Expected successful decryption, got %A{actual}"
 
 [<Fact>]
 let ``all remaining with sixteen byte vector decrypts successfully`` () =
@@ -365,35 +377,40 @@ let ``all remaining with sixteen encrypted blocks decrypts complete payload beyo
 
 [<Fact>]
 let ``all remaining with more than two hundred forty bytes is not interpreted as fifteen blocks`` () =
-    let result, _ =
-        runUnprotect [||] AllRemainingDataEncrypted (Array.zeroCreate 256)
+    let result, store =
+        runUnprotect validKey AllRemainingDataEncrypted validSixteenBlockCipherText
 
-    expectEncryptionFailure result
-    |> should equal "invalid AES-CBC key length: 0 byte(s)"
+    match result with
+    | Decoded (apl, _) ->
+        apl.Value.Length |> should equal 254
+        apl.Span.Length |> should equal 254
+
+        match store.DerivedSource with
+        | Some source ->
+            source.Length |> should equal 254
+
+        | None ->
+            failwith "Expected derived source metadata"
+
+    | actual ->
+        failwith $"Expected successful decryption, got %A{actual}"
 
 [<Fact>]
 let ``all remaining payload longer than two hundred forty bytes is not reported as partial encryption`` () =
     let result, _ =
-        runUnprotect [||] AllRemainingDataEncrypted (Array.zeroCreate 256)
+        runUnprotect validKey AllRemainingDataEncrypted validSixteenBlockCipherText
 
     match result with
-    | DecodeFailed (ValidationFailed failures, _) ->
-        failures
-        |> Failures.toList
-        |> List.map (fun issue -> issue.Message)
-        |> List.exists (fun message -> message.Contains("partial encryption"))
-        |> should equal false
-
-    | DecodeFailed (EncryptionFailed _, _) ->
-        ()
+    | Decoded (apl, _) ->
+        apl.Value.Length |> should equal 254
 
     | actual ->
-        failwith $"Expected encryption or validation failure, got %A{actual}"
+        failwith $"Expected successful decryption without partial-encryption validation failure, got %A{actual}"
 
 [<Fact>]
 let ``all remaining with non block-aligned payload fails before cryptography`` () =
     let result, _ =
-        runUnprotect [||] AllRemainingDataEncrypted (Array.zeroCreate 17)
+        runUnprotect validKey AllRemainingDataEncrypted (Array.zeroCreate 17)
 
     expectSingleValidationMessage result
     |> should equal "Security mode 5 all-remaining encrypted payload length must be a multiple of 16 byte(s), but got 17 byte(s)."
@@ -401,7 +418,7 @@ let ``all remaining with non block-aligned payload fails before cryptography`` (
 [<Fact>]
 let ``all remaining with empty payload fails validation before cryptography`` () =
     let result, store =
-        runUnprotect [||] AllRemainingDataEncrypted [||]
+        runUnprotect validKey AllRemainingDataEncrypted [||]
 
     expectSingleValidationMessage result
     |> should equal "mode 5 requires at least one encrypted block containing decryption-verification bytes."
@@ -438,14 +455,6 @@ let ``valid fixed AES-CBC vector strips verification bytes from returned source`
 
     | actual ->
         failwith $"Expected successful decryption, got %A{actual}"
-
-[<Fact>]
-let ``invalid key length remains encryption failure`` () =
-    let result, _ =
-        runUnprotect [| 0x00uy |] (fixedBlocks 1) validCipherText
-
-    expectEncryptionFailure result
-    |> should equal "invalid AES-CBC key length: 1 byte(s)"
 
 [<Fact>]
 let ``mode five with no encrypted data is explicitly unsupported`` () =

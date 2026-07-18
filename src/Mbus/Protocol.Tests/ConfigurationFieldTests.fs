@@ -109,13 +109,21 @@ let ``mode zero preserves high low-byte nibble without mode five encrypted lengt
     | actual ->
         failwith $"Expected Mode0Raw, got %A{actual}"
 
-[<Fact>]
-let ``unsupported mode is rejected by configuration field parser`` () =
-    match runExactly (reader [| 0x00uy; 0x01uy |]) trace ConfigurationFieldRaw.parse with
+let private assertUnsupportedMode bytes expectedMode expectedRaw =
+    match runExactly (reader bytes) trace ConfigurationFieldRaw.parse with
     | Error error ->
         error.Source |> should equal SourceId.root
         error.Pos |> should equal 0
-        error.Msg |> should equal "Encryption mode not supported: 256"
+        error.Msg.Contains($"Unsupported security mode {expectedMode}") |> should equal true
+        error.Msg.Contains($"configuration field 0x{expectedRaw}") |> should equal true
 
     | Ok value ->
         failwith $"Expected parser failure, got %A{value}"
+
+[<Fact>]
+let ``unsupported mode reports extracted mode and raw configuration field`` () =
+    assertUnsupportedMode [| 0x00uy; 0x01uy |] 1 "0100"
+
+[<Fact>]
+let ``unsupported max raw mode reports extracted mode and raw configuration field`` () =
+    assertUnsupportedMode [| 0x00uy; 0x1Fuy |] 31 "1F00"

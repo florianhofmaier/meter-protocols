@@ -14,6 +14,7 @@
         <Compile Include="RecordRawTests.fs" />
         <Compile Include="ConfigurationFieldTests.fs" />
         <Compile Include="NumberOfEncryptedBlocksTests.fs" />
+        <Compile Include="Mode5SecurityContextTests.fs" />
         <Compile Include="Mode5Tests.fs" />
     </ItemGroup>
 

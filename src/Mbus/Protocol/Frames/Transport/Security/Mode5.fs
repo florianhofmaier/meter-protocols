@@ -163,7 +163,7 @@ module Mode5 =
                 aplData.Value.Slice(0, encryptedLength)
 
             let key =
-                Mode5SecurityContext.value mode5
+                Mode5SecurityContext.keyBytes mode5
 
             match AesCbc.decrypt key iv cipherText with
             | Error error ->
