@@ -22,19 +22,16 @@ module NoneHeaderCiField =
 
 type ShortHeaderCiField =
     | ResponseShortHeader
-    | ApplicationResetOrSelectShortHeader
 
 module ShortHeaderCiField =
 
     let value =
         function
         | ResponseShortHeader -> 0x7Auy
-        | ApplicationResetOrSelectShortHeader -> 0x57uy
 
     let tryMap =
         function
         | 0x7Auy -> Some ResponseShortHeader
-        | 0x57uy -> Some ApplicationResetOrSelectShortHeader
         | _ -> None
 
 type LongHeaderCiField =
@@ -63,6 +60,14 @@ type CiFieldTpl =
     | LongTplHeader of LongHeaderCiField
 
 module CiFieldTpl =
+
+    let value =
+        function
+        | NoneTplHeader Command -> 0x51uy
+        | NoneTplHeader SelectionOfDevice -> 0x52uy
+        | NoneTplHeader ApplicationResetOrSelectNoHeader -> 0x50uy
+        | ShortTplHeader ci -> ShortHeaderCiField.value ci
+        | LongTplHeader ci -> LongHeaderCiField.value ci
 
     let parse : Parser<Field<CiFieldTpl>> =
         parseField "CI-Field TPL"

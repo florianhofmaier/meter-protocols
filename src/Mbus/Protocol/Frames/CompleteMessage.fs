@@ -31,6 +31,7 @@ type ProtectedAplRaw =
 type AplExpansionRaw =
     | Parsed of Field<AplRaw>
     | Protected of ProtectedAplRaw
+    | NotExpandedForUnsupportedSecurityMode of mode: byte * Field<ConfigurationFieldBitsRaw>
     | Invalid of Failures
 
 type CompleteMessageExpandedRaw =
@@ -75,6 +76,60 @@ module private PipelineIssues =
 
 module FrameVariableLengthRaw =
 
+    type private WiredCompleteMessageCi =
+        | Supported
+        | ShortTplHeader
+        | Afl
+        | ReservedOrUnsupported
+
+    let private classifyCi =
+        function
+        | 0x50uy
+        | 0x51uy
+        | 0x52uy
+        | 0x53uy
+        | 0x72uy
+        | 0x75uy ->
+            Supported
+
+        // EN 13757-7:2018, 5.2, Table 2 marks these as short-header CI values.
+        | 0x5Auy
+        | 0x61uy
+        | 0x65uy
+        | 0x67uy
+        | 0x6Auy
+        | 0x6Euy
+        | 0x74uy
+        | 0x7Auy
+        | 0x7Buy
+        | 0x7Duy
+        | 0x7Fuy
+        | 0x88uy
+        | 0x8Auy
+        | 0x9Euy
+        | 0xC1uy
+        | 0xC4uy ->
+            ShortTplHeader
+
+        | 0x90uy ->
+            Afl
+
+        | _ ->
+            ReservedOrUnsupported
+
+    let private rejectCi
+        (source: Field<ReadOnlyMemory<byte>>)
+        ci
+        message =
+
+        decodeError (
+            ParseFailed {
+                Source = source.Span.Source
+                Pos = source.Span.Offset
+                Msg = $"{message} Actual TPL.CI=0x{ci:X2}."
+            }
+        )
+
     let parseCompleteMessageFromDll
         (dll: Field<DllVariableLengthRaw>)
         : Decoder<Field<FrameVariableLengthRaw>> =
@@ -82,17 +137,7 @@ module FrameVariableLengthRaw =
         let source =
             dll.Value.UserData.Value.HigherLayerData
 
-        if source.Value.Length > 0 && source.Value.Span[0] = 0x90uy then
-            decodeError (
-                ParseFailed {
-                    Source = source.Span.Source
-                    Pos = source.Span.Offset
-                    Msg =
-                        "Unsupported but standard-conformant AFL variant: CI=0x90 at HigherLayerData; "
-                        + "supported path is a complete TPL message. EN 13757-7:2018, 5.2, Table 2."
-                }
-            )
-        else
+        if source.Value.IsEmpty then
             decoder {
                 let! tpl =
                     parse TplRaw.parse source
@@ -106,6 +151,50 @@ module FrameVariableLengthRaw =
                         }
                     )
             }
+        else
+            let ci = source.Value.Span[0]
+
+            match classifyCi ci with
+            | Supported ->
+                decoder {
+                    let! tpl =
+                        parse TplRaw.parse source
+
+                    return
+                        dll
+                        |> Field.withValue (
+                            FrameVariableLengthRaw.CompleteMessage {
+                                Dll = dll
+                                Tpl = tpl
+                            }
+                        )
+                }
+
+            | ShortTplHeader ->
+                rejectCi
+                    source
+                    ci
+                    ("Short TPL headers are not permitted in the wired M-Bus complete-message path. "
+                     + "EN 13757-3:2025, Clause 5; EN 13757-7:2018, 5.2, Table 2.")
+
+            | Afl ->
+                rejectCi
+                    source
+                    ci
+                    ("Unsupported but standard-conformant AFL variant at HigherLayerData; "
+                     + "the supported path is a complete TPL message. EN 13757-7:2018, 5.2, Table 2.")
+
+            | ReservedOrUnsupported ->
+                let classification =
+                    if ci = 0x57uy then
+                        "Reserved CI value in the current EN 13757 path"
+                    else
+                        "Reserved or unsupported CI value in the wired complete-message path"
+
+                rejectCi
+                    source
+                    ci
+                    $"{classification}. EN 13757-7:2018, 5.2, Table 2."
 
 module private AplParser =
 
@@ -191,30 +280,15 @@ module FrameVariableLengthExpandedRaw =
                     }
 
                 | TplRaw.ShortHeader {
-                    Header = { Value = ShortHeaderRaw.Mode5Raw _ }
-                  } ->
-                    PipelineIssues.single
-                        raw.Tpl
-                        "Short-header Mode 5 is standard-conformant, but this wired frame model does not contain the complete link-layer meter identification required to construct the IV. EN 13757-3:2025, G.5.4; EN 13757-7:2018, 9.4.4.1, Table 48."
-                    |> AplExpansionRaw.Invalid
-                    |> decodePassed
-
-                | TplRaw.ShortHeader {
                     Header = { Value = ShortHeaderRaw.OtherModeRaw header }
                   } ->
-                    PipelineIssues.single
-                        header.Cnf
-                        $"Security mode {header.Mode} is unsupported. EN 13757-7:2018, 7.5.8, Table 19."
-                    |> AplExpansionRaw.Invalid
+                    NotExpandedForUnsupportedSecurityMode (header.Mode, header.Cnf)
                     |> decodePassed
 
                 | TplRaw.LongHeader {
                     Header = { Value = LongHeaderRaw.OtherModeRaw header }
                   } ->
-                    PipelineIssues.single
-                        header.Cnf
-                        $"Security mode {header.Mode} is unsupported. EN 13757-7:2018, 7.5.8, Table 19."
-                    |> AplExpansionRaw.Invalid
+                    NotExpandedForUnsupportedSecurityMode (header.Mode, header.Cnf)
                     |> decodePassed
 
                 | _ ->
@@ -250,11 +324,13 @@ module ProtectedApl =
     let fromRaw (raw: ProtectedAplRaw) : Validation<ProtectedApl> =
         let original = raw.OriginalPayload.Span
         let encrypted = raw.EncryptedPart.Span
+        let originalEnd = original.Offset + original.Length
+        let encryptedEnd = encrypted.Offset + encrypted.Length
 
         let inOriginal span =
             span.Source = original.Source
             && span.Offset >= original.Offset
-            && span.Offset + span.Length <= original.Offset + original.Length
+            && span.Offset + span.Length <= originalEnd
 
         validator {
             let! () =
@@ -264,14 +340,45 @@ module ProtectedApl =
                     (inOriginal encrypted)
 
             and! () =
+                ensure
+                    raw.EncryptedPart
+                    "Protected encrypted range must start at the original payload start."
+                    (encrypted.Source = original.Source
+                     && encrypted.Offset = original.Offset)
+
+            and! () =
                 match raw.ClearSuffix with
-                | None -> passed ()
-                | Some suffix ->
+                | None ->
                     ensure
-                        suffix
-                        "Protected clear-suffix range is outside the original payload."
-                        (inOriginal suffix.Span
-                         && suffix.Span.Offset = encrypted.Offset + encrypted.Length)
+                        raw.EncryptedPart
+                        "Protected encrypted range without a clear suffix must end at the original payload end."
+                        (encrypted.Source = original.Source
+                         && encryptedEnd = originalEnd)
+
+                | Some suffix ->
+                    validator {
+                        let! () =
+                            ensure
+                                suffix
+                                "Protected clear-suffix range is outside the original payload."
+                                (inOriginal suffix.Span)
+
+                        and! () =
+                            ensure
+                                suffix
+                                "Protected clear suffix must start exactly after the encrypted range."
+                                (suffix.Span.Source = original.Source
+                                 && suffix.Span.Offset = encryptedEnd)
+
+                        and! () =
+                            ensure
+                                suffix
+                                "Protected clear suffix must end at the original payload end."
+                                (suffix.Span.Source = original.Source
+                                 && suffix.Span.Offset + suffix.Span.Length = originalEnd)
+
+                        return ()
+                    }
 
             return {
                 OriginalPayload = raw.OriginalPayload
@@ -293,10 +400,80 @@ module AplContent =
             ProtectedApl.fromRaw raw
             |> map AplContent.Protected
 
+        | AplExpansionRaw.NotExpandedForUnsupportedSecurityMode (mode, field) ->
+            failed
+                field
+                $"APL expansion was skipped for unsupported outer security mode {mode}."
+
         | AplExpansionRaw.Invalid failures ->
             Failed (failures, [])
 
+module private CompleteMessageCrossLayer =
+
+    type private Direction =
+        | CommandToDevice
+        | ResponseFromDevice
+
+    let private ciAndDirection (raw: Field<TplRaw>) =
+        match raw.Value with
+        | TplRaw.NoneHeader tpl ->
+            let ci = NoneTplHeader tpl.Ci.Value
+            tpl.Ci |> Field.map (fun _ -> CiFieldTpl.value ci), CommandToDevice
+
+        | TplRaw.ShortHeader tpl ->
+            let ci = ShortTplHeader tpl.Ci.Value
+            tpl.Ci |> Field.map (fun _ -> CiFieldTpl.value ci), ResponseFromDevice
+
+        | TplRaw.LongHeader tpl ->
+            let ci = LongTplHeader tpl.Ci.Value
+            let direction =
+                match tpl.Ci.Value with
+                | ApplicationResetOrSelectLongHeader -> CommandToDevice
+                | ResponseLongHeader
+                | AlarmLongHeader -> ResponseFromDevice
+
+            tpl.Ci |> Field.map (fun _ -> CiFieldTpl.value ci), direction
+
+    let validateRaw (raw: CompleteMessageExpandedRaw) : Validation<unit> =
+        let cField =
+            raw.Dll.Value.UserData.Value.CField
+
+        let cValue =
+            CFieldRaw.value cField.Value
+
+        let cDirection, cRole =
+            if cValue &&& 0x40uy = 0x40uy then
+                CommandToDevice,
+                $"primary command (PRM=1, function=0x{cValue &&& 0x0Fuy:X1})"
+            else
+                ResponseFromDevice,
+                $"secondary response (PRM=0, function=0x{cValue &&& 0x0Fuy:X1})"
+
+        let ciField, ciDirection =
+            ciAndDirection raw.Tpl
+
+        let expected =
+            match cDirection with
+            | CommandToDevice -> "a command-to-device CI"
+            | ResponseFromDevice -> "a response-from-device CI"
+
+        ensure
+            ciField
+            ($"Cross-layer direction mismatch between DLL.UserData.CField and TPL.CI: "
+             + $"C-field=0x{cValue:X2} is {cRole}, but CI=0x{ciField.Value:X2} has the opposite direction; "
+             + $"the C-field role requires {expected}. EN 13757-7:2018, 5.2, Table 2.")
+            (cDirection = ciDirection)
+
 module FrameVariableLength =
+
+    let private validatePayloadForRoot =
+        function
+        | AplExpansionRaw.NotExpandedForUnsupportedSecurityMode _ ->
+            passed None
+
+        | payload ->
+            AplContent.fromExpandedRaw payload
+            |> map Some
 
     let private completeFromExpandedRaw
         (raw: CompleteMessageExpandedRaw)
@@ -304,13 +481,22 @@ module FrameVariableLength =
         validator {
             let! dll = DllVariableLength.fromRaw raw.Dll
             and! tpl = Tpl.fromRaw raw.Tpl
-            and! payload = AplContent.fromExpandedRaw raw.Payload
+            and! payload = validatePayloadForRoot raw.Payload
+            and! () = CompleteMessageCrossLayer.validateRaw raw
 
-            return {
-                Dll = dll
-                Tpl = tpl
-                Payload = payload
-            }
+            match payload with
+            | Some payload ->
+                return {
+                    Dll = dll
+                    Tpl = tpl
+                    Payload = payload
+                }
+
+            | None ->
+                return!
+                    failed
+                        raw.Tpl
+                        "TPL validation accepted an unsupported security mode whose APL expansion was skipped."
         }
 
     let fromExpandedRaw

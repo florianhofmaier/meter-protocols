@@ -127,3 +127,23 @@ let ``unsupported mode is preserved in raw configuration field`` () =
 [<Fact>]
 let ``unsupported max raw mode is preserved`` () =
     assertUnsupportedMode [| 0x00uy; 0x1Fuy |] 31uy
+
+[<Fact>]
+let ``mode zero is classified as supported`` () =
+    Mode.classify 0uy
+    |> should equal SupportedMode0
+
+[<Fact>]
+let ``mode five is classified as supported`` () =
+    Mode.classify 5uy
+    |> should equal SupportedMode5
+
+[<Fact>]
+let ``mode one is classified as standard defined unsupported`` () =
+    Mode.classify 1uy
+    |> should equal (StandardDefinedUnsupported 1uy)
+
+[<Fact>]
+let ``mode six is classified as reserved`` () =
+    Mode.classify 6uy
+    |> should equal (Reserved 6uy)

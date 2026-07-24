@@ -16,6 +16,7 @@
         <Compile Include="NumberOfEncryptedBlocksTests.fs" />
         <Compile Include="Mode5SecurityContextTests.fs" />
         <Compile Include="Mode5Tests.fs" />
+        <Compile Include="ProtectedAplTests.fs" />
         <Compile Include="CompleteMessagePipelineTests.fs" />
     </ItemGroup>
 

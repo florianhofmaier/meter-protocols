@@ -131,7 +131,7 @@ module ShortHeader =
                 and! unsupported : Field<ShortHeader> =
                     failed
                         header.Cnf
-                        $"Security mode {header.Mode} is standard-defined or reserved but unsupported by this decoder. EN 13757-7:2018, 7.5.8, Table 19."
+                        (Mode.unsupportedMessage header.Mode)
 
                 return unsupported
         }
