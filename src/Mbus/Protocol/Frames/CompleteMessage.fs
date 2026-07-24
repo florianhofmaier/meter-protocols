@@ -108,7 +108,7 @@ module FrameVariableLengthRaw =
             dll.Value.UserData.Value.HigherLayerData
 
         if not source.Value.IsEmpty
-           && source.Value.Span[0] = 0x90uy then
+           && CiFieldTpl.isAfl source.Value.Span[0] then
             rejectAfl source 0x90uy
         else
             decoder {
@@ -131,7 +131,7 @@ module FrameVariableLengthRaw =
                                 Pos = tpl.Span.Offset
                                 Msg =
                                     "Wired M-Bus security mode 5 requires a long TPL header. "
-                                    + $"Actual TPL.CI=0x{ci:X2}; actual header type: short; actual security mode: 5. "
+                                    + $"Actual TPL.CI=0x{ci:X2}; actual header type: short TPL header; actual security mode: 5. "
                                     + "EN 13757-7:2018, 9.4.4 and Table 48."
                             }
                         )
@@ -331,24 +331,24 @@ module ProtectedApl =
             }
         }
 
-module AplContent =
+type private ExpandableAplRaw =
+    | ParsedApl of Field<AplRaw>
+    | ProtectedApl of ProtectedAplRaw
+    | InvalidApl of Failures
 
-    let fromExpandedRaw =
+module private AplContentValidation =
+
+    let fromRaw =
         function
-        | AplExpansionRaw.Parsed apl ->
+        | ExpandableAplRaw.ParsedApl apl ->
             Apl.fromRaw apl
             |> map AplContent.Decoded
 
-        | AplExpansionRaw.Protected raw ->
+        | ExpandableAplRaw.ProtectedApl raw ->
             ProtectedApl.fromRaw raw
             |> map AplContent.Protected
 
-        | AplExpansionRaw.NotExpandedForUnsupportedSecurityMode (mode, field) ->
-            failed
-                field
-                $"APL expansion was skipped for unsupported outer security mode {mode}."
-
-        | AplExpansionRaw.Invalid failures ->
+        | ExpandableAplRaw.InvalidApl failures ->
             Failed (failures, [])
 
 module private CompleteMessageCrossLayer =
@@ -391,37 +391,66 @@ module private CompleteMessageCrossLayer =
 
 module FrameVariableLength =
 
+    type private PayloadValidationState =
+        | ValidatedPayload of AplContent
+        | BlockedByInvalidTplMode of Field<ConfigurationFieldBitsRaw>
+
+    type private CompleteMessageValidationState =
+        | ValidatedCompleteMessage of CompleteMessage
+        | BlockedCompleteMessage of Field<ConfigurationFieldBitsRaw>
+
     let private validatePayloadForRoot =
         function
-        | AplExpansionRaw.NotExpandedForUnsupportedSecurityMode _ ->
-            passed None
+        | AplExpansionRaw.Parsed apl ->
+            ExpandableAplRaw.ParsedApl apl
+            |> AplContentValidation.fromRaw
+            |> map PayloadValidationState.ValidatedPayload
 
-        | payload ->
-            AplContent.fromExpandedRaw payload
-            |> map Some
+        | AplExpansionRaw.Protected raw ->
+            ExpandableAplRaw.ProtectedApl raw
+            |> AplContentValidation.fromRaw
+            |> map PayloadValidationState.ValidatedPayload
+
+        | AplExpansionRaw.Invalid failures ->
+            ExpandableAplRaw.InvalidApl failures
+            |> AplContentValidation.fromRaw
+            |> map PayloadValidationState.ValidatedPayload
+
+        | AplExpansionRaw.NotExpandedForUnsupportedSecurityMode (_, field) ->
+            passed (PayloadValidationState.BlockedByInvalidTplMode field)
 
     let private completeFromExpandedRaw
         (raw: CompleteMessageExpandedRaw)
         : Validation<CompleteMessage> =
-        validator {
-            let! dll = DllVariableLength.fromRaw raw.Dll
-            and! tpl = Tpl.fromRaw raw.Tpl
-            and! payload = validatePayloadForRoot raw.Payload
-            and! () = CompleteMessageCrossLayer.validateRaw raw
+        let rootValidation =
+            validator {
+                let! dll = DllVariableLength.fromRaw raw.Dll
+                and! tpl = Tpl.fromRaw raw.Tpl
+                and! payload = validatePayloadForRoot raw.Payload
+                and! () = CompleteMessageCrossLayer.validateRaw raw
 
-            match payload with
-            | Some payload ->
-                return {
-                    Dll = dll
-                    Tpl = tpl
-                    Payload = payload
-                }
-
-            | None ->
                 return
-                    invalidOp
-                        "Internal invariant violated: TPL validation accepted a security mode whose APL expansion was skipped."
-        }
+                    match payload with
+                    | PayloadValidationState.ValidatedPayload payload ->
+                        CompleteMessageValidationState.ValidatedCompleteMessage {
+                            Dll = dll
+                            Tpl = tpl
+                            Payload = payload
+                        }
+
+                    | PayloadValidationState.BlockedByInvalidTplMode field ->
+                        CompleteMessageValidationState.BlockedCompleteMessage field
+            }
+
+        rootValidation
+        |> bind (function
+            | CompleteMessageValidationState.ValidatedCompleteMessage message ->
+                passed message
+
+            | CompleteMessageValidationState.BlockedCompleteMessage field ->
+                failed
+                    field
+                    "Internal TPL validation invariant failed for an unsupported security mode.")
 
     let fromExpandedRaw
         (raw: Field<FrameVariableLengthExpandedRaw>)

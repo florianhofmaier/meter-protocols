@@ -324,6 +324,11 @@ let ``standard defined unsupported security mode has one authoritative issue`` (
     |> List.exists (fun message -> message.Contains("Invalid function code"))
     |> should be True
 
+    messages
+    |> List.exists (fun message ->
+        message.Contains("APL expansion was skipped"))
+    |> should be False
+
 [<Fact>]
 let ``reserved security mode has a distinct standard invalid issue`` () =
     let higherLayer =
@@ -345,6 +350,11 @@ let ``reserved security mode has a distinct standard invalid issue`` () =
         message.Contains("Reserved/standard-invalid security mode value 6"))
     |> List.length
     |> should equal 1
+
+    messages
+    |> List.exists (fun message ->
+        message.Contains("APL expansion was skipped"))
+    |> should be False
 
 [<Fact>]
 let ``wired short header mode zero is structurally accepted`` () =
@@ -390,6 +400,9 @@ let ``wired short header mode five fails in parser stage`` () =
         error.Msg.Contains("Actual TPL.CI=0x7A")
         |> should be True
 
+        error.Msg.Contains("short TPL header")
+        |> should be True
+
         error.Msg.Contains("actual security mode: 5")
         |> should be True
 
@@ -404,6 +417,46 @@ let ``wired short header mode five fails in parser stage`` () =
 
     | actual ->
         failwith $"Expected parser-stage short-header Mode 5 failure, got %A{actual}"
+
+[<Fact>]
+let ``wired CI 0x57 short header mode five fails in parser stage`` () =
+    let bytes =
+        frame
+            0x53uy
+            0x01uy
+            (shortHeader
+                0x57uy
+                0x05F0us
+                (Array.zeroCreate 16))
+
+    match decode SecurityContext.none bytes with
+    | DecodeFailed (ParseFailed error, _) ->
+        [
+            "requires a long TPL header"
+            "CI=0x57"
+            "short TPL header"
+            "security mode: 5"
+            "9.4.4"
+            "Table 48"
+        ]
+        |> List.iter (fun expected ->
+            error.Msg.Contains(expected)
+            |> should be True)
+
+        [
+            "SecurityContextNotUsable"
+            "authentication"
+            "decryption"
+            "Unsupported, but standard-conformant TPL CI"
+            "Reserved TPL CI"
+            "AFL"
+        ]
+        |> List.iter (fun forbidden ->
+            error.Msg.Contains(forbidden)
+            |> should be False)
+
+    | actual ->
+        failwith $"Expected parser-stage CI 0x57 short-header Mode 5 failure, got %A{actual}"
 
 [<Fact>]
 let ``CI 0x57 selects ApplicationResetOrSelect APL parser and passes primary direction`` () =
@@ -468,21 +521,86 @@ let ``short header unsupported mode is semantically classified once`` () =
         message.Contains("Unsupported, but standard-conformant"))
     |> should be True
 
+    messages
+    |> List.exists (fun message ->
+        message.Contains("APL expansion was skipped"))
+    |> should be False
+
 [<Fact>]
-let ``unknown CI is not misclassified as AFL`` () =
+let ``CI 0x5A from EN 13757-7 Table 2 is standard-defined unsupported`` () =
+    let bytes =
+        frame 0x53uy 0x01uy [| 0x5Auy |]
+
+    match decode SecurityContext.none bytes with
+    | DecodeFailed (ParseFailed error, _) ->
+        error.Pos |> should equal 6
+
+        [
+            "Unsupported, but standard-conformant TPL CI value 0x5A"
+            "Field: CI-Field TPL"
+            "Supported TPL CI values"
+            "EN 13757-7:2018, 5.2, Table 2"
+        ]
+        |> List.iter (fun expected ->
+            error.Msg.Contains(expected)
+            |> should be True)
+
+    | actual ->
+        failwith $"Expected standard-defined unsupported CI failure, got %A{actual}"
+
+[<Fact>]
+let ``CI 0x91 from EN 13757-7 Table 2 is reserved`` () =
     let bytes =
         frame 0x08uy 0x01uy [| 0x91uy |]
 
     match decode SecurityContext.none bytes with
     | DecodeFailed (ParseFailed error, _) ->
-        error.Msg.Contains("0x91")
-        |> should be True
+        error.Pos |> should equal 6
+
+        [
+            "Reserved TPL CI value 0x91"
+            "Field: CI-Field TPL"
+            "Supported TPL CI values"
+            "EN 13757-7:2018, 5.2, Table 2"
+        ]
+        |> List.iter (fun expected ->
+            error.Msg.Contains(expected)
+            |> should be True)
+
+    | actual ->
+        failwith $"Expected reserved CI parser failure, got %A{actual}"
+
+[<Fact>]
+let ``CI 0x54 older-edition assignment is unknown for EN 13757-3 2025`` () =
+    let bytes =
+        frame 0x08uy 0x01uy [| 0x54uy |]
+
+    match decode SecurityContext.none bytes with
+    | DecodeFailed (ParseFailed error, _) ->
+        error.Pos |> should equal 6
+
+        [
+            "Unknown TPL CI value 0x54 for EN 13757-3:2025"
+            "Field: CI-Field TPL"
+            "Supported TPL CI values"
+            "EN 13757-3:2018"
+            "EN 13757-3:2025, 7.3, Table 27"
+        ]
+        |> List.iter (fun expected ->
+            error.Msg.Contains(expected)
+            |> should be True)
+
+        error.Msg.Contains("Reserved TPL CI")
+        |> should be False
+
+        error.Msg.Contains("Unsupported, but standard-conformant TPL CI")
+        |> should be False
 
         error.Msg.Contains("AFL")
         |> should be False
 
     | actual ->
-        failwith $"Expected unknown-CI parser failure, got %A{actual}"
+        failwith $"Expected unknown CI parser failure, got %A{actual}"
 
 [<Fact>]
 let ``CI 0x57 with secondary response C-field fails direction validation`` () =
@@ -713,6 +831,15 @@ let ``AFL CI is classified as unsupported standard conformant`` () =
 
         error.Msg.Contains("Table 2")
         |> should be True
+
+        error.Msg.Contains("TPL CI value")
+        |> should be False
+
+        error.Msg.Contains("Reserved TPL CI")
+        |> should be False
+
+        error.Msg.Contains("Unknown TPL CI")
+        |> should be False
 
     | actual ->
         failwith $"Expected unsupported AFL failure, got %A{actual}"
