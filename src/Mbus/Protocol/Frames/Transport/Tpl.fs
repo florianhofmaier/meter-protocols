@@ -17,6 +17,20 @@ module TplRaw =
         ci
         |> Field.map (fun _ -> value)
 
+    let ci =
+        function
+        | TplRaw.NoneHeader tpl ->
+            tpl.Ci
+            |> Field.map NoneTplHeader
+
+        | TplRaw.ShortHeader tpl ->
+            tpl.Ci
+            |> Field.map ShortTplHeader
+
+        | TplRaw.LongHeader tpl ->
+            tpl.Ci
+            |> Field.map LongTplHeader
+
     let parse : Parser<Field<TplRaw>> =
         parseField "TPL"
         <| parser {

@@ -35,6 +35,9 @@ module AplRaw =
 
             | ShortTplHeader shortCi ->
                 match shortCi with
+                | ApplicationResetOrSelectShortHeader ->
+                    return! ApplicationResetOrSelectRaw.parse |>> ApplicationResetOrSelect
+
                 | ResponseShortHeader ->
                     return! RecordsRaw.parse |>> RspUdData
 

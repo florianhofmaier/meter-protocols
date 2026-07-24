@@ -9,6 +9,7 @@
 
     <ItemGroup>
         <Compile Include="TestSupport.fs" />
+        <Compile Include="CiFieldTplTests.fs" />
         <Compile Include="ValueConverterTests.fs" />
         <Compile Include="VariableLengthValueTests.fs" />
         <Compile Include="RecordRawTests.fs" />

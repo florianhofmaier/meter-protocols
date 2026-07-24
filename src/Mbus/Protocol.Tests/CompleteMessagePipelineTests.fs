@@ -57,6 +57,18 @@ let private mode5LongHeader configuration =
         byte configuration; byte (configuration >>> 8)
     |]
 
+let private shortHeader ci configuration apl =
+    Array.concat [
+        [|
+            ci
+            0x08uy
+            0x00uy
+            byte configuration
+            byte (configuration >>> 8)
+        |]
+        apl
+    ]
+
 let private longHeaderMode0WithCi ci id mfr version deviceType configuration apl =
     Array.concat [
         [| ci |]
@@ -335,56 +347,126 @@ let ``reserved security mode has a distinct standard invalid issue`` () =
     |> should equal 1
 
 [<Fact>]
-let ``wired variable length frame rejects short TPL header CI during parsing`` () =
+let ``wired short header mode zero is structurally accepted`` () =
     let bytes =
         frame
             0x08uy
             0x01uy
-            (Array.concat [
-                [|
-                    0x7Auy
-                    0x08uy
-                    0x00uy
-                    0xF0uy; 0x05uy
-                |]
-                Array.zeroCreate 16
-            ])
+            (shortHeader 0x7Auy 0x0000us [||])
+
+    match decode SecurityContext.none bytes with
+    | Metering.Common.Decoding.Decoders.Core.Decoded (
+        WiredMbusFrame.VariableLength field,
+        _
+      ) ->
+        match field.Value with
+        | FrameVariableLength.CompleteMessage {
+            Tpl = { Value = Tpl.ShortHeader _ }
+            Payload = AplContent.Decoded _
+          } -> ()
+
+        | actual ->
+            failwith $"Expected decoded short-header complete message, got %A{actual}"
+
+    | actual ->
+        failwith $"Expected structurally accepted Mode 0 short header, got %A{actual}"
+
+[<Fact>]
+let ``wired short header mode five fails in parser stage`` () =
+    let bytes =
+        frame
+            0x08uy
+            0x01uy
+            (shortHeader
+                0x7Auy
+                0x05F0us
+                (Array.zeroCreate 16))
 
     match decode SecurityContext.none bytes with
     | DecodeFailed (ParseFailed error, _) ->
-        error.Msg.Contains("Short TPL headers are not permitted")
+        error.Msg.Contains("requires a long TPL header")
         |> should be True
 
         error.Msg.Contains("Actual TPL.CI=0x7A")
         |> should be True
 
-        error.Msg.Contains("Clause 5")
+        error.Msg.Contains("actual security mode: 5")
+        |> should be True
+
+        error.Msg.Contains("Table 48")
         |> should be True
 
         error.Msg.Contains("IV")
         |> should be False
 
+        error.Msg.Contains("SecurityContextNotUsable")
+        |> should be False
+
     | actual ->
-        failwith $"Expected parser-stage short-header failure, got %A{actual}"
+        failwith $"Expected parser-stage short-header Mode 5 failure, got %A{actual}"
 
 [<Fact>]
-let ``CI 0x57 is rejected as reserved`` () =
+let ``CI 0x57 selects ApplicationResetOrSelect APL parser and passes primary direction`` () =
     let bytes =
-        frame 0x53uy 0x01uy [| 0x57uy |]
+        frame
+            0x53uy
+            0x01uy
+            (shortHeader 0x57uy 0x0000us [||])
 
     match decode SecurityContext.none bytes with
-    | DecodeFailed (ParseFailed error, _) ->
-        error.Msg.Contains("Reserved CI value")
-        |> should be True
+    | Metering.Common.Decoding.Decoders.Core.Decoded (
+        WiredMbusFrame.VariableLength field,
+        _
+      ) ->
+        match field.Value with
+        | FrameVariableLength.CompleteMessage message ->
+            match message.Payload with
+            | AplContent.Decoded apl ->
+                match apl.Value with
+                | Metering.Mbus.Protocol.Frames.Application.Apl.ApplicationResetOrSelect
+                    Metering.Mbus.Protocol.Frames.Application.ApplicationReset -> ()
 
-        error.Msg.Contains("Actual TPL.CI=0x57")
-        |> should be True
+                | actual ->
+                    failwith $"Expected application reset APL, got %A{actual}"
 
-        error.Msg.Contains("Table 2")
-        |> should be True
+            | actual ->
+                failwith $"Expected decoded APL for CI 0x57, got %A{actual}"
+
+    | actual -> failwith $"Expected valid CI 0x57 command, got %A{actual}"
+
+[<Fact>]
+let ``short header unsupported mode is semantically classified once`` () =
+    let higherLayer =
+        shortHeader 0x7Auy 0x0100us [| 0x2Fuy |]
+
+    let raw =
+        parseExactly TplRaw.parse higherLayer
+
+    match raw.Value with
+    | TplRaw.ShortHeader short ->
+        match short.Header.Value with
+        | ShortHeaderRaw.OtherModeRaw other ->
+            other.Mode |> should equal 1uy
+        | actual ->
+            failwith $"Expected preserved short-header mode 1, got %A{actual}"
 
     | actual ->
-        failwith $"Expected reserved-CI parser failure, got %A{actual}"
+        failwith $"Expected preserved short-header mode 1 Raw value, got %A{actual}"
+
+    let messages =
+        frame 0x08uy 0x01uy higherLayer
+        |> decode SecurityContext.none
+        |> failureMessages
+
+    messages
+    |> List.filter (fun message -> message.Contains("security mode 1"))
+    |> List.length
+    |> should equal 1
+
+    messages
+    |> List.exists (fun message ->
+        message.Contains("Unsupported, but standard-conformant"))
+    |> should be True
 
 [<Fact>]
 let ``unknown CI is not misclassified as AFL`` () =
@@ -393,7 +475,7 @@ let ``unknown CI is not misclassified as AFL`` () =
 
     match decode SecurityContext.none bytes with
     | DecodeFailed (ParseFailed error, _) ->
-        error.Msg.Contains("Actual TPL.CI=0x91")
+        error.Msg.Contains("0x91")
         |> should be True
 
         error.Msg.Contains("AFL")
@@ -401,6 +483,52 @@ let ``unknown CI is not misclassified as AFL`` () =
 
     | actual ->
         failwith $"Expected unknown-CI parser failure, got %A{actual}"
+
+[<Fact>]
+let ``CI 0x57 with secondary response C-field fails direction validation`` () =
+    let messages =
+        frame
+            0x08uy
+            0x01uy
+            (shortHeader 0x57uy 0x0000us [||])
+        |> decode SecurityContext.none
+        |> failureMessages
+
+    messages
+    |> List.exists (fun message ->
+        message.Contains("Cross-layer direction mismatch")
+        && message.Contains("C-field=0x08")
+        && message.Contains("CI=0x57"))
+    |> should be True
+
+[<Fact>]
+let ``CI 0x7A with primary command C-field fails direction validation`` () =
+    let messages =
+        frame
+            0x53uy
+            0x01uy
+            (shortHeader 0x7Auy 0x0000us [||])
+        |> decode SecurityContext.none
+        |> failureMessages
+
+    messages
+    |> List.exists (fun message ->
+        message.Contains("Cross-layer direction mismatch")
+        && message.Contains("C-field=0x53")
+        && message.Contains("CI=0x7A"))
+    |> should be True
+
+[<Fact>]
+let ``CI 0x7A with secondary response C-field passes direction validation`` () =
+    let bytes =
+        frame
+            0x08uy
+            0x01uy
+            (shortHeader 0x7Auy 0x0000us [||])
+
+    match decode SecurityContext.none bytes with
+    | Metering.Common.Decoding.Decoders.Core.Decoded _ -> ()
+    | actual -> failwith $"Expected valid CI 0x7A secondary response, got %A{actual}"
 
 [<Fact>]
 let ``secondary response C-field with command CI fails cross-layer validation`` () =
@@ -440,7 +568,23 @@ let ``primary command C-field with response CI fails cross-layer validation`` ()
     |> should be True
 
 [<Fact>]
-let ``valid secondary response direction passes`` () =
+let ``CI 0x53 with primary command C-field passes direction validation`` () =
+    let higherLayer =
+        longHeaderMode0WithCi
+            0x53uy
+            [| 0x02uy; 0x03uy; 0x04uy; 0x05uy |]
+            [| 0x00uy; 0x01uy |]
+            0x06uy
+            0x07uy
+            0x0000us
+            [||]
+
+    match frame 0x53uy 0x01uy higherLayer |> decode SecurityContext.none with
+    | Metering.Common.Decoding.Decoders.Core.Decoded _ -> ()
+    | actual -> failwith $"Expected valid CI 0x53 primary command, got %A{actual}"
+
+[<Fact>]
+let ``CI 0x72 with secondary response C-field passes direction validation`` () =
     let higherLayer =
         longHeaderMode0
             [| 0x02uy; 0x03uy; 0x04uy; 0x05uy |]

@@ -76,57 +76,27 @@ module private PipelineIssues =
 
 module FrameVariableLengthRaw =
 
-    type private WiredCompleteMessageCi =
-        | Supported
-        | ShortTplHeader
-        | Afl
-        | ReservedOrUnsupported
-
-    let private classifyCi =
-        function
-        | 0x50uy
-        | 0x51uy
-        | 0x52uy
-        | 0x53uy
-        | 0x72uy
-        | 0x75uy ->
-            Supported
-
-        // EN 13757-7:2018, 5.2, Table 2 marks these as short-header CI values.
-        | 0x5Auy
-        | 0x61uy
-        | 0x65uy
-        | 0x67uy
-        | 0x6Auy
-        | 0x6Euy
-        | 0x74uy
-        | 0x7Auy
-        | 0x7Buy
-        | 0x7Duy
-        | 0x7Fuy
-        | 0x88uy
-        | 0x8Auy
-        | 0x9Euy
-        | 0xC1uy
-        | 0xC4uy ->
-            ShortTplHeader
-
-        | 0x90uy ->
-            Afl
-
-        | _ ->
-            ReservedOrUnsupported
-
-    let private rejectCi
+    let private rejectAfl
         (source: Field<ReadOnlyMemory<byte>>)
-        ci
-        message =
+        ci =
 
         decodeError (
             ParseFailed {
                 Source = source.Span.Source
                 Pos = source.Span.Offset
-                Msg = $"{message} Actual TPL.CI=0x{ci:X2}."
+                Msg =
+                    "Unsupported but standard-conformant AFL variant at HigherLayerData; "
+                    + "the supported path is a complete TPL message. "
+                    + $"Actual CI=0x{ci:X2}. EN 13757-7:2018, 5.2, Table 2."
+            }
+        )
+
+    let private completeMessage dll tpl =
+        dll
+        |> Field.withValue (
+            FrameVariableLengthRaw.CompleteMessage {
+                Dll = dll
+                Tpl = tpl
             }
         )
 
@@ -137,64 +107,38 @@ module FrameVariableLengthRaw =
         let source =
             dll.Value.UserData.Value.HigherLayerData
 
-        if source.Value.IsEmpty then
+        if not source.Value.IsEmpty
+           && source.Value.Span[0] = 0x90uy then
+            rejectAfl source 0x90uy
+        else
             decoder {
                 let! tpl =
                     parse TplRaw.parse source
 
-                return
-                    dll
-                    |> Field.withValue (
-                        FrameVariableLengthRaw.CompleteMessage {
-                            Dll = dll
-                            Tpl = tpl
-                        }
-                    )
-            }
-        else
-            let ci = source.Value.Span[0]
+                match tpl.Value with
+                | TplRaw.ShortHeader {
+                    Header = { Value = ShortHeaderRaw.Mode5Raw _ }
+                  } ->
+                    let ci =
+                        tpl.Value
+                        |> TplRaw.ci
+                        |> fun field -> CiFieldTpl.value field.Value
 
-            match classifyCi ci with
-            | Supported ->
-                decoder {
-                    let! tpl =
-                        parse TplRaw.parse source
-
-                    return
-                        dll
-                        |> Field.withValue (
-                            FrameVariableLengthRaw.CompleteMessage {
-                                Dll = dll
-                                Tpl = tpl
+                    return!
+                        decodeError (
+                            ParseFailed {
+                                Source = tpl.Span.Source
+                                Pos = tpl.Span.Offset
+                                Msg =
+                                    "Wired M-Bus security mode 5 requires a long TPL header. "
+                                    + $"Actual TPL.CI=0x{ci:X2}; actual header type: short; actual security mode: 5. "
+                                    + "EN 13757-7:2018, 9.4.4 and Table 48."
                             }
                         )
-                }
 
-            | ShortTplHeader ->
-                rejectCi
-                    source
-                    ci
-                    ("Short TPL headers are not permitted in the wired M-Bus complete-message path. "
-                     + "EN 13757-3:2025, Clause 5; EN 13757-7:2018, 5.2, Table 2.")
-
-            | Afl ->
-                rejectCi
-                    source
-                    ci
-                    ("Unsupported but standard-conformant AFL variant at HigherLayerData; "
-                     + "the supported path is a complete TPL message. EN 13757-7:2018, 5.2, Table 2.")
-
-            | ReservedOrUnsupported ->
-                let classification =
-                    if ci = 0x57uy then
-                        "Reserved CI value in the current EN 13757 path"
-                    else
-                        "Reserved or unsupported CI value in the wired complete-message path"
-
-                rejectCi
-                    source
-                    ci
-                    $"{classification}. EN 13757-7:2018, 5.2, Table 2."
+                | _ ->
+                    return completeMessage dll tpl
+            }
 
 module private AplParser =
 
@@ -261,10 +205,9 @@ module FrameVariableLengthExpandedRaw =
             |> AplDataRaw.toByteField
 
         let ci =
-            match raw.Tpl.Value with
-            | TplRaw.NoneHeader tpl -> NoneTplHeader tpl.Ci.Value
-            | TplRaw.ShortHeader tpl -> ShortTplHeader tpl.Ci.Value
-            | TplRaw.LongHeader tpl -> LongTplHeader tpl.Ci.Value
+            raw.Tpl.Value
+            |> TplRaw.ci
+            |> fun field -> field.Value
 
         decoder {
             let! payload =
@@ -410,30 +353,6 @@ module AplContent =
 
 module private CompleteMessageCrossLayer =
 
-    type private Direction =
-        | CommandToDevice
-        | ResponseFromDevice
-
-    let private ciAndDirection (raw: Field<TplRaw>) =
-        match raw.Value with
-        | TplRaw.NoneHeader tpl ->
-            let ci = NoneTplHeader tpl.Ci.Value
-            tpl.Ci |> Field.map (fun _ -> CiFieldTpl.value ci), CommandToDevice
-
-        | TplRaw.ShortHeader tpl ->
-            let ci = ShortTplHeader tpl.Ci.Value
-            tpl.Ci |> Field.map (fun _ -> CiFieldTpl.value ci), ResponseFromDevice
-
-        | TplRaw.LongHeader tpl ->
-            let ci = LongTplHeader tpl.Ci.Value
-            let direction =
-                match tpl.Ci.Value with
-                | ApplicationResetOrSelectLongHeader -> CommandToDevice
-                | ResponseLongHeader
-                | AlarmLongHeader -> ResponseFromDevice
-
-            tpl.Ci |> Field.map (fun _ -> CiFieldTpl.value ci), direction
-
     let validateRaw (raw: CompleteMessageExpandedRaw) : Validation<unit> =
         let cField =
             raw.Dll.Value.UserData.Value.CField
@@ -443,24 +362,30 @@ module private CompleteMessageCrossLayer =
 
         let cDirection, cRole =
             if cValue &&& 0x40uy = 0x40uy then
-                CommandToDevice,
+                CiDirection.CommandToDevice,
                 $"primary command (PRM=1, function=0x{cValue &&& 0x0Fuy:X1})"
             else
-                ResponseFromDevice,
+                CiDirection.ResponseFromDevice,
                 $"secondary response (PRM=0, function=0x{cValue &&& 0x0Fuy:X1})"
 
-        let ciField, ciDirection =
-            ciAndDirection raw.Tpl
+        let ciField =
+            TplRaw.ci raw.Tpl.Value
+
+        let ciDirection =
+            CiFieldTpl.direction ciField.Value
+
+        let ciValue =
+            CiFieldTpl.value ciField.Value
 
         let expected =
             match cDirection with
-            | CommandToDevice -> "a command-to-device CI"
-            | ResponseFromDevice -> "a response-from-device CI"
+            | CiDirection.CommandToDevice -> "a command-to-device CI"
+            | CiDirection.ResponseFromDevice -> "a response-from-device CI"
 
         ensure
             ciField
             ($"Cross-layer direction mismatch between DLL.UserData.CField and TPL.CI: "
-             + $"C-field=0x{cValue:X2} is {cRole}, but CI=0x{ciField.Value:X2} has the opposite direction; "
+             + $"C-field=0x{cValue:X2} is {cRole}, but CI=0x{ciValue:X2} has the opposite direction; "
              + $"the C-field role requires {expected}. EN 13757-7:2018, 5.2, Table 2.")
             (cDirection = ciDirection)
 
@@ -493,10 +418,9 @@ module FrameVariableLength =
                 }
 
             | None ->
-                return!
-                    failed
-                        raw.Tpl
-                        "TPL validation accepted an unsupported security mode whose APL expansion was skipped."
+                return
+                    invalidOp
+                        "Internal invariant violated: TPL validation accepted a security mode whose APL expansion was skipped."
         }
 
     let fromExpandedRaw

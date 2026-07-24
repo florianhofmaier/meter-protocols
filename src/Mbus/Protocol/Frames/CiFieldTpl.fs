@@ -22,16 +22,19 @@ module NoneHeaderCiField =
 
 type ShortHeaderCiField =
     | ResponseShortHeader
+    | ApplicationResetOrSelectShortHeader
 
 module ShortHeaderCiField =
 
     let value =
         function
         | ResponseShortHeader -> 0x7Auy
+        | ApplicationResetOrSelectShortHeader -> 0x57uy
 
     let tryMap =
         function
         | 0x7Auy -> Some ResponseShortHeader
+        | 0x57uy -> Some ApplicationResetOrSelectShortHeader
         | _ -> None
 
 type LongHeaderCiField =
@@ -59,6 +62,10 @@ type CiFieldTpl =
     | ShortTplHeader of ShortHeaderCiField
     | LongTplHeader of LongHeaderCiField
 
+type CiDirection =
+    | CommandToDevice
+    | ResponseFromDevice
+
 module CiFieldTpl =
 
     let value =
@@ -68,6 +75,21 @@ module CiFieldTpl =
         | NoneTplHeader ApplicationResetOrSelectNoHeader -> 0x50uy
         | ShortTplHeader ci -> ShortHeaderCiField.value ci
         | LongTplHeader ci -> LongHeaderCiField.value ci
+
+    /// EN 13757-7:2018, 5.2, Table 2; EN 13757-3:2025, 7.3, Table 27.
+    let direction =
+        function
+        | NoneTplHeader Command
+        | NoneTplHeader SelectionOfDevice
+        | NoneTplHeader ApplicationResetOrSelectNoHeader
+        | ShortTplHeader ApplicationResetOrSelectShortHeader
+        | LongTplHeader ApplicationResetOrSelectLongHeader ->
+            CommandToDevice
+
+        | ShortTplHeader ResponseShortHeader
+        | LongTplHeader ResponseLongHeader
+        | LongTplHeader AlarmLongHeader ->
+            ResponseFromDevice
 
     let parse : Parser<Field<CiFieldTpl>> =
         parseField "CI-Field TPL"
@@ -89,5 +111,8 @@ module CiFieldTpl =
                         return LongTplHeader value
 
                     | None ->
-                        return! failBefore 1 $"Unknown CI-Field value for TPL: 0x{value:X2}"
+                        return!
+                            failBefore
+                                1
+                                $"Unknown or unsupported TPL CI-field value 0x{value:X2}. EN 13757-7:2018, 5.2, Table 2."
         }
