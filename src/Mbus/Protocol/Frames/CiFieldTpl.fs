@@ -33,9 +33,9 @@ type CiDirection =
 type internal CiClassification =
     | Supported of CiFieldTpl
     | Afl
-    | StandardDefinedUnsupported of byte
+    | StandardDefinedUnsupportedForWired of byte
+    | StandardDefinedNotApplicableToWired of byte
     | Reserved of byte
-    | Unknown of byte
 
 module CiFieldTpl =
 
@@ -80,20 +80,39 @@ module CiFieldTpl =
     let private inRange lower upper value =
         value >= lower && value <= upper
 
-    /// EN 13757-7:2018, 5.2, Table 2. CI 0x57 is overridden by the
-    /// newer, more specific EN 13757-3:2025, 7.3, Table 27 assignment.
+    /// EN 13757-7:2018, 5.2, Table 2, with the current application-CI
+    /// assignments from EN 13757-3:2025, 7.3, Table 27 applied first.
     let private isReserved value =
         inRange 0x20uy 0x4Fuy value
-        || inRange 0x56uy 0x59uy value
+        || inRange 0x58uy 0x59uy value
         || inRange 0x5Duy 0x5Euy value
         || inRange 0x62uy 0x63uy value
         || inRange 0x76uy 0x77uy value
         || inRange 0x91uy 0x9Duy value
         || inRange 0xC6uy 0xFFuy value
 
+    /// Entries in EN 13757-7:2018, 5.2, Table 2 that select wireless-only
+    /// layers, plus CI 0x67 from EN 13757-3:2025, 7.3, Table 27.
+    let private isStandardDefinedNotApplicableToWired value =
+        value = 0x67uy
+        || inRange 0x80uy 0x83uy value
+        || inRange 0x86uy 0x8Fuy value
+
+    /// Remaining explicit, non-reserved assignments in
+    /// EN 13757-7:2018, 5.2, Table 2.
+    let private isOtherStandardDefinedUnsupportedForWired value =
+        inRange 0x00uy 0x1Fuy value
+        || inRange 0x5Auy 0x5Cuy value
+        || inRange 0x5Fuy 0x61uy value
+        || inRange 0x64uy 0x65uy value
+        || inRange 0x69uy 0x71uy value
+        || inRange 0x73uy 0x74uy value
+        || inRange 0x78uy 0x79uy value
+        || inRange 0x7Buy 0x7Fuy value
+        || inRange 0x84uy 0x85uy value
+        || inRange 0x9Euy 0xC5uy value
+
     /// Owns the complete raw CI classification used by the TPL parser.
-    /// CI 0x54/0x55 assignments in EN 13757-7:2018, Table 2 refer to
-    /// EN 13757-3:2018 and are absent from EN 13757-3:2025, 7.3, Table 27.
     let internal classify value =
         match trySupported value with
         | Some ci ->
@@ -105,14 +124,25 @@ module CiFieldTpl =
                 CiClassification.Afl
 
             | 0x54uy
-            | 0x55uy ->
-                CiClassification.Unknown value
+            | 0x55uy
+            | 0x56uy
+            | 0x66uy
+            | 0x68uy ->
+                CiClassification.StandardDefinedUnsupportedForWired value
+
+            | value when isStandardDefinedNotApplicableToWired value ->
+                CiClassification.StandardDefinedNotApplicableToWired value
 
             | value when isReserved value ->
                 CiClassification.Reserved value
 
+            | value when isOtherStandardDefinedUnsupportedForWired value ->
+                CiClassification.StandardDefinedUnsupportedForWired value
+
             | value ->
-                CiClassification.StandardDefinedUnsupported value
+                invalidArg
+                    "value"
+                    $"CI value 0x{value:X2} is missing from the closed EN 13757 CI classification."
 
     let internal isAfl value =
         classify value = CiClassification.Afl
@@ -120,26 +150,47 @@ module CiFieldTpl =
     let private supportedValues =
         "Supported TPL CI values are 0x50, 0x51, 0x52, 0x53, 0x57, 0x72, 0x75, and 0x7A."
 
+    let private isCurrentApplicationCi value =
+        match value with
+        | 0x54uy
+        | 0x55uy
+        | 0x56uy
+        | 0x66uy
+        | 0x67uy
+        | 0x68uy ->
+            true
+
+        | _ ->
+            false
+
+    let private classificationReference value =
+        if isCurrentApplicationCi value then
+            "EN 13757-3:2025, Clause 7.3, Table 27."
+        else
+            "EN 13757-7:2018, 5.2, Table 2."
+
     let private classificationMessage =
         function
-        | CiClassification.StandardDefinedUnsupported value ->
-            $"Unsupported, but standard-conformant TPL CI value 0x{value:X2}. "
+        | CiClassification.StandardDefinedUnsupportedForWired value ->
+            $"Unsupported, but standard-conformant wired TPL CI value 0x{value:X2}. "
+            + "The value is applicable to wired M-Bus. "
             + "Field: CI-Field TPL. "
             + supportedValues
-            + " EN 13757-7:2018, 5.2, Table 2."
+            + " "
+            + classificationReference value
+
+        | CiClassification.StandardDefinedNotApplicableToWired value ->
+            $"TPL CI value 0x{value:X2} is standard-defined but not applicable to wired M-Bus. "
+            + "Field: CI-Field TPL. "
+            + supportedValues
+            + " "
+            + classificationReference value
 
         | CiClassification.Reserved value ->
             $"Reserved TPL CI value 0x{value:X2}. "
             + "Field: CI-Field TPL. "
             + supportedValues
             + " EN 13757-7:2018, 5.2, Table 2."
-
-        | CiClassification.Unknown value ->
-            $"Unknown TPL CI value 0x{value:X2} for EN 13757-3:2025. "
-            + "Field: CI-Field TPL. "
-            + supportedValues
-            + " The EN 13757-7:2018, 5.2, Table 2 assignment refers to EN 13757-3:2018 "
-            + "and is not present in EN 13757-3:2025, 7.3, Table 27."
 
         | CiClassification.Afl ->
             "AFL CI value 0x90 is not a TPL CI value. "

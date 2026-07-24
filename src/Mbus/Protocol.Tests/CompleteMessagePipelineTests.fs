@@ -536,7 +536,8 @@ let ``CI 0x5A from EN 13757-7 Table 2 is standard-defined unsupported`` () =
         error.Pos |> should equal 6
 
         [
-            "Unsupported, but standard-conformant TPL CI value 0x5A"
+            "Unsupported, but standard-conformant wired TPL CI value 0x5A"
+            "applicable to wired M-Bus"
             "Field: CI-Field TPL"
             "Supported TPL CI values"
             "EN 13757-7:2018, 5.2, Table 2"
@@ -570,37 +571,84 @@ let ``CI 0x91 from EN 13757-7 Table 2 is reserved`` () =
     | actual ->
         failwith $"Expected reserved CI parser failure, got %A{actual}"
 
-[<Fact>]
-let ``CI 0x54 older-edition assignment is unknown for EN 13757-3 2025`` () =
+let private assertCurrentWiredApplicationCiUnsupported ci =
     let bytes =
-        frame 0x08uy 0x01uy [| 0x54uy |]
+        frame 0x53uy 0x01uy [| ci |]
 
     match decode SecurityContext.none bytes with
     | DecodeFailed (ParseFailed error, _) ->
         error.Pos |> should equal 6
 
         [
-            "Unknown TPL CI value 0x54 for EN 13757-3:2025"
+            $"Unsupported, but standard-conformant wired TPL CI value 0x{ci:X2}"
+            "applicable to wired M-Bus"
             "Field: CI-Field TPL"
             "Supported TPL CI values"
-            "EN 13757-3:2018"
-            "EN 13757-3:2025, 7.3, Table 27"
+            "EN 13757-3:2025"
+            "Clause 7.3"
+            "Table 27"
         ]
         |> List.iter (fun expected ->
             error.Msg.Contains(expected)
             |> should be True)
 
-        error.Msg.Contains("Reserved TPL CI")
-        |> should be False
-
-        error.Msg.Contains("Unsupported, but standard-conformant TPL CI")
-        |> should be False
-
-        error.Msg.Contains("AFL")
-        |> should be False
+        [
+            "Unknown"
+            "Reserved"
+            "AFL"
+        ]
+        |> List.iter (fun forbidden ->
+            error.Msg.Contains(forbidden)
+            |> should be False)
 
     | actual ->
-        failwith $"Expected unknown CI parser failure, got %A{actual}"
+        failwith $"Expected wired-applicable unsupported CI 0x{ci:X2} failure, got %A{actual}"
+
+[<Fact>]
+let ``CI 0x54 is standard-defined and wired-applicable but unsupported`` () =
+    assertCurrentWiredApplicationCiUnsupported 0x54uy
+
+[<Fact>]
+let ``CI 0x55 is standard-defined and wired-applicable but unsupported`` () =
+    assertCurrentWiredApplicationCiUnsupported 0x55uy
+
+[<Fact>]
+let ``CI 0x56 is standard-defined and wired-applicable but unsupported`` () =
+    assertCurrentWiredApplicationCiUnsupported 0x56uy
+
+[<Fact>]
+let ``CI 0x67 is standard-defined but not applicable to wired M-Bus`` () =
+    let bytes =
+        frame 0x08uy 0x01uy [| 0x67uy |]
+
+    match decode SecurityContext.none bytes with
+    | DecodeFailed (ParseFailed error, _) ->
+        error.Pos |> should equal 6
+
+        [
+            "TPL CI value 0x67 is standard-defined but not applicable to wired M-Bus"
+            "Field: CI-Field TPL"
+            "Supported TPL CI values"
+            "EN 13757-3:2025"
+            "Clause 7.3"
+            "Table 27"
+        ]
+        |> List.iter (fun expected ->
+            error.Msg.Contains(expected)
+            |> should be True)
+
+        [
+            "Unsupported, but standard-conformant wired TPL CI"
+            "Reserved"
+            "Unknown"
+            "AFL"
+        ]
+        |> List.iter (fun forbidden ->
+            error.Msg.Contains(forbidden)
+            |> should be False)
+
+    | actual ->
+        failwith $"Expected not-applicable-to-wired CI failure, got %A{actual}"
 
 [<Fact>]
 let ``CI 0x57 with secondary response C-field fails direction validation`` () =

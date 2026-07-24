@@ -2,6 +2,7 @@ module Metering.Mbus.Protocol.Tests.CiFieldTplTests
 
 open Xunit
 open FsUnit.Xunit
+open Metering.Common.Decoding.Parsers.ParserRunner
 open Metering.Mbus.Protocol.Frames
 open Metering.Mbus.Protocol.Frames.Transport
 open Metering.Mbus.Protocol.Tests.TestSupport
@@ -46,3 +47,17 @@ let ``CI 0x57 parses as application reset or select with short TPL header`` () =
 
     | actual ->
         failwith $"Expected CI 0x57 with a Mode 0 short TPL header, got %A{actual}"
+
+[<Fact>]
+let ``every raw CI byte is covered by the selected normative tables`` () =
+    [ 0 .. 255 ]
+    |> List.iter (fun value ->
+        match
+            runExactly
+                (reader [| byte value |])
+                trace
+                CiFieldTpl.parse
+        with
+        | Ok _
+        | Error _ ->
+            ())
