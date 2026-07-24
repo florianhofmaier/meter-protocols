@@ -30,7 +30,6 @@ type TplWithShortHeader =
     {
         Ci: Field<ShortHeaderCiField>
         Header: Field<ShortHeader>
-        AplData: Field<AplDataRaw>
     }
 
 module TplWithShortHeader =
@@ -46,6 +45,5 @@ module TplWithShortHeader =
                 {
                     Ci = raw.Ci
                     Header = header
-                    AplData = raw.AplData
                 }
         }

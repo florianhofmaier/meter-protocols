@@ -1,7 +1,6 @@
 module Devices.Tests.DeviceRuntimeTests
 
 open System
-open Mbus
 open Mbus.Devices
 open System.IO
 open System.Threading

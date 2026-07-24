@@ -60,15 +60,15 @@ module Tpl =
         | Tpl.LongHeader tpl ->
             LongTplHeader tpl.Ci.Value
 
-    let aplData =
+    let rawAplData =
         function
-        | Tpl.NoneHeader tpl ->
+        | TplRaw.NoneHeader tpl ->
             tpl.AplData
 
-        | Tpl.ShortHeader tpl ->
+        | TplRaw.ShortHeader tpl ->
             tpl.AplData
 
-        | Tpl.LongHeader tpl ->
+        | TplRaw.LongHeader tpl ->
             tpl.AplData
 
     let fromRaw

@@ -1,6 +1,5 @@
 module Metering.Common.Decoding.Parsers.Tests.CoreParserTests
 
-open System
 open Xunit
 open FsUnit.Xunit
 open Metering.Common.Decoding.Parsers.Binary

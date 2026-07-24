@@ -54,7 +54,7 @@ module SecondaryFunction =
         let b = CFieldRaw.value raw.Value
 
         match b &&& 0x0Fuy with
-        | 0x00uy -> raw |> Field.withValue ResponseUserData |> passed
+        | 0x08uy -> raw |> Field.withValue ResponseUserData |> passed
         | _ -> failed raw $"Invalid function code in CField with PRM=0: {b:X2}"
 
 type SecondaryCField =

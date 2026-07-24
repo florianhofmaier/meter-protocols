@@ -2,7 +2,6 @@ namespace Metering.Dlms.Protocol.Xdlms
 
 open Metering.Common.Parsers.BinaryParsers
 open Metering.Common.Parsers.Core
-open Metering.Dlms.Protocol
 
 type ServiceErrorRaw =
     | ApplicationReference of byte

@@ -9,11 +9,11 @@ module Message =
     let private frameFailed frame message =
         let fieldId =
             match frame with
-            | Frame.SingleCharacter field ->
+            | WiredMbusFrame.SingleCharacter field ->
                 field.Id
-            | Frame.FixedLength field ->
+            | WiredMbusFrame.FixedLength field ->
                 field.Id
-            | Frame.VariableLength field ->
+            | WiredMbusFrame.VariableLength field ->
                 field.Id
 
         Failed (
@@ -25,7 +25,7 @@ module Message =
         )
 
     let fromFrame
-        (frame: Frame)
+        (frame: WiredMbusFrame)
         : Validation<Message> =
 
         if PrimaryStationMessage.matchesFrame frame then
@@ -40,7 +40,7 @@ module Message =
             frameFailed frame "frame is not a supported M-Bus message"
 
     let tryFromFrame
-        (frame: Frame)
+        (frame: WiredMbusFrame)
         : Message option =
 
         match fromFrame frame with

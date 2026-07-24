@@ -3,7 +3,6 @@ module Metering.Common.Decoding.Parsers.Tests.ParserRunnerTests
 open System
 open Xunit
 open FsUnit.Xunit
-open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.ParserRunner

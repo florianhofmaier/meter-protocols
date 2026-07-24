@@ -9,11 +9,11 @@ module PrimaryStationMessage =
     let private frameFailed frame message =
         let fieldId =
             match frame with
-            | Frame.SingleCharacter field ->
+            | WiredMbusFrame.SingleCharacter field ->
                 field.Id
-            | Frame.FixedLength field ->
+            | WiredMbusFrame.FixedLength field ->
                 field.Id
-            | Frame.VariableLength field ->
+            | WiredMbusFrame.VariableLength field ->
                 field.Id
 
         Failed (
@@ -25,13 +25,13 @@ module PrimaryStationMessage =
         )
 
     let matchesFrame
-        (frame: Frame)
+        (frame: WiredMbusFrame)
         : bool =
 
         RequestUserData.matchesFrame frame
 
     let fromFrame
-        (frame: Frame)
+        (frame: WiredMbusFrame)
         : Validation<PrimaryStationMessage> =
 
         if RequestUserData.matchesFrame frame then
@@ -42,7 +42,7 @@ module PrimaryStationMessage =
             frameFailed frame "frame is not a supported primary station message"
 
     let tryFromFrame
-        (frame: Frame)
+        (frame: WiredMbusFrame)
         : PrimaryStationMessage option =
 
         match fromFrame frame with

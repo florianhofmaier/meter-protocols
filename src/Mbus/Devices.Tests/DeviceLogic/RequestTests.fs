@@ -1,6 +1,5 @@
 module Devices.Tests.RequestTests
 
-open Mbus
 open Mbus.Devices
 open Mbus.Frames
 open Xunit

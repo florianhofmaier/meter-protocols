@@ -30,7 +30,6 @@ type TplWithLongHeader =
     {
         Ci: Field<LongHeaderCiField>
         Header: Field<LongHeader>
-        AplData: Field<AplDataRaw>
     }
 
 module TplWithLongHeader =
@@ -46,6 +45,5 @@ module TplWithLongHeader =
                 {
                     Ci = raw.Ci
                     Header = header
-                    AplData = raw.AplData
                 }
         }

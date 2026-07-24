@@ -1,6 +1,5 @@
 module Devices.Tests.InitialStateTests
 
-open Mbus
 open Mbus.Devices
 open Xunit
 open FsUnit.Xunit

@@ -1,18 +1,13 @@
 namespace Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
 
 open System
-open Metering.Common.Decoding.Decoders.Core
-open Metering.Common.Decoding.Decoders.Core.Core
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Validators.Core
-open Metering.Mbus.Protocol.Frames.Application
-open Metering.Mbus.Protocol.Frames.Transport
-open Metering.Mbus.Protocol.Security
 
-type VariableLengthFrameRaw =
+type DllVariableLengthRaw =
     {
         UserData: Field<VariableLengthUserDataRaw>
         CrcBytes: CrcBytes
@@ -20,9 +15,9 @@ type VariableLengthFrameRaw =
         End: Field<EndFieldRaw>
     }
 
-module VariableLengthFrameRaw =
+module DllVariableLengthRaw =
 
-    let parse : Parser<Field<VariableLengthFrameRaw>> =
+    let parse : Parser<Field<DllVariableLengthRaw>> =
         parseField "Variable Length"
         <| parser {
             let! _ = StartVariableLength.parse
@@ -55,35 +50,22 @@ module VariableLengthFrameRaw =
             }
         }
 
-type private VariableLengthEnvelope =
+type DllVariableLength =
     {
         CField: Field<CField>
         AField: Field<AField>
-        Tpl: Field<Tpl>
+        HigherLayerData: Field<ReadOnlyMemory<byte>>
     }
 
-module private VariableLengthEnvelope =
-
-    let private AvoidShortHeadersWithEncryption tpl =
-        match tpl.Value with
-        | TplRaw.ShortHeader
-            { Header = { Value = ShortHeaderRaw.Mode5Raw _ } } ->
-            failed
-                tpl
-                "Short headers with encryption are not allowed in variable length frames."
-        | _ ->
-            passed ()
+module DllVariableLength =
 
     let fromRaw
-        (raw: Field<VariableLengthFrameRaw>)
-        : Validation<Field<VariableLengthEnvelope>> =
+        (raw: Field<DllVariableLengthRaw>)
+        : Validation<Field<DllVariableLength>> =
 
         validator {
             let! userData =
                 VariableLengthUserData.fromRaw raw.Value.UserData
-
-            and! _ =
-                AvoidShortHeadersWithEncryption raw.Value.UserData.Value.LinkUserData.Value.Tpl
 
             and! () = Crc.validate raw.Value.Crc raw.Value.CrcBytes
 
@@ -94,67 +76,15 @@ module private VariableLengthEnvelope =
                 |> Field.withValue {
                     CField = userData.Value.CField
                     AField = userData.Value.AField
-                    Tpl = userData.Value.LinkUserData.Value.Tpl
+                    HigherLayerData = userData.Value.HigherLayerData
                 }
         }
 
-type VariableLengthFrame =
-    {
-        CField: Field<CField>
-        AField: Field<AField>
-        Tpl: Field<Tpl>
-        Apl: Field<Apl>
-    }
+type VariableLengthFrameRaw = DllVariableLengthRaw
+type VariableLengthFrame = DllVariableLength
+
+module VariableLengthFrameRaw =
+    let parse = DllVariableLengthRaw.parse
 
 module VariableLengthFrame =
-
-    let private unprotectAplData
-        (securityContext: SecurityContext)
-        (tpl: Field<Tpl>)
-        : Decoder<Field<ReadOnlyMemory<byte>>> =
-
-        decoder {
-            match tpl.Value with
-            | Tpl.LongHeader ({ Header = { Value = LongHeader.Mode5 header } } as longTpl) ->
-                return!
-                    Mode5.unprotect
-                        securityContext
-                        header.Device
-                        header.Acc
-                        header.Cnf
-                        (AplDataRaw.toByteField longTpl.AplData)
-
-            | _ ->
-                return
-                    tpl.Value
-                    |> Tpl.aplData
-                    |> AplDataRaw.toByteField
-        }
-
-    let decode
-        (securityContext: SecurityContext)
-        (raw: Field<VariableLengthFrameRaw>)
-        : Decoder<Field<VariableLengthFrame>> =
-
-        decoder {
-            let! envelope =
-                validate VariableLengthEnvelope.fromRaw raw
-
-            let! aplData =
-                unprotectAplData securityContext envelope.Value.Tpl
-
-            let! aplRaw =
-                parse (AplRaw.parse (Tpl.ci envelope.Value.Tpl.Value)) aplData
-
-            let! apl =
-                validate Apl.fromRaw aplRaw
-
-            return
-                raw
-                |> Field.withValue {
-                    CField = envelope.Value.CField
-                    AField = envelope.Value.AField
-                    Tpl = envelope.Value.Tpl
-                    Apl = apl
-                }
-        }
+    let fromRaw = DllVariableLength.fromRaw

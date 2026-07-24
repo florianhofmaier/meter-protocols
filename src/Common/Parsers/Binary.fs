@@ -1,6 +1,5 @@
 module Metering.Common.Decoding.Parsers.Binary
 
-open System
 open System.Buffers.Binary
 open Metering.Common.Decoding.Parsers.Core
 open Utility

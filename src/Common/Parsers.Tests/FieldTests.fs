@@ -10,7 +10,6 @@ open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Parsers.ParserRunner
 open Metering.Common.Decoding.Parsers.Tests.TestSupport
 open Metering.Common.Decoding.Parsers.Types
-open Metering.Common.Decoding.Parsers.Utility
 
 let private field =
     {

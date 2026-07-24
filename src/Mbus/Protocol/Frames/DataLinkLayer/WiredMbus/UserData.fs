@@ -1,8 +1,10 @@
 namespace Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
 
+open System
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
+open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Validators.Core
 
 type FixedLengthUserDataRaw =
@@ -53,7 +55,7 @@ type VariableLengthUserDataRaw =
     {
         CField: Field<CFieldRaw>
         AField: Field<AFieldRaw>
-        LinkUserData: Field<LinkUserDataRaw>
+        HigherLayerData: Field<ReadOnlyMemory<byte>>
     }
 
 module VariableLengthUserDataRaw =
@@ -63,12 +65,13 @@ module VariableLengthUserDataRaw =
         <| parser {
             let! cField = CFieldRaw.parse
             let! aField = AFieldRaw.parse
-            let! linkUserData = LinkUserDataRaw.parse
+            let! higherLayerData =
+                parseField "Higher Layer Data" takeAll
 
             return {
                 CField = cField
                 AField = aField
-                LinkUserData = linkUserData
+                HigherLayerData = higherLayerData
             }
         }
 
@@ -76,7 +79,7 @@ type VariableLengthUserData =
     {
         CField: Field<CField>
         AField: Field<AField>
-        LinkUserData: Field<LinkUserData>
+        HigherLayerData: Field<ReadOnlyMemory<byte>>
     }
 
 module VariableLengthUserData =
@@ -87,14 +90,13 @@ module VariableLengthUserData =
 
         validator {
             let! cField = CField.fromRaw raw.Value.CField
-            let! aField = AField.fromRaw raw.Value.AField
-            let! linkUserData = LinkUserData.fromRaw raw.Value.LinkUserData
+            and! aField = AField.fromRaw raw.Value.AField
 
             return
                 raw
                 |> Field.withValue {
                     CField = cField
                     AField = aField
-                    LinkUserData = linkUserData
+                    HigherLayerData = raw.Value.HigherLayerData
                 }
         }

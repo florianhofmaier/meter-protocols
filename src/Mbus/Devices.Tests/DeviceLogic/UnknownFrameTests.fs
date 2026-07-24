@@ -1,6 +1,5 @@
 module Devices.Tests.UnknownFrameTests
 
-open Mbus
 open Mbus.Devices
 open Mbus.Frames
 open Xunit

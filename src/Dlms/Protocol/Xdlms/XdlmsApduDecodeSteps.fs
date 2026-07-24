@@ -6,10 +6,8 @@ open Metering.Common.Parsers.Core
 open Metering.Common.Parsers.ParserTree
 open Metering.Common.Validators
 open Metering.Common.Validators.Core
-open Metering.Dlms.Protocol
 open Metering.Dlms.Protocol.CommunicationProfile.TcpUdpIp
 open Metering.Dlms.Protocol.Security
-open Metering.Dlms.Protocol.Xdlms.InitiateRequest
 
 type DecodeContext =
     {

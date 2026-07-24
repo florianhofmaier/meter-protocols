@@ -9,11 +9,11 @@ module ResponseUserData =
     let private frameFailed frame message =
         let fieldId =
             match frame with
-            | Frame.SingleCharacter field ->
+            | WiredMbusFrame.SingleCharacter field ->
                 field.Id
-            | Frame.FixedLength field ->
+            | WiredMbusFrame.FixedLength field ->
                 field.Id
-            | Frame.VariableLength field ->
+            | WiredMbusFrame.VariableLength field ->
                 field.Id
 
         Failed (
@@ -25,19 +25,19 @@ module ResponseUserData =
         )
 
     let matchesFrame
-        (_frame: Frame)
+        (_frame: WiredMbusFrame)
         : bool =
 
         false
 
     let fromFrame
-        (frame: Frame)
+        (frame: WiredMbusFrame)
         : Validation<ResponseUserData> =
 
         frameFailed frame "frame is not a supported RSP_UD response user data message"
 
     let tryFromFrame
-        (frame: Frame)
+        (frame: WiredMbusFrame)
         : ResponseUserData option =
 
         match fromFrame frame with

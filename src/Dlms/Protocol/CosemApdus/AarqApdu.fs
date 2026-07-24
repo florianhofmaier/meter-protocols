@@ -5,7 +5,6 @@ open Metering.Common.Decoding.Decoders.Core
 open Metering.Common.Decoding.Decoders.Core.Core
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
-open Metering.Common.Security.Cryptography
 open Metering.Dlms.Protocol
 open Metering.Dlms.Protocol.Acse.Aarq
 open Metering.Dlms.Protocol.Acse.Fields

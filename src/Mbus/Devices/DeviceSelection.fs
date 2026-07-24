@@ -1,6 +1,5 @@
 module Mbus.Devices.DeviceSelection
 
-open Mbus
 open Mbus.Frames
 open Mbus.BaseWriters.Core
 

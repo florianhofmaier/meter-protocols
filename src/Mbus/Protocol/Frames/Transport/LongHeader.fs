@@ -2,7 +2,6 @@ namespace Metering.Mbus.Protocol.Frames.Transport
 
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
-open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
 open Metering.Mbus.Protocol.Frames.DeviceIdentification

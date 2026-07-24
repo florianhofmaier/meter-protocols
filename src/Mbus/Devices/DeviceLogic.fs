@@ -1,6 +1,5 @@
 namespace Mbus.Devices
 
-open Mbus
 open Mbus.Frames
 open Mbus.Records
 

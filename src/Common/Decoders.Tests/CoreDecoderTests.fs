@@ -7,7 +7,6 @@ open Metering.Common.Decoding.Decoders.Core
 open Metering.Common.Decoding.Decoders.Tests.TestSupport
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Binary
-open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Parsers.Types
 open Metering.Common.Decoding.Parsers.Utility

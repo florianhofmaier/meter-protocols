@@ -61,14 +61,14 @@
         <Compile Include="Frames\DataLinkLayer\WiredMbus\LField.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\CField.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\AField.fs" />
-        <Compile Include="Frames\DataLinkLayer\WiredMbus\LinkUserData.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\UserData.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\Crc.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\EndField.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\SingleCharacterFrame.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\FixedLengthFrame.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\VariableLengthFrame.fs" />
-        <Compile Include="Frames\DataLinkLayer\WiredMbus\Frame.fs" />
+        <Compile Include="Frames\CompleteMessage.fs" />
+        <Compile Include="Frames\DataLinkLayer\WiredMbus\WiredMbusFrame.fs" />
         <Compile Include="Messages\MessageTypes.fs" />
         <Compile Include="Messages\RequestUserData.fs" />
         <Compile Include="Messages\PrimaryStationMessage.fs" />

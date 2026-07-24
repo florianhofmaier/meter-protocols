@@ -1,6 +1,5 @@
 namespace DlmsMessages.CosemServices
 
-open DlmsMessages.Acse.AssociateSourceDiagnosticRaw
 open DlmsMessages.CosemServices.Open
 open Metering.Common.Parsers.Core
 open Metering.Dlms.Protocol

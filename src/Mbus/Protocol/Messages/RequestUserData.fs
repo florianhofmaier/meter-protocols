@@ -30,11 +30,11 @@ module RequestUserData =
     let private frameFailed frame message =
         let fieldId =
             match frame with
-            | Frame.SingleCharacter field ->
+            | WiredMbusFrame.SingleCharacter field ->
                 field.Id
-            | Frame.FixedLength field ->
+            | WiredMbusFrame.FixedLength field ->
                 field.Id
-            | Frame.VariableLength field ->
+            | WiredMbusFrame.VariableLength field ->
                 field.Id
 
         Failed (
@@ -47,7 +47,7 @@ module RequestUserData =
 
     let matchesFrame =
         function
-        | Frame.FixedLength
+        | WiredMbusFrame.FixedLength
             {
                 Value = {
                     CField = {
@@ -63,12 +63,12 @@ module RequestUserData =
             false
 
     let fromFrame
-        (frame: Frame)
+        (frame: WiredMbusFrame)
         : Validation<RequestUserData> =
 
         validator {
             match frame with
-            | Frame.FixedLength
+            | WiredMbusFrame.FixedLength
                 {
                     Value = {
                         CField = ({
@@ -103,7 +103,7 @@ module RequestUserData =
         }
 
     let tryFromFrame
-        (frame: Frame)
+        (frame: WiredMbusFrame)
         : RequestUserData option =
 
         match fromFrame frame with

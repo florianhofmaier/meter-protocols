@@ -27,7 +27,6 @@ module TplWithNoneHeaderRaw =
 type TplWithNoneHeader =
     {
         Ci: Field<NoneHeaderCiField>
-        AplData: Field<AplDataRaw>
     }
 
 module TplWithNoneHeader =
@@ -39,6 +38,5 @@ module TplWithNoneHeader =
         validator {
             return {
                 Ci = raw.Ci
-                AplData = raw.AplData
             }
         }

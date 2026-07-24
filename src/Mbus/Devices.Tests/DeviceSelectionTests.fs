@@ -1,6 +1,5 @@
 module Devices.Tests.DeviceSelectionTests
 
-open Mbus
 open Mbus.Devices
 open Xunit
 open FsUnit.Xunit
