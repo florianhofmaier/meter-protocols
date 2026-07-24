@@ -1,6 +1,7 @@
 namespace Metering.Mbus.Protocol.Messages
 
 open Metering.Mbus.Protocol.Frames.Application
+open Metering.Mbus.Protocol.Frames
 open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
 open Metering.Mbus.Protocol.Frames.DeviceIdentification
 open Metering.Mbus.Protocol.Frames.Transport

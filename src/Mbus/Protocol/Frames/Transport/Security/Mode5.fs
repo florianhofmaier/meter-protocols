@@ -11,186 +11,207 @@ open Metering.Common.Security.Cryptography
 open Metering.Mbus.Protocol.Frames.DeviceIdentification
 open Metering.Mbus.Protocol.Frames.Transport
 
+type CryptographicFailure =
+    | DecryptionOrVerificationFailed
+
+type UnprotectionFailure =
+    | SecurityContextNotUsable
+    | CryptographicFailure of CryptographicFailure
+
+type Mode5ProtectedLayout =
+    {
+        OriginalPayload: Field<ReadOnlyMemory<byte>>
+        EncryptedPart: Field<ReadOnlyMemory<byte>>
+        ClearSuffix: Field<ReadOnlyMemory<byte>> option
+    }
+
+type Mode5ExpansionOutcome =
+    | Unprotected of Field<ReadOnlyMemory<byte>>
+    | Protected of Mode5ProtectedLayout * UnprotectionFailure
+    | Invalid of Failures
+
 module Mode5 =
 
-    let private aesCheck =
-        0x2Fuy
+    let private blockLength = 16
+    let private aesCheck = 0x2Fuy
 
-    let private encryptedBlockLength =
-        16
-
-    let private validateCtx
-        (field: Field<_>)
-        (securityContext: SecurityContext)
-        : Validation<Mode5SecurityContext> =
-
-        match securityContext with
-        | SecurityContext.Mode5 ctx -> passed ctx
-        | _ -> failed field "security mode 5 context is required"
-
-    let private issue
-        (field: Field<_>)
-        (message: string)
-        : Issue =
-
-        {
+    let private issue (field: Field<_>) message =
+        Failures.single {
             FieldId = field.Id
             Message = message
         }
 
-    let private encryptionFailed field message =
-        issue field message
-        |> EncryptionFailed
-        |> decodeError
+    let private byteSlice offset length (field: Field<ReadOnlyMemory<byte>>) =
+        {
+            Id = field.Id
+            Span = {
+                field.Span with
+                    Offset = field.Span.Offset + offset
+                    Length = length
+            }
+            Value = field.Value.Slice(offset, length)
+        }
 
-    let private mapEncryptionError
-        (field: Field<_>)
-        (error: EncryptionError)
-        : DecodeFailure =
+    let private protectedLayout
+        (cnf: Field<ConfigurationFieldBitsRaw>)
+        (payload: Field<ReadOnlyMemory<byte>>) =
 
-        let message =
-            match error with
-            | EncryptionError.InvalidKeyLength length ->
-                $"invalid AES-CBC key length: {length} byte(s)"
+        let invalid message =
+            Error (issue payload message)
 
-            | EncryptionError.InvalidNonceLength length ->
-                $"invalid nonce length: {length} byte(s)"
+        let withEncryptedLength encryptedLength =
+            if encryptedLength > payload.Value.Length then
+                invalid (
+                    $"Mode 5 declares {encryptedLength} encrypted byte(s), "
+                    + $"but only {payload.Value.Length} payload byte(s) are available. "
+                    + "EN 13757-7:2018, 7.6.5 and 7.7.4, Tables 30/31."
+                )
+            else
+                let encrypted =
+                    byteSlice 0 encryptedLength payload
 
-            | EncryptionError.InvalidInitializationVectorLength length ->
-                $"invalid AES-CBC initialization vector length: {length} byte(s)"
+                let suffixLength =
+                    payload.Value.Length - encryptedLength
 
-            | EncryptionError.InvalidTagLength length ->
-                $"invalid authentication tag length: {length} byte(s)"
+                let suffix =
+                    if suffixLength = 0 then None
+                    else Some (byteSlice encryptedLength suffixLength payload)
 
-            | EncryptionError.AuthenticationFailed ->
-                "AES-CBC authentication failed"
+                Ok {
+                    OriginalPayload = payload
+                    EncryptedPart = encrypted
+                    ClearSuffix = suffix
+                }
 
-            | EncryptionError.CryptographicFailure message ->
-                $"AES-CBC failure: {message}"
+        let indicator =
+            cnf.Value
+            |> ConfigurationFieldBitsRaw.value
+            |> EncryptedLengthIndicator.map
 
-        issue field message
-        |> EncryptionFailed
+        match indicator with
+        | NoEncryptedData ->
+            withEncryptedLength 0
 
-    let private buildIv
-        (meterAddress: DeviceIdentification)
-        (accessNumber: AccessNumber)
-        : ReadOnlyMemory<byte> =
+        | FixedEncryptedBlocks count ->
+            count
+            |> EncryptedBlockCount.value
+            |> (*) blockLength
+            |> withEncryptedLength
 
-        let iv =
-            Array.zeroCreate<byte> encryptedBlockLength
+        | AllRemainingDataEncrypted ->
+            if payload.Value.Length = 0 then
+                invalid
+                    "Mode 5 requires an encrypted block containing the two decryption-verification bytes."
+            elif payload.Value.Length % blockLength <> 0 then
+                invalid (
+                    $"Mode 5 encrypted data must be a multiple of {blockLength} byte(s); "
+                    + $"actual length is {payload.Value.Length}. EN 13757-7:2018, 9.4.4.1."
+                )
+            else
+                withEncryptedLength payload.Value.Length
+
+    let private buildLongHeaderIv (header: LongHeaderMode5Raw) =
+        let iv = Array.zeroCreate<byte> blockLength
 
         BinaryPrimitives.WriteUInt16LittleEndian(
             iv.AsSpan(0, 2),
-            Manufacturer.value meterAddress.Mfr.Value
+            ManufacturerRaw.value header.Mfr.Value
         )
 
         BinaryPrimitives.WriteUInt32LittleEndian(
             iv.AsSpan(2, 4),
-            IdNumber.toBcd meterAddress.IdNum.Value
+            IdNumberRaw.value header.IdNum.Value
         )
 
-        iv[6] <- Version.value meterAddress.Version.Value
-        iv[7] <- DeviceType.value meterAddress.DevType.Value
+        iv[6] <- VersionRaw.value header.Version.Value
+        iv[7] <- DeviceTypeRaw.value header.DevType.Value
+        iv.AsSpan(8, 8).Fill(AccessNumberRaw.value header.Acc.Value)
+        ReadOnlyMemory<byte> iv
 
-        let acc =
-            AccessNumber.value accessNumber
+    let private decrypt
+        securityContext
+        iv
+        (layout: Mode5ProtectedLayout)
+        : Decoder<Mode5ExpansionOutcome> =
 
-        iv.AsSpan(8, 8).Fill(acc)
-        ReadOnlyMemory iv
+        if layout.EncryptedPart.Value.Length = 0 then
+            decodePassed (Unprotected layout.OriginalPayload)
+        else
+            match securityContext with
+            | SecurityContext.NoSecurity ->
+                decodePassed (
+                    Protected (
+                        layout,
+                        UnprotectionFailure.SecurityContextNotUsable
+                    )
+                )
 
-    let private validateEncryptedLength
-        (cnf: Field<ConfigurationFieldMode5>)
-        (aplData: Field<ReadOnlyMemory<byte>>)
-        : Validation<int> =
+            | SecurityContext.Mode5 mode5 ->
+                let key =
+                    Mode5SecurityContext.keyBytes mode5
 
-        let availableLength =
-            aplData.Value.Length
+                match AesCbc.decrypt key iv layout.EncryptedPart.Value with
+                | Error _ ->
+                    decodePassed (
+                        Protected (
+                            layout,
+                            UnprotectionFailure.CryptographicFailure
+                                DecryptionOrVerificationFailed
+                        )
+                    )
 
-        match cnf.Value.EncryptedLength with
-        | NoEncryptedData ->
-            failed
-                aplData
-                "Security mode 5 with no encrypted data is standard-defined but currently unsupported."
+                | Ok plain
+                    when plain.Length < 2
+                         || plain.Span[0] <> aesCheck
+                         || plain.Span[1] <> aesCheck ->
+                    decodePassed (
+                        Protected (
+                            layout,
+                            UnprotectionFailure.CryptographicFailure
+                                DecryptionOrVerificationFailed
+                        )
+                    )
 
-        | FixedEncryptedBlocks blockCount ->
-            let encryptedLength =
-                blockCount
-                |> EncryptedBlockCount.value
-                |> (*) encryptedBlockLength
+                | Ok plain ->
+                    let decryptedPrefix =
+                        plain.Slice(2)
 
-            if encryptedLength > availableLength then
-                failed
-                    aplData
-                    $"Declared encrypted length is {encryptedLength} byte(s), but only {availableLength} byte(s) are available."
-            elif encryptedLength < availableLength then
-                failed
-                    aplData
-                    $"Security mode 5 partial encryption is standard-defined but currently unsupported. Declared encrypted length is {encryptedLength} byte(s), available payload is {availableLength} byte(s)."
-            else
-                passed encryptedLength
+                    let clearSuffix =
+                        layout.ClearSuffix
+                        |> Option.map (fun suffix -> suffix.Value)
+                        |> Option.defaultValue ReadOnlyMemory<byte>.Empty
 
-        | AllRemainingDataEncrypted ->
-            if availableLength = 0 then
-                failed
-                    aplData
-                    "mode 5 requires at least one encrypted block containing decryption-verification bytes."
-            elif availableLength % encryptedBlockLength <> 0 then
-                failed
-                    aplData
-                    $"Security mode 5 all-remaining encrypted payload length must be a multiple of {encryptedBlockLength} byte(s), but got {availableLength} byte(s)."
-            else
-                passed availableLength
+                    let combined =
+                        Array.zeroCreate<byte>
+                            (decryptedPrefix.Length + clearSuffix.Length)
 
-    let unprotect
-        (ctx: SecurityContext)
-        (meterAddress: DeviceIdentification)
-        (acc: Field<AccessNumber>)
-        (cnf: Field<ConfigurationFieldMode5>)
-        (aplData: Field<ReadOnlyMemory<byte>>)
-        : Decoder<Field<ReadOnlyMemory<byte>>> =
+                    decryptedPrefix.CopyTo(combined.AsMemory())
+                    clearSuffix.CopyTo(combined.AsMemory(decryptedPrefix.Length))
 
-        decoder {
-            let! mode5 =
-                validate (fun field -> validateCtx field ctx) aplData
+                    decoder {
+                        let! source =
+                            createDerivedSource
+                                "Decrypted APL Data"
+                                (SourceTransform.Decrypt "M-Bus security mode 5 AES-CBC-128")
+                                true
+                                layout.OriginalPayload
+                                (ReadOnlyMemory<byte> combined)
 
-            let! encryptedLength =
-                validate (validateEncryptedLength cnf) aplData
+                        return Unprotected source
+                    }
 
-            let iv =
-                buildIv meterAddress acc.Value
+    let expandLongHeader
+        securityContext
+        (header: LongHeaderMode5Raw)
+        (payload: Field<ReadOnlyMemory<byte>>)
+        : Decoder<Mode5ExpansionOutcome> =
 
-            let cipherText =
-                aplData.Value.Slice(0, encryptedLength)
+        match protectedLayout header.Cnf payload with
+        | Error failures ->
+            decodePassed (Invalid failures)
 
-            let key =
-                Mode5SecurityContext.keyBytes mode5
-
-            match AesCbc.decrypt key iv cipherText with
-            | Error error ->
-                return!
-                    decodeError (mapEncryptionError aplData error)
-
-            | Ok plain when plain.Length < 2 ->
-                return!
-                    encryptionFailed
-                        aplData
-                        "security mode 5 plaintext is too short for AES check"
-
-            | Ok plain when plain.Span[0] <> aesCheck || plain.Span[1] <> aesCheck ->
-                return!
-                    encryptionFailed
-                        aplData
-                        "security mode 5 AES check failed"
-
-            | Ok plain ->
-                let applicationBytes =
-                    plain.Slice(2)
-
-                return!
-                    createDerivedSource
-                        "Decrypted APL Data"
-                        (SourceTransform.Decrypt "M-Bus security mode 5 AES-CBC-128")
-                        true
-                        aplData
-                        applicationBytes
-        }
+        | Ok layout ->
+            decrypt
+                securityContext
+                (buildLongHeaderIv header)
+                layout

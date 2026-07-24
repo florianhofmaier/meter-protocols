@@ -28,9 +28,22 @@ type LongHeaderMode5Raw =
         Cnf: Field<ConfigurationFieldBitsRaw>
     }
 
+type LongHeaderOtherModeRaw =
+    {
+        Mode: byte
+        IdNum: Field<IdNumberRaw>
+        Mfr: Field<ManufacturerRaw>
+        Version: Field<VersionRaw>
+        DevType: Field<DeviceTypeRaw>
+        Acc: Field<AccessNumberRaw>
+        Status: Field<StatusByteRaw>
+        Cnf: Field<ConfigurationFieldBitsRaw>
+    }
+
 type LongHeaderRaw =
     | Mode0Raw of LongHeaderMode0Raw
     | Mode5Raw of LongHeaderMode5Raw
+    | OtherModeRaw of LongHeaderOtherModeRaw
 
 module LongHeaderRaw =
 
@@ -63,6 +76,20 @@ module LongHeaderRaw =
                 return
                     Mode5Raw
                         {
+                            IdNum = idNum
+                            Mfr = mfr
+                            Version = version
+                            DevType = devType
+                            Acc = acc
+                            Status = status
+                            Cnf = bits
+                        }
+
+            | ConfigurationFieldRaw.OtherModeRaw (mode, bits) ->
+                return
+                    OtherModeRaw
+                        {
+                            Mode = mode
                             IdNum = idNum
                             Mfr = mfr
                             Version = version
@@ -108,9 +135,9 @@ module LongHeader =
                         header.Mfr
                         header.Version
                         header.DevType
-                let! acc = AccessNumber.fromRaw header.Acc
-                let! status = StatusByte.fromRaw header.Status
-                let! cnf = ConfigurationFieldMode0.fromRaw header.Cnf
+                and! acc = AccessNumber.fromRaw header.Acc
+                and! status = StatusByte.fromRaw header.Status
+                and! cnf = ConfigurationFieldMode0.fromRaw header.Cnf
                 return
                     raw
                     |> Field.withValue (
@@ -129,9 +156,9 @@ module LongHeader =
                         header.Mfr
                         header.Version
                         header.DevType
-                let! acc = AccessNumber.fromRaw header.Acc
-                let! status = StatusByte.fromRaw header.Status
-                let! cnf = ConfigurationFieldMode5.fromRaw header.Cnf
+                and! acc = AccessNumber.fromRaw header.Acc
+                and! status = StatusByte.fromRaw header.Status
+                and! cnf = ConfigurationFieldMode5.fromRaw header.Cnf
                 return
                     raw
                     |> Field.withValue (
@@ -142,4 +169,20 @@ module LongHeader =
                             Cnf = cnf
                         }
                     )
+
+            | OtherModeRaw header ->
+                let! _device =
+                    DeviceIdentification.fromRaw
+                        header.IdNum
+                        header.Mfr
+                        header.Version
+                        header.DevType
+                and! _acc = AccessNumber.fromRaw header.Acc
+                and! _status = StatusByte.fromRaw header.Status
+                and! unsupported : Field<LongHeader> =
+                    failed
+                        header.Cnf
+                        $"Security mode {header.Mode} is standard-defined or reserved but unsupported by this decoder. EN 13757-7:2018, 7.5.8, Table 19."
+
+                return unsupported
         }

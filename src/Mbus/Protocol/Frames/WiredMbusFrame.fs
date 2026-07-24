@@ -1,4 +1,4 @@
-namespace Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
+namespace Metering.Mbus.Protocol.Frames
 
 open System
 open Metering.Common.Decoding.Decoders.Core
@@ -8,7 +8,7 @@ open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Common.Decoding.Parsers.FieldParser
-open Metering.Mbus.Protocol.Frames
+open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
 open Metering.Mbus.Protocol.Security
 
 type WiredMbusFrameRaw =

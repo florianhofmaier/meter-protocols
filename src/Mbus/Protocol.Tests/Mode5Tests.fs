@@ -5,10 +5,8 @@ open Xunit
 open FsUnit.Xunit
 open Metering.Common.Decoding.ByteReaders
 open Metering.Common.Decoding.Decoders.Core
-open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Types
 open Metering.Common.Decoding.Validators.Core
-open Metering.Mbus.Protocol.Frames.DeviceIdentification
 open Metering.Mbus.Protocol.Frames.Transport
 open Metering.Mbus.Protocol.Security
 open Metering.Mbus.Protocol.Tests.TestSupport
@@ -17,11 +15,8 @@ type CapturingSourceStore() =
     let mutable derivedBytes : ReadOnlyMemory<byte> option = None
     let mutable derivedSource : SourceInfo option = None
 
-    member _.DerivedBytes =
-        derivedBytes
-
-    member _.DerivedSource =
-        derivedSource
+    member _.DerivedBytes = derivedBytes
+    member _.DerivedSource = derivedSource
 
     interface ISourceStore with
         member _.AddRoot name bytes sensitive =
@@ -50,26 +45,70 @@ type CapturingSourceStore() =
             source
 
         member _.CreateReader _ =
-            ByteReaderFactory.Create(ReadOnlyMemory<byte>([||]), 0)
+            ByteReaderFactory.Create(ReadOnlyMemory<byte>.Empty, 0)
 
 let private validKey =
-    [|
-        0x00uy; 0x01uy; 0x02uy; 0x03uy
-        0x04uy; 0x05uy; 0x06uy; 0x07uy
-        0x08uy; 0x09uy; 0x0Auy; 0x0Buy
-        0x0Cuy; 0x0Duy; 0x0Euy; 0x0Fuy
-    |]
+    [| 0x00uy .. 0x0Fuy |]
 
-let private mode5Key bytes =
-    match Mode5Key.create (memory bytes) with
-    | Ok key ->
-        key
+let private mode5Context keyBytes =
+    match Mode5Key.create (memory keyBytes) with
+    | Ok key -> SecurityContext.mode5 key
+    | Error error -> failwith $"Invalid test key: %A{error}"
 
-    | Error error ->
-        failwith $"Invalid test Mode 5 key: %A{error}"
+let private header encryptedLength =
+    let cnf =
+        match encryptedLength with
+        | NoEncryptedData -> 0x0500us
+        | FixedEncryptedBlocks count ->
+            0x0500us ||| (uint16 (EncryptedBlockCount.value count) <<< 4)
+        | AllRemainingDataEncrypted -> 0x05F0us
 
-let private bytesFromHex (hex: string) =
-    Convert.FromHexString hex
+    let raw =
+        parseExactly
+            LongHeaderRaw.parse
+            [|
+                0x02uy; 0x03uy; 0x04uy; 0x05uy
+                0x00uy; 0x01uy
+                0x06uy
+                0x07uy
+                0x08uy
+                0x00uy
+                byte cnf; byte (cnf >>> 8)
+            |]
+
+    match raw.Value with
+    | LongHeaderRaw.Mode5Raw header -> header
+    | actual -> failwith $"Expected Mode 5 header, got %A{actual}"
+
+let private fixedBlocks count =
+    match EncryptedBlockCount.tryCreate count with
+    | Some value -> FixedEncryptedBlocks value
+    | None -> failwith $"Invalid block count {count}"
+
+let private run context encryptedLength payload =
+    let store = CapturingSourceStore()
+
+    let result =
+        Mode5.expandLongHeader
+            context
+            (header encryptedLength)
+            (bytesField payload)
+            (decoderContext (store :> ISourceStore))
+
+    result, store
+
+let private outcome =
+    function
+    | Decoded (value, _) -> value
+    | actual -> failwith $"Expected Mode 5 outcome, got %A{actual}"
+
+let private failures =
+    function
+    | Mode5ExpansionOutcome.Invalid failures ->
+        failures
+        |> Failures.toList
+        |> List.map (fun issue -> issue.Message)
+    | actual -> failwith $"Expected invalid outcome, got %A{actual}"
 
 let private validCipherText =
     [|
@@ -79,27 +118,7 @@ let private validCipherText =
         0x6Duy; 0x50uy; 0x8Fuy; 0x01uy
     |]
 
-let private validTwoBlockCipherText =
-    [|
-        0xAAuy; 0xA8uy; 0x1Auy; 0xB2uy
-        0x6Buy; 0xB2uy; 0x85uy; 0xAEuy
-        0x3Duy; 0xA1uy; 0x0Auy; 0xD4uy
-        0x81uy; 0xA1uy; 0xACuy; 0x2Cuy
-        0x04uy; 0xF3uy; 0x2Cuy; 0xBEuy
-        0x18uy; 0xAEuy; 0x84uy; 0x3Duy
-        0x54uy; 0xE7uy; 0xFFuy; 0x4Cuy
-        0x7Duy; 0x94uy; 0x8Auy; 0x74uy
-    |]
-
-let private invalidCheckCipherText =
-    [|
-        0x68uy; 0x7Duy; 0xD6uy; 0x3Euy
-        0x6Fuy; 0xC9uy; 0x1Euy; 0xCFuy
-        0xF1uy; 0xEDuy; 0xFCuy; 0x09uy
-        0x52uy; 0x8Auy; 0x7Euy; 0xF1uy
-    |]
-
-let private expectedApplicationPlaintext =
+let private expectedPlainPrefix =
     [|
         0x0Cuy; 0x13uy; 0x37uy; 0x00uy
         0x01uy; 0x02uy; 0x03uy; 0x04uy
@@ -107,359 +126,114 @@ let private expectedApplicationPlaintext =
         0x09uy; 0x0Auy
     |]
 
-let private expectedTwoBlockApplicationPlaintext =
-    [|
-        0x00uy; 0x01uy; 0x02uy; 0x03uy
-        0x04uy; 0x05uy; 0x06uy; 0x07uy
-        0x08uy; 0x09uy; 0x0Auy; 0x0Buy
-        0x0Cuy; 0x0Duy; 0x0Euy; 0x0Fuy
-        0x10uy; 0x11uy; 0x12uy; 0x13uy
-        0x14uy; 0x15uy; 0x16uy; 0x17uy
-        0x18uy; 0x19uy; 0x1Auy; 0x1Buy
-        0x1Cuy; 0x1Duy
-    |]
+[<Fact>]
+let ``no security context retains protected layout`` () =
+    let result, _ =
+        run SecurityContext.none (fixedBlocks 1) validCipherText
 
-let private validSixteenBlockCipherText =
-    bytesFromHex (
-        "aaa81ab26bb285ae3da10ad481a1ac2c04f32cbe18ae843d54e7ff4c7d948a74" +
-        "91a745434dd79ad4c5695053601c5928d3d76cb55bea56808012a127ec4d1f58" +
-        "fdd2416e73e931a1b902fec138bb27a9e14b08dcb9b46716958592028081d27" +
-        "f600fa30e803d8094ecd736f8e294c101d9d0ebc77520a04e80b243788e8a" +
-        "2dafb64f8e0cb2fd0a38d650b4020ebb9e1adba581e288583f36e39e1b2c" +
-        "6b2f636de9bbf80b6f2943409c40ceab098cc301654433173abdbc1f6e59e" +
-        "541be1111f2ae4d4ebc13850c026159ce4e09c44722e1d50507149fbbaefe" +
-        "675331f1cc88eaeb2594b4578c65854a117df0a21b3934685994f2694282" +
-        "a84a82504d6f2e99fd"
-    )
-
-let private expectedSixteenBlockPlaintext =
-    bytesFromHex (
-        "2f2f" +
-        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" +
-        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f" +
-        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f" +
-        "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f" +
-        "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f" +
-        "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf" +
-        "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf" +
-        "e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfd"
-    )
-
-let private expectedSixteenBlockApplicationPlaintext =
-    expectedSixteenBlockPlaintext[2..]
-
-let private testDevice =
-    let idNum =
-        parseExactly IdNumberRaw.parse [| 0x02uy; 0x03uy; 0x04uy; 0x05uy |]
-
-    let mfr =
-        parseExactly ManufacturerRaw.parse [| 0x00uy; 0x01uy |]
-
-    let version =
-        parseExactly VersionRaw.parse [| 0x06uy |]
-
-    let devType =
-        parseExactly DeviceTypeRaw.parse [| 0x07uy |]
-
-    DeviceIdentification.fromRaw idNum mfr version devType
-    |> validationValue
-
-let private testAccessNumber =
-    parseExactly AccessNumberRaw.parse [| 0x08uy |]
-    |> AccessNumber.fromRaw
-    |> validationValue
-
-let private fixedBlocks count =
-    match EncryptedBlockCount.tryCreate count with
-    | Some blocks ->
-        FixedEncryptedBlocks blocks
-
-    | None ->
-        failwith $"Invalid test fixed encrypted block count: {count}"
-
-let private cnf encryptedLength =
-    {
-        Id = FieldId.create 2
-        Span =
-            {
-                Source = SourceId.root
-                Offset = 0
-                Length = 2
-            }
-        Value =
-            {
-                HopCounter = false
-                RepeaterAccess = false
-                ContentOfMsg = ContentOfMessage.StandardData
-                EncryptedLength = encryptedLength
-                Mode = Mode.Mode5
-                Synchronized = false
-                Accessibility = false
-                BidirectionalCommunication = false
-            }
-    }
-
-let private runUnprotect key encryptedLength payload =
-    let store = CapturingSourceStore()
-
-    let result =
-        Mode5.unprotect
-            (SecurityContext.mode5 (mode5Key key))
-            testDevice
-            testAccessNumber
-            (cnf encryptedLength)
-            (bytesField payload)
-            (decoderContext (store :> ISourceStore))
-
-    result, store
-
-let private expectEncryptionFailure result =
-    match result with
-    | DecodeFailed (EncryptionFailed issue, _) ->
-        issue.Message
-
-    | actual ->
-        failwith $"Expected encryption failure, got %A{actual}"
-
-let private expectValidationFailure result =
-    match result with
-    | DecodeFailed (failure, _) ->
-        validationMessages failure
-
-    | actual ->
-        failwith $"Expected validation failure, got %A{actual}"
-
-let private expectSingleValidationMessage result =
-    match expectValidationFailure result with
-    | [ message ] ->
-        message
-
-    | messages ->
-        failwith $"Expected one validation message, got %A{messages}"
+    match outcome result with
+    | Mode5ExpansionOutcome.Protected (layout, SecurityContextNotUsable) ->
+        layout.OriginalPayload.Value.ToArray() |> should equal validCipherText
+        layout.EncryptedPart.Value.Length |> should equal 16
+        layout.ClearSuffix |> should equal None
+    | actual -> failwith $"Expected protected outcome, got %A{actual}"
 
 [<Fact>]
-let ``fixed count one resolves to sixteen encrypted bytes`` () =
+let ``wrong key is a protected cryptographic failure`` () =
+    let wrongKey = Array.create 16 0xAAuy
     let result, _ =
-        runUnprotect validKey (fixedBlocks 1) (Array.zeroCreate 16)
+        run (mode5Context wrongKey) AllRemainingDataEncrypted validCipherText
 
-    expectEncryptionFailure result
-    |> should equal "security mode 5 AES check failed"
+    match outcome result with
+    | Mode5ExpansionOutcome.Protected (
+        _,
+        UnprotectionFailure.CryptographicFailure DecryptionOrVerificationFailed
+      ) -> ()
+    | actual -> failwith $"Expected cryptographic protected outcome, got %A{actual}"
 
 [<Fact>]
-let ``fixed count fourteen resolves to two hundred twenty-four encrypted bytes`` () =
-    let result, _ =
-        runUnprotect validKey (fixedBlocks 14) (Array.zeroCreate 224)
+let ``partial encryption combines decrypted prefix and clear suffix`` () =
+    let suffix = [| 0x2Fuy; 0x2Fuy |]
+    let payload = Array.append validCipherText suffix
+    let result, store =
+        run (mode5Context validKey) (fixedBlocks 1) payload
 
-    expectEncryptionFailure result
-    |> should equal "security mode 5 AES check failed"
+    match outcome result with
+    | Mode5ExpansionOutcome.Unprotected source ->
+        source.Value.ToArray()
+        |> should equal (Array.append expectedPlainPrefix suffix)
+        source.Span.Source |> should equal (SourceId.create 101)
+        store.DerivedBytes.IsSome |> should be True
+    | actual -> failwith $"Expected unprotected partial payload, got %A{actual}"
 
 [<Fact>]
-let ``fixed count larger than available payload is validation failure`` () =
+let ``failed partial unprotection retains clear suffix without deriving a source`` () =
+    let suffix = [| 0x0Fuy |]
+    let payload = Array.append (Array.zeroCreate 16) suffix
+    let result, store =
+        run (mode5Context validKey) (fixedBlocks 1) payload
+
+    match outcome result with
+    | Mode5ExpansionOutcome.Protected (layout, _) ->
+        layout.EncryptedPart.Value.Length |> should equal 16
+        layout.ClearSuffix.Value.Value.ToArray() |> should equal suffix
+        store.DerivedSource |> should equal None
+    | actual -> failwith $"Expected retained protected layout, got %A{actual}"
+
+[<Fact>]
+let ``zero encrypted blocks returns the original unprotected source`` () =
+    let payload = [| 0x2Fuy; 0x2Fuy |]
+    let result, store =
+        run SecurityContext.none NoEncryptedData payload
+
+    match outcome result with
+    | Mode5ExpansionOutcome.Unprotected source ->
+        source.Value.ToArray() |> should equal payload
+        source.Span |> should equal (bytesField payload).Span
+        store.DerivedSource |> should equal None
+    | actual -> failwith $"Expected original source, got %A{actual}"
+
+[<Fact>]
+let ``all remaining is not capped at fifteen blocks`` () =
+    let cipherText =
+        Convert.FromHexString(
+            "aaa81ab26bb285ae3da10ad481a1ac2c04f32cbe18ae843d54e7ff4c7d948a74"
+            + "91a745434dd79ad4c5695053601c5928d3d76cb55bea56808012a127ec4d1f58"
+            + "fdd2416e73e931a1b902fec138bb27a9e14b08dcb9b46716958592028081d27"
+            + "f600fa30e803d8094ecd736f8e294c101d9d0ebc77520a04e80b243788e8a"
+            + "2dafb64f8e0cb2fd0a38d650b4020ebb9e1adba581e288583f36e39e1b2c"
+            + "6b2f636de9bbf80b6f2943409c40ceab098cc301654433173abdbc1f6e59e"
+            + "541be1111f2ae4d4ebc13850c026159ce4e09c44722e1d50507149fbbaefe"
+            + "675331f1cc88eaeb2594b4578c65854a117df0a21b3934685994f2694282"
+            + "a84a82504d6f2e99fd"
+        )
+
     let result, _ =
-        runUnprotect validKey (fixedBlocks 2) (Array.zeroCreate 31)
+        run (mode5Context validKey) AllRemainingDataEncrypted cipherText
 
-    let messages =
-        expectValidationFailure result
+    match outcome result with
+    | Mode5ExpansionOutcome.Unprotected source ->
+        source.Value.Length |> should equal 254
+    | actual -> failwith $"Expected all 256 encrypted bytes, got %A{actual}"
 
-    messages
+[<Fact>]
+let ``invalid protected length is invalid rather than protected`` () =
+    let result, _ =
+        run SecurityContext.none AllRemainingDataEncrypted (Array.zeroCreate 17)
+
+    outcome result
+    |> failures
+    |> List.exists (fun message -> message.Contains("multiple of 16"))
+    |> should be True
+
+[<Fact>]
+let ``fixed encrypted prefix larger than payload is invalid`` () =
+    let result, _ =
+        run SecurityContext.none (fixedBlocks 2) (Array.zeroCreate 31)
+
+    outcome result
+    |> failures
     |> List.exists (fun message ->
-        message.Contains("Declared encrypted length is 32 byte(s)")
-        && message.Contains("31 byte(s) are available"))
+        message.Contains("32 encrypted byte(s)")
+        && message.Contains("31 payload byte(s)"))
     |> should be True
-
-[<Fact>]
-let ``fixed count smaller than payload reports unsupported partial encryption`` () =
-    let result, _ =
-        runUnprotect validKey (fixedBlocks 1) (Array.zeroCreate 17)
-
-    let message =
-        expectSingleValidationMessage result
-
-    message.Contains("standard-defined but currently unsupported")
-    |> should be True
-
-    message.Contains("16 byte(s)") |> should be True
-    message.Contains("17 byte(s)") |> should be True
-
-[<Fact>]
-let ``fixed count equal to payload length uses fully encrypted path`` () =
-    let result, _ =
-        runUnprotect validKey (fixedBlocks 1) validCipherText
-
-    match result with
-    | Decoded (apl, _) ->
-        apl.Value.ToArray() |> should equal expectedApplicationPlaintext
-
-    | actual ->
-        failwith $"Expected successful decryption, got %A{actual}"
-
-[<Fact>]
-let ``all remaining with sixteen byte vector decrypts successfully`` () =
-    let result, _ =
-        runUnprotect validKey AllRemainingDataEncrypted validCipherText
-
-    match result with
-    | Decoded (apl, _) ->
-        apl.Value.ToArray() |> should equal expectedApplicationPlaintext
-
-    | actual ->
-        failwith $"Expected successful decryption, got %A{actual}"
-
-[<Fact>]
-let ``all remaining with thirty-two bytes uses the complete payload`` () =
-    let result, store =
-        runUnprotect validKey AllRemainingDataEncrypted validTwoBlockCipherText
-
-    match result with
-    | Decoded (apl, _) ->
-        apl.Value.ToArray() |> should equal expectedTwoBlockApplicationPlaintext
-        apl.Id |> should equal (FieldId.create 1)
-        apl.Span.Source |> should equal (SourceId.create 101)
-        apl.Span.Offset |> should equal 0
-        apl.Span.Length |> should equal expectedTwoBlockApplicationPlaintext.Length
-
-        match store.DerivedBytes with
-        | Some bytes ->
-            bytes.ToArray() |> should equal expectedTwoBlockApplicationPlaintext
-
-        | None ->
-            failwith "Expected derived source bytes"
-
-        match store.DerivedSource with
-        | Some source ->
-            source.Id |> should equal (SourceId.create 101)
-            source.Name |> should equal "Decrypted APL Data"
-            source.Origin |> should equal (Some (bytesField validTwoBlockCipherText).Span)
-            source.Transform |> should equal (SourceTransform.Decrypt "M-Bus security mode 5 AES-CBC-128")
-            source.Length |> should equal expectedTwoBlockApplicationPlaintext.Length
-            source.Sensitive |> should equal true
-
-        | None ->
-            failwith "Expected derived source metadata"
-
-    | actual ->
-        failwith $"Expected successful decryption, got %A{actual}"
-
-[<Fact>]
-let ``all remaining with sixteen encrypted blocks decrypts complete payload beyond fifteen block cap`` () =
-    expectedSixteenBlockPlaintext[0..1]
-    |> should equal [| 0x2Fuy; 0x2Fuy |]
-
-    let result, store =
-        runUnprotect validKey AllRemainingDataEncrypted validSixteenBlockCipherText
-
-    match result with
-    | Decoded (apl, _) ->
-        apl.Value.ToArray() |> should equal expectedSixteenBlockApplicationPlaintext
-        apl.Value.Length |> should equal 254
-        apl.Id |> should equal (FieldId.create 1)
-        apl.Span.Source |> should equal (SourceId.create 101)
-        apl.Span.Offset |> should equal 0
-        apl.Span.Length |> should equal 254
-
-        match store.DerivedBytes with
-        | Some bytes ->
-            bytes.ToArray() |> should equal expectedSixteenBlockApplicationPlaintext
-            bytes.Length |> should equal 254
-
-        | None ->
-            failwith "Expected derived source bytes"
-
-        match store.DerivedSource with
-        | Some source ->
-            source.Length |> should equal 254
-
-        | None ->
-            failwith "Expected derived source metadata"
-
-    | actual ->
-        failwith $"Expected successful decryption, got %A{actual}"
-
-[<Fact>]
-let ``all remaining with more than two hundred forty bytes is not interpreted as fifteen blocks`` () =
-    let result, store =
-        runUnprotect validKey AllRemainingDataEncrypted validSixteenBlockCipherText
-
-    match result with
-    | Decoded (apl, _) ->
-        apl.Value.Length |> should equal 254
-        apl.Span.Length |> should equal 254
-
-        match store.DerivedSource with
-        | Some source ->
-            source.Length |> should equal 254
-
-        | None ->
-            failwith "Expected derived source metadata"
-
-    | actual ->
-        failwith $"Expected successful decryption, got %A{actual}"
-
-[<Fact>]
-let ``all remaining payload longer than two hundred forty bytes is not reported as partial encryption`` () =
-    let result, _ =
-        runUnprotect validKey AllRemainingDataEncrypted validSixteenBlockCipherText
-
-    match result with
-    | Decoded (apl, _) ->
-        apl.Value.Length |> should equal 254
-
-    | actual ->
-        failwith $"Expected successful decryption without partial-encryption validation failure, got %A{actual}"
-
-[<Fact>]
-let ``all remaining with non block-aligned payload fails before cryptography`` () =
-    let result, _ =
-        runUnprotect validKey AllRemainingDataEncrypted (Array.zeroCreate 17)
-
-    expectSingleValidationMessage result
-    |> should equal "Security mode 5 all-remaining encrypted payload length must be a multiple of 16 byte(s), but got 17 byte(s)."
-
-[<Fact>]
-let ``all remaining with empty payload fails validation before cryptography`` () =
-    let result, store =
-        runUnprotect validKey AllRemainingDataEncrypted [||]
-
-    expectSingleValidationMessage result
-    |> should equal "mode 5 requires at least one encrypted block containing decryption-verification bytes."
-
-    store.DerivedBytes |> should equal None
-    store.DerivedSource |> should equal None
-
-[<Fact>]
-let ``invalid verification bytes fail as encryption failure`` () =
-    let result, _ =
-        runUnprotect validKey AllRemainingDataEncrypted invalidCheckCipherText
-
-    expectEncryptionFailure result
-    |> should equal "security mode 5 AES check failed"
-
-[<Fact>]
-let ``valid fixed AES-CBC vector strips verification bytes from returned source`` () =
-    let result, store =
-        runUnprotect validKey (fixedBlocks 1) validCipherText
-
-    match result with
-    | Decoded (apl, _) ->
-        apl.Value.ToArray() |> should equal expectedApplicationPlaintext
-        apl.Span.Source |> should equal (SourceId.create 101)
-        apl.Span.Offset |> should equal 0
-        apl.Span.Length |> should equal expectedApplicationPlaintext.Length
-
-        match store.DerivedBytes with
-        | Some bytes ->
-            bytes.ToArray() |> should equal expectedApplicationPlaintext
-
-        | None ->
-            failwith "Expected derived source bytes"
-
-    | actual ->
-        failwith $"Expected successful decryption, got %A{actual}"
-
-[<Fact>]
-let ``mode five with no encrypted data is explicitly unsupported`` () =
-    let result, _ =
-        runUnprotect validKey NoEncryptedData [||]
-
-    expectSingleValidationMessage result
-    |> should equal "Security mode 5 with no encrypted data is standard-defined but currently unsupported."

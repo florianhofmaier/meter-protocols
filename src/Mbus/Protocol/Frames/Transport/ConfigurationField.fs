@@ -13,6 +13,7 @@ type ConfigurationFieldBitsRaw =
 type ConfigurationFieldRaw =
     | Mode0Raw of Field<ConfigurationFieldBitsRaw>
     | Mode5Raw of Field<ConfigurationFieldBitsRaw>
+    | OtherModeRaw of mode: byte * bits: Field<ConfigurationFieldBitsRaw>
 
 module ConfigurationFieldBitsRaw =
 
@@ -30,6 +31,7 @@ module ConfigurationFieldRaw =
         function
         | Mode0Raw bits -> bits
         | Mode5Raw bits -> bits
+        | OtherModeRaw (_, bits) -> bits
 
     let value cnf =
         cnf
@@ -56,7 +58,10 @@ module ConfigurationFieldRaw =
                 let mode =
                     Mode.rawValue value
 
-                return! failBefore 2 $"Unsupported security mode {mode} in configuration field 0x{value:X4}."
+                return
+                    bits
+                    |> Field.map (fun _ ->
+                        OtherModeRaw (byte mode, bits))
         }
 
 module BitFields =

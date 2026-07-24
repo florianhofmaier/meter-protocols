@@ -19,9 +19,18 @@ type ShortHeaderMode5Raw =
         Cnf: Field<ConfigurationFieldBitsRaw>
     }
 
+type ShortHeaderOtherModeRaw =
+    {
+        Mode: byte
+        Acc: Field<AccessNumberRaw>
+        Status: Field<StatusByteRaw>
+        Cnf: Field<ConfigurationFieldBitsRaw>
+    }
+
 type ShortHeaderRaw =
     | Mode0Raw of ShortHeaderMode0Raw
     | Mode5Raw of ShortHeaderMode5Raw
+    | OtherModeRaw of ShortHeaderOtherModeRaw
 
 module ShortHeaderRaw =
 
@@ -46,6 +55,16 @@ module ShortHeaderRaw =
                 return
                     Mode5Raw
                         {
+                            Acc = acc
+                            Status = status
+                            Cnf = bits
+                        }
+
+            | ConfigurationFieldRaw.OtherModeRaw (mode, bits) ->
+                return
+                    OtherModeRaw
+                        {
+                            Mode = mode
                             Acc = acc
                             Status = status
                             Cnf = bits
@@ -80,8 +99,8 @@ module ShortHeader =
             match raw.Value with
             | Mode0Raw header ->
                 let! acc = AccessNumber.fromRaw header.Acc
-                let! status = StatusByte.fromRaw header.Status
-                let! cnf = ConfigurationFieldMode0.fromRaw header.Cnf
+                and! status = StatusByte.fromRaw header.Status
+                and! cnf = ConfigurationFieldMode0.fromRaw header.Cnf
                 return
                     raw
                     |> Field.withValue (
@@ -94,8 +113,8 @@ module ShortHeader =
 
             | Mode5Raw header ->
                 let! acc = AccessNumber.fromRaw header.Acc
-                let! status = StatusByte.fromRaw header.Status
-                let! cnf = ConfigurationFieldMode5.fromRaw header.Cnf
+                and! status = StatusByte.fromRaw header.Status
+                and! cnf = ConfigurationFieldMode5.fromRaw header.Cnf
                 return
                     raw
                     |> Field.withValue (
@@ -105,4 +124,14 @@ module ShortHeader =
                             Cnf = cnf
                         }
                     )
+
+            | OtherModeRaw header ->
+                let! _acc = AccessNumber.fromRaw header.Acc
+                and! _status = StatusByte.fromRaw header.Status
+                and! unsupported : Field<ShortHeader> =
+                    failed
+                        header.Cnf
+                        $"Security mode {header.Mode} is standard-defined or reserved but unsupported by this decoder. EN 13757-7:2018, 7.5.8, Table 19."
+
+                return unsupported
         }

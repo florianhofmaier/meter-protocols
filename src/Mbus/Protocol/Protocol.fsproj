@@ -49,9 +49,9 @@
         <Compile Include="Frames\Transport\Mode.fs" />
         <Compile Include="Frames\Transport\ConfigurationField.fs" />
         <Compile Include="Frames\Transport\Security\SecurityContext.fs"/>
-        <Compile Include="Frames\Transport\Security\Mode5.fs"/>
         <Compile Include="Frames\Transport\ShortHeader.fs" />
         <Compile Include="Frames\Transport\LongHeader.fs" />
+        <Compile Include="Frames\Transport\Security\Mode5.fs"/>
         <Compile Include="Frames\Transport\AplData.fs" />
         <Compile Include="Frames\Transport\TplWithNoneHeader.fs" />
         <Compile Include="Frames\Transport\TplWithShortHeader.fs" />
@@ -68,7 +68,7 @@
         <Compile Include="Frames\DataLinkLayer\WiredMbus\FixedLengthFrame.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\VariableLengthFrame.fs" />
         <Compile Include="Frames\CompleteMessage.fs" />
-        <Compile Include="Frames\DataLinkLayer\WiredMbus\WiredMbusFrame.fs" />
+        <Compile Include="Frames\WiredMbusFrame.fs" />
         <Compile Include="Messages\MessageTypes.fs" />
         <Compile Include="Messages\RequestUserData.fs" />
         <Compile Include="Messages\PrimaryStationMessage.fs" />

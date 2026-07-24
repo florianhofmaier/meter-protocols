@@ -1,16 +1,13 @@
 namespace Metering.Mbus.Protocol.Frames
 
 open System
-open System.Buffers.Binary
 open Metering.Common.Decoding.Decoders.Core
 open Metering.Common.Decoding.Decoders.Core.Core
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Types
 open Metering.Common.Decoding.Validators.Core
-open Metering.Common.Security.Cryptography
 open Metering.Mbus.Protocol.Frames.Application
 open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
-open Metering.Mbus.Protocol.Frames.DeviceIdentification
 open Metering.Mbus.Protocol.Frames.Transport
 open Metering.Mbus.Protocol.Security
 
@@ -22,13 +19,6 @@ type CompleteMessageRaw =
 
 type FrameVariableLengthRaw =
     | CompleteMessage of CompleteMessageRaw
-
-type CryptographicFailure =
-    | DecryptionOrVerificationFailed
-
-type UnprotectionFailure =
-    | SecurityContextNotUsable
-    | CryptographicFailure of CryptographicFailure
 
 type ProtectedAplRaw =
     {
@@ -140,190 +130,36 @@ module private AplParser =
             | DecodeFailed (failure, notices) ->
                 DecodeFailed (failure, notices)
 
-module private Mode5Expansion =
-
-    let private blockLength = 16
-
-    let private byteSlice
-        offset
-        length
-        (field: Field<ReadOnlyMemory<byte>>) =
-
-        {
-            Id = field.Id
-            Span = {
-                field.Span with
-                    Offset = field.Span.Offset + offset
-                    Length = length
-            }
-            Value = field.Value.Slice(offset, length)
-        }
-
-    let private layout
-        (cnf: Field<ConfigurationFieldBitsRaw>)
-        (payload: Field<ReadOnlyMemory<byte>>) =
-
-        let indicator =
-            cnf.Value
-            |> ConfigurationFieldBitsRaw.value
-            |> EncryptedLengthIndicator.map
-
-        let invalid message =
-            Error (PipelineIssues.single payload message)
-
-        match indicator with
-        | NoEncryptedData ->
-            Ok (byteSlice 0 0 payload, Some payload)
-
-        | FixedEncryptedBlocks count ->
-            let encryptedLength =
-                EncryptedBlockCount.value count * blockLength
-
-            if encryptedLength > payload.Value.Length then
-                invalid (
-                    $"Mode 5 declares {encryptedLength} encrypted byte(s), "
-                    + $"but only {payload.Value.Length} payload byte(s) are available. "
-                    + "EN 13757-7:2018, 7.6.5 and Tables 30/31."
-                )
-            else
-                let encrypted =
-                    byteSlice 0 encryptedLength payload
-
-                let suffixLength =
-                    payload.Value.Length - encryptedLength
-
-                let suffix =
-                    if suffixLength = 0 then None
-                    else Some (byteSlice encryptedLength suffixLength payload)
-
-                Ok (encrypted, suffix)
-
-        | AllRemainingDataEncrypted ->
-            if payload.Value.Length = 0 then
-                invalid
-                    "Mode 5 requires an encrypted block containing the two verification bytes."
-            elif payload.Value.Length % blockLength <> 0 then
-                invalid (
-                    $"Mode 5 encrypted data must be a multiple of {blockLength} byte(s); "
-                    + $"actual length is {payload.Value.Length}. EN 13757-7:2018, 9.4.4.1."
-                )
-            else
-                Ok (payload, None)
-
-    let private buildIv (header: LongHeaderMode5Raw) =
-        let iv = Array.zeroCreate<byte> blockLength
-
-        BinaryPrimitives.WriteUInt16LittleEndian(
-            iv.AsSpan(0, 2),
-            ManufacturerRaw.value header.Mfr.Value
-        )
-
-        BinaryPrimitives.WriteUInt32LittleEndian(
-            iv.AsSpan(2, 4),
-            IdNumberRaw.value header.IdNum.Value
-        )
-
-        iv[6] <- VersionRaw.value header.Version.Value
-        iv[7] <- DeviceTypeRaw.value header.DevType.Value
-        iv.AsSpan(8, 8).Fill(AccessNumberRaw.value header.Acc.Value)
-        ReadOnlyMemory<byte> iv
-
-    let private protectedPayload original encrypted suffix failure =
-        AplExpansionRaw.Protected {
-            OriginalPayload = original
-            EncryptedPart = encrypted
-            ClearSuffix = suffix
-            Failure = failure
-        }
-
-    let expand
-        securityContext
-        ci
-        (header: LongHeaderMode5Raw)
-        (payload: Field<ReadOnlyMemory<byte>>)
-        : Decoder<AplExpansionRaw> =
-
-        match layout header.Cnf payload with
-        | Error failures ->
-            decodePassed (AplExpansionRaw.Invalid failures)
-
-        | Ok (encrypted, clearSuffix) when encrypted.Value.Length = 0 ->
-            decoder {
-                let! parsed = AplParser.capture ci payload
-                return
-                    match parsed with
-                    | Ok apl -> AplExpansionRaw.Parsed apl
-                    | Error failures -> AplExpansionRaw.Invalid failures
-            }
-
-        | Ok (encrypted, clearSuffix) ->
-            match securityContext with
-            | SecurityContext.NoSecurity ->
-                protectedPayload
-                    payload
-                    encrypted
-                    clearSuffix
-                    SecurityContextNotUsable
-                |> decodePassed
-
-            | SecurityContext.Mode5 mode5 ->
-                let key =
-                    Mode5SecurityContext.keyBytes mode5
-
-                match AesCbc.decrypt key (buildIv header) encrypted.Value with
-                | Error _ ->
-                    protectedPayload
-                        payload
-                        encrypted
-                        clearSuffix
-                        (UnprotectionFailure.CryptographicFailure DecryptionOrVerificationFailed)
-                    |> decodePassed
-
-                | Ok plain
-                    when plain.Length < 2
-                         || plain.Span[0] <> 0x2Fuy
-                         || plain.Span[1] <> 0x2Fuy ->
-                    protectedPayload
-                        payload
-                        encrypted
-                        clearSuffix
-                        (UnprotectionFailure.CryptographicFailure DecryptionOrVerificationFailed)
-                    |> decodePassed
-
-                | Ok plain ->
-                    let decryptedPrefix =
-                        plain.Slice(2)
-
-                    let suffix =
-                        clearSuffix
-                        |> Option.map (fun field -> field.Value)
-                        |> Option.defaultValue ReadOnlyMemory<byte>.Empty
-
-                    let combined =
-                        Array.zeroCreate<byte> (decryptedPrefix.Length + suffix.Length)
-
-                    decryptedPrefix.CopyTo(combined.AsMemory())
-                    suffix.CopyTo(combined.AsMemory(decryptedPrefix.Length))
-
-                    decoder {
-                        let! source =
-                            createDerivedSource
-                                "Decrypted APL Data"
-                                (SourceTransform.Decrypt "M-Bus security mode 5 AES-CBC-128")
-                                true
-                                payload
-                                (ReadOnlyMemory<byte> combined)
-
-                        let! parsed =
-                            AplParser.capture ci source
-
-                        return
-                            match parsed with
-                            | Ok apl -> AplExpansionRaw.Parsed apl
-                            | Error failures -> AplExpansionRaw.Invalid failures
-                    }
-
 module FrameVariableLengthExpandedRaw =
+
+    let private parseApl ci source =
+        decoder {
+            let! parsed =
+                AplParser.capture ci source
+
+            return
+                match parsed with
+                | Ok apl -> AplExpansionRaw.Parsed apl
+                | Error failures -> AplExpansionRaw.Invalid failures
+        }
+
+    let private fromMode5Outcome ci =
+        function
+        | Mode5ExpansionOutcome.Unprotected source ->
+            parseApl ci source
+
+        | Mode5ExpansionOutcome.Protected (layout, failure) ->
+            decodePassed (
+                AplExpansionRaw.Protected {
+                    OriginalPayload = layout.OriginalPayload
+                    EncryptedPart = layout.EncryptedPart
+                    ClearSuffix = layout.ClearSuffix
+                    Failure = failure
+                }
+            )
+
+        | Mode5ExpansionOutcome.Invalid failures ->
+            decodePassed (AplExpansionRaw.Invalid failures)
 
     let private expandComplete
         securityContext
@@ -347,27 +183,42 @@ module FrameVariableLengthExpandedRaw =
                 | TplRaw.LongHeader {
                     Header = { Value = LongHeaderRaw.Mode5Raw header }
                   } ->
-                    Mode5Expansion.expand securityContext ci header aplData
+                    decoder {
+                        let! outcome =
+                            Mode5.expandLongHeader securityContext header aplData
+
+                        return! fromMode5Outcome ci outcome
+                    }
 
                 | TplRaw.ShortHeader {
                     Header = { Value = ShortHeaderRaw.Mode5Raw _ }
                   } ->
                     PipelineIssues.single
                         raw.Tpl
-                        "Mode 5 with a short TPL header is not supported for this wired complete-message path."
+                        "Short-header Mode 5 is standard-conformant, but this wired frame model does not contain the complete link-layer meter identification required to construct the IV. EN 13757-3:2025, G.5.4; EN 13757-7:2018, 9.4.4.1, Table 48."
+                    |> AplExpansionRaw.Invalid
+                    |> decodePassed
+
+                | TplRaw.ShortHeader {
+                    Header = { Value = ShortHeaderRaw.OtherModeRaw header }
+                  } ->
+                    PipelineIssues.single
+                        header.Cnf
+                        $"Security mode {header.Mode} is unsupported. EN 13757-7:2018, 7.5.8, Table 19."
+                    |> AplExpansionRaw.Invalid
+                    |> decodePassed
+
+                | TplRaw.LongHeader {
+                    Header = { Value = LongHeaderRaw.OtherModeRaw header }
+                  } ->
+                    PipelineIssues.single
+                        header.Cnf
+                        $"Security mode {header.Mode} is unsupported. EN 13757-7:2018, 7.5.8, Table 19."
                     |> AplExpansionRaw.Invalid
                     |> decodePassed
 
                 | _ ->
-                    decoder {
-                        let! parsed =
-                            AplParser.capture ci aplData
-
-                        return
-                            match parsed with
-                            | Ok apl -> AplExpansionRaw.Parsed apl
-                            | Error failures -> AplExpansionRaw.Invalid failures
-                    }
+                    parseApl ci aplData
 
             return {
                 Dll = raw.Dll
@@ -445,11 +296,6 @@ module AplContent =
         | AplExpansionRaw.Invalid failures ->
             Failed (failures, [])
 
-module private CompleteMessageCrossLayer =
-
-    let validateRaw (_raw: CompleteMessageExpandedRaw) =
-        passed ()
-
 module FrameVariableLength =
 
     let private completeFromExpandedRaw
@@ -459,7 +305,6 @@ module FrameVariableLength =
             let! dll = DllVariableLength.fromRaw raw.Dll
             and! tpl = Tpl.fromRaw raw.Tpl
             and! payload = AplContent.fromExpandedRaw raw.Payload
-            and! () = CompleteMessageCrossLayer.validateRaw raw
 
             return {
                 Dll = dll
