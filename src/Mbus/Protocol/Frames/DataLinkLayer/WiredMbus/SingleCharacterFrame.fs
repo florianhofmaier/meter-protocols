@@ -6,5 +6,5 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 
 let parse : Parser<Field<unit>> =
-        parseField "Single Character Frame"
-        <| expectU8 0xE5uy
+    parseField "Format FT 1.2 Single Character"
+    <| expectU8 0xE5uy

@@ -27,27 +27,8 @@ module Field =
             Value = f field.Value
         }
 
-    let withValue value field =
+    let withValue field value =
         map (fun _ -> value) field
-
-type ParsedField<'a> = Field<'a>
-
-module ParsedField =
-
-    let value field =
-        Field.value field
-
-    let id field =
-        Field.id field
-
-    let span field =
-        Field.span field
-
-    let map f field =
-        Field.map f field
-
-    let withValue value field =
-        Field.withValue value field
 
 module FieldParser =
 

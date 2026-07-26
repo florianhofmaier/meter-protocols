@@ -1,4 +1,4 @@
-namespace Metering.Mbus.Protocol.Frames.Transport
+namespace Metering.Mbus.Protocol.Frames.TransportLayer
 
 type EncryptedBlockCount =
     private EncryptedBlockCount of int

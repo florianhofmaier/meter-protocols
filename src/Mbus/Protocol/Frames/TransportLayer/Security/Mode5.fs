@@ -1,4 +1,4 @@
-namespace Metering.Mbus.Protocol.Security
+namespace Metering.Mbus.Protocol.Frames.TransportLayer.Security
 
 open System
 open System.Buffers.Binary
@@ -9,7 +9,8 @@ open Metering.Common.Decoding.Parsers.Types
 open Metering.Common.Decoding.Validators.Core
 open Metering.Common.Security.Cryptography
 open Metering.Mbus.Protocol.Frames.DeviceIdentification
-open Metering.Mbus.Protocol.Frames.Transport
+open Metering.Mbus.Protocol.Frames.TransportLayer
+open Metering.Mbus.Protocol.Frames.TransportLayer.Security
 
 type CryptographicFailure =
     | DecryptionOrVerificationFailed
@@ -25,21 +26,21 @@ type Mode5ProtectedLayout =
         ClearSuffix: Field<ReadOnlyMemory<byte>> option
     }
 
-type Mode5ExpansionOutcome =
-    | Unprotected of Field<ReadOnlyMemory<byte>>
-    | Protected of Mode5ProtectedLayout * UnprotectionFailure
-    | Invalid of Failures
+// type Mode5ExpansionOutcome =
+//     | Unprotected of Field<ReadOnlyMemory<byte>>
+//     | Protected of Mode5ProtectedLayout * UnprotectionFailure
+//     | Invalid of Failures
 
 module Mode5 =
 
     let private blockLength = 16
     let private aesCheck = 0x2Fuy
 
-    let private issue (field: Field<_>) message =
-        Failures.single {
-            FieldId = field.Id
-            Message = message
-        }
+    // let private issue (field: Field<_>) message =
+    //     Failures.single {
+    //         FieldId = field.Id
+    //         Message = message
+    //     }
 
     let private byteSlice offset length (field: Field<ReadOnlyMemory<byte>>) =
         {
@@ -53,7 +54,7 @@ module Mode5 =
         }
 
     let private protectedLayout
-        (cnf: Field<ConfigurationFieldBitsRaw>)
+        (cnf: Field<ConfigFieldBitsRaw>)
         (payload: Field<ReadOnlyMemory<byte>>) =
 
         let invalid message =
@@ -85,7 +86,7 @@ module Mode5 =
 
         let indicator =
             cnf.Value
-            |> ConfigurationFieldBitsRaw.value
+            |> ConfigFieldBitsRaw.value
             |> EncryptedLengthIndicator.map
 
         match indicator with

@@ -1,4 +1,4 @@
-namespace Metering.Mbus.Protocol.Frames.Transport
+namespace Metering.Mbus.Protocol.Frames.TransportLayer
 
 type Mode =
     | Mode0

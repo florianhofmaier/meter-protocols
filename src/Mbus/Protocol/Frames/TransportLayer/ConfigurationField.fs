@@ -1,4 +1,4 @@
-namespace Metering.Mbus.Protocol.Frames.Transport
+namespace Metering.Mbus.Protocol.Frames.TransportLayer
 
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Binary
@@ -7,45 +7,44 @@ open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
 
-type ConfigurationFieldBitsRaw =
-    private ConfigurationFieldBits of uint16
+type ConfigFieldBitsRaw =
+    private
+        ConfigFieldBits of uint16
 
-type ConfigurationFieldRaw =
-    | Mode0Raw of Field<ConfigurationFieldBitsRaw>
-    | Mode5Raw of Field<ConfigurationFieldBitsRaw>
-    | OtherModeRaw of mode: byte * bits: Field<ConfigurationFieldBitsRaw>
+type ConfigFieldRaw =
+    | Mode0Raw of Field<ConfigFieldBitsRaw>
+    | Mode5Raw of Field<ConfigFieldBitsRaw>
 
-module ConfigurationFieldBitsRaw =
+module ConfigFieldBitsRaw =
 
-    let value (ConfigurationFieldBits v) = v
+    let value (ConfigFieldBits v) = v
 
-    let parse : Parser<Field<ConfigurationFieldBitsRaw>> =
+    let parse : Parser<Field<ConfigFieldBitsRaw>> =
         parseField
             "Configuration Field"
             parseU16LittleEndian
-        |>> Field.map ConfigurationFieldBits
+        |>> Field.map ConfigFieldBits
 
-module ConfigurationFieldRaw =
+module ConfigFieldRaw =
 
     let bits =
         function
         | Mode0Raw bits -> bits
         | Mode5Raw bits -> bits
-        | OtherModeRaw (_, bits) -> bits
 
     let value cnf =
         cnf
         |> bits
-        |> fun raw -> raw.Value
-        |> ConfigurationFieldBitsRaw.value
+        |> _.Value
+        |> ConfigFieldBitsRaw.value
 
-    let parse : Parser<Field<ConfigurationFieldRaw>> =
+    let parse : Parser<Field<ConfigFieldRaw>> =
         parser {
-            let! bits = ConfigurationFieldBitsRaw.parse
+            let! bits = ConfigFieldBitsRaw.parse
 
             let value =
                 bits.Value
-                |> ConfigurationFieldBitsRaw.value
+                |> ConfigFieldBitsRaw.value
 
             match Mode.tryMap value with
             | Some Mode.Mode0 ->
@@ -55,13 +54,12 @@ module ConfigurationFieldRaw =
                 return bits |> Field.map (fun _ -> Mode5Raw bits)
 
             | None ->
-                let mode =
-                    Mode.rawValue value
+                let mode = Mode.rawValue value
 
-                return
-                    bits
-                    |> Field.map (fun _ ->
-                        OtherModeRaw (byte mode, bits))
+                return!
+                    failBefore
+                        2
+                        $"Unsupported security mode: {mode}"
         }
 
 module BitFields =
@@ -125,11 +123,11 @@ type ConfigurationFieldMode0 =
 module ConfigurationFieldMode0 =
 
     let fromRaw
-        (raw: Field<ConfigurationFieldBitsRaw>)
+        (raw: Field<ConfigFieldBitsRaw>)
         : Validation<Field<ConfigurationFieldMode0>> =
 
         validator {
-            let cnf = ConfigurationFieldBitsRaw.value raw.Value
+            let cnf = ConfigFieldBitsRaw.value raw.Value
 
             let! cc =
                 match ContentOfMessage.tryMap cnf with
@@ -164,11 +162,11 @@ type ConfigurationFieldMode5 =
 module ConfigurationFieldMode5 =
 
     let fromRaw
-        (raw: Field<ConfigurationFieldBitsRaw>)
+        (raw: Field<ConfigFieldBitsRaw>)
         : Validation<Field<ConfigurationFieldMode5>> =
 
         validator {
-            let cnf = ConfigurationFieldBitsRaw.value raw.Value
+            let cnf = ConfigFieldBitsRaw.value raw.Value
 
             let! cc =
                 match ContentOfMessage.tryMap cnf with

@@ -1,12 +1,14 @@
-namespace Metering.Mbus.Protocol.Frames.Application
+namespace Metering.Mbus.Protocol.Frames.DataLinkLayer.UserData
 
 open System
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Validators.Core
+open Metering.Mbus.Protocol.Frames
 open Metering.Mbus.Protocol.Frames.DeviceIdentification
 open Metering.Mbus.Protocol.Utility
 
@@ -53,6 +55,7 @@ module ExtendedSelectionOfDevice =
 
 type SelectionOfDeviceRaw =
     {
+        Ci: Field<CiField>
         IdNum: Field<IdNumberRaw>
         Mfr: Field<ManufacturerRaw>
         Version: Field<VersionRaw>
@@ -62,9 +65,26 @@ type SelectionOfDeviceRaw =
 
 module SelectionOfDeviceRaw =
 
-    let parse : Parser<Field<SelectionOfDeviceRaw>> =
-        parseField "Selection of Device"
-        <| parser {
+    let private isSelectionOfDevice (ciField: CiField) =
+        match ciField with
+        | LowerLayerManagement
+            (CiLowerLayerManagement.SelectionOfDevice _) ->
+            true
+
+        | _ ->
+            false
+
+    let parse : Parser<SelectionOfDeviceRaw> =
+        parser {
+            let! ci = CiField.parse
+
+            if not (isSelectionOfDevice ci.Value) then
+                let code = CiField.code ci.Value
+                return!
+                    failBefore
+                    1
+                    $"Expect CI-Field for selection of device (0x52), got 0x{code:X2} instead."
+
             let! idNum = IdNumberRaw.parse
             let! mfr = ManufacturerRaw.parse
             let! version = VersionRaw.parse
@@ -73,6 +93,7 @@ module SelectionOfDeviceRaw =
 
             return
                 {
+                    Ci = ci
                     IdNum = idNum
                     Mfr = mfr
                     Version = version

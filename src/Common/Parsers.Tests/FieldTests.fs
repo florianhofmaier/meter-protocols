@@ -44,23 +44,23 @@ let ``Field helpers preserve identity and span while transforming value`` () =
     replaced.Value |> should equal "value"
 
 [<Fact>]
-let ``ParsedField helpers preserve the same contract`` () =
-    let parsed : ParsedField<int> =
+let ``Field helpers preserve the same contract`` () =
+    let parsed : Field<int> =
         field
 
-    ParsedField.value parsed |> should equal 7
-    ParsedField.id parsed |> should equal field.Id
-    ParsedField.span parsed |> should equal field.Span
+    Field.value parsed |> should equal 7
+    Field.id parsed |> should equal field.Id
+    Field.span parsed |> should equal field.Span
 
     let mapped =
-        ParsedField.map string parsed
+        Field.map string parsed
 
     mapped.Id |> should equal field.Id
     mapped.Span |> should equal field.Span
     mapped.Value |> should equal "7"
 
     let replaced =
-        ParsedField.withValue 9 parsed
+        Field.withValue 9 parsed
 
     replaced.Id |> should equal field.Id
     replaced.Span |> should equal field.Span

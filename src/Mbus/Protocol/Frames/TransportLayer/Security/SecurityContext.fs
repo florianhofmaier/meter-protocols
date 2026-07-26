@@ -1,4 +1,4 @@
-namespace Metering.Mbus.Protocol.Security
+namespace Metering.Mbus.Protocol.Frames.TransportLayer.Security
 
 open System
 

@@ -3,6 +3,8 @@ namespace Metering.Mbus.Protocol.Messages
 open Metering.Common.Decoding.Validators.Core
 open Metering.Mbus.Protocol.Frames
 open Metering.Mbus.Protocol.Frames.Application
+open Metering.Mbus.Protocol.Frames.DataLinkLayer
+open Metering.Mbus.Protocol.Frames.DataLinkLayer.UserData
 open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
 open Metering.Mbus.Protocol.Frames.Transport
 

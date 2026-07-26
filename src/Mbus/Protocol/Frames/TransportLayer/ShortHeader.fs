@@ -1,4 +1,4 @@
-namespace Metering.Mbus.Protocol.Frames.Transport
+namespace Metering.Mbus.Protocol.Frames.TransportLayer
 
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
@@ -9,14 +9,15 @@ type ShortHeaderMode0Raw =
     {
         Acc: Field<AccessNumberRaw>
         Status: Field<StatusByteRaw>
-        Cnf: Field<ConfigurationFieldBitsRaw>
+        Cnf: Field<ConfigFieldBitsRaw>
     }
 
 type ShortHeaderMode5Raw =
     {
         Acc: Field<AccessNumberRaw>
         Status: Field<StatusByteRaw>
-        Cnf: Field<ConfigurationFieldBitsRaw>
+        Cnf: Field<ConfigFieldBitsRaw>
+        Verification: Field<DecryptionVerificationRaw>
     }
 
 type ShortHeaderOtherModeRaw =
@@ -24,13 +25,12 @@ type ShortHeaderOtherModeRaw =
         Mode: byte
         Acc: Field<AccessNumberRaw>
         Status: Field<StatusByteRaw>
-        Cnf: Field<ConfigurationFieldBitsRaw>
+        Cnf: Field<ConfigFieldBitsRaw>
     }
 
 type ShortHeaderRaw =
     | Mode0Raw of ShortHeaderMode0Raw
     | Mode5Raw of ShortHeaderMode5Raw
-    | OtherModeRaw of ShortHeaderOtherModeRaw
 
 module ShortHeaderRaw =
 
@@ -39,10 +39,10 @@ module ShortHeaderRaw =
         <| parser {
             let! acc = AccessNumberRaw.parse
             let! status = StatusByteRaw.parse
-            let! cnf = ConfigurationFieldRaw.parse
+            let! cnf = ConfigFieldRaw.parse
 
             match cnf.Value with
-            | ConfigurationFieldRaw.Mode0Raw bits ->
+            | ConfigFieldRaw.Mode0Raw bits ->
                 return
                     Mode0Raw
                         {
@@ -51,23 +51,15 @@ module ShortHeaderRaw =
                             Cnf = bits
                         }
 
-            | ConfigurationFieldRaw.Mode5Raw bits ->
+            | ConfigFieldRaw.Mode5Raw bits ->
+                let! verification = DecryptionVerificationRaw.parse
                 return
                     Mode5Raw
                         {
                             Acc = acc
                             Status = status
                             Cnf = bits
-                        }
-
-            | ConfigurationFieldRaw.OtherModeRaw (mode, bits) ->
-                return
-                    OtherModeRaw
-                        {
-                            Mode = mode
-                            Acc = acc
-                            Status = status
-                            Cnf = bits
+                            Verification = verification
                         }
         }
 
@@ -102,36 +94,22 @@ module ShortHeader =
                 and! status = StatusByte.fromRaw header.Status
                 and! cnf = ConfigurationFieldMode0.fromRaw header.Cnf
                 return
-                    raw
-                    |> Field.withValue (
-                        Mode0 {
-                            Acc = acc
-                            Status = status
-                            Cnf = cnf
-                        }
-                    )
+                    Mode0 {
+                        Acc = acc
+                        Status = status
+                        Cnf = cnf
+                    }
+                    |> Field.withValue raw
 
             | Mode5Raw header ->
                 let! acc = AccessNumber.fromRaw header.Acc
                 and! status = StatusByte.fromRaw header.Status
                 and! cnf = ConfigurationFieldMode5.fromRaw header.Cnf
                 return
-                    raw
-                    |> Field.withValue (
-                        Mode5 {
-                            Acc = acc
-                            Status = status
-                            Cnf = cnf
-                        }
-                    )
-
-            | OtherModeRaw header ->
-                let! _acc = AccessNumber.fromRaw header.Acc
-                and! _status = StatusByte.fromRaw header.Status
-                and! unsupported : Field<ShortHeader> =
-                    failed
-                        header.Cnf
-                        (Mode.unsupportedMessage header.Mode)
-
-                return unsupported
+                    Mode5 {
+                        Acc = acc
+                        Status = status
+                        Cnf = cnf
+                    }
+                    |> Field.withValue raw
         }

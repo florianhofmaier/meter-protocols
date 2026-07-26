@@ -1,4 +1,4 @@
-namespace Metering.Mbus.Protocol.Frames.Transport
+namespace Metering.Mbus.Protocol.Frames.TransportLayer
 
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
@@ -14,7 +14,7 @@ type LongHeaderMode0Raw =
         DevType: Field<DeviceTypeRaw>
         Acc: Field<AccessNumberRaw>
         Status: Field<StatusByteRaw>
-        Cnf: Field<ConfigurationFieldBitsRaw>
+        Cnf: Field<ConfigFieldBitsRaw>
     }
 
 type LongHeaderMode5Raw =
@@ -25,7 +25,8 @@ type LongHeaderMode5Raw =
         DevType: Field<DeviceTypeRaw>
         Acc: Field<AccessNumberRaw>
         Status: Field<StatusByteRaw>
-        Cnf: Field<ConfigurationFieldBitsRaw>
+        Cnf: Field<ConfigFieldBitsRaw>
+        Verification: Field<DecryptionVerificationRaw>
     }
 
 type LongHeaderOtherModeRaw =
@@ -37,7 +38,7 @@ type LongHeaderOtherModeRaw =
         DevType: Field<DeviceTypeRaw>
         Acc: Field<AccessNumberRaw>
         Status: Field<StatusByteRaw>
-        Cnf: Field<ConfigurationFieldBitsRaw>
+        Cnf: Field<ConfigFieldBitsRaw>
     }
 
 type LongHeaderRaw =
@@ -56,10 +57,10 @@ module LongHeaderRaw =
             let! devType = DeviceTypeRaw.parse
             let! acc = AccessNumberRaw.parse
             let! status = StatusByteRaw.parse
-            let! cnf = ConfigurationFieldRaw.parse
+            let! cnf = ConfigFieldRaw.parse
 
             match cnf.Value with
-            | ConfigurationFieldRaw.Mode0Raw bits ->
+            | ConfigFieldRaw.Mode0Raw bits ->
                 return
                     Mode0Raw
                         {
@@ -72,7 +73,8 @@ module LongHeaderRaw =
                             Cnf = bits
                         }
 
-            | ConfigurationFieldRaw.Mode5Raw bits ->
+            | ConfigFieldRaw.Mode5Raw bits ->
+                let! verification = DecryptionVerificationRaw.parse
                 return
                     Mode5Raw
                         {
@@ -83,20 +85,7 @@ module LongHeaderRaw =
                             Acc = acc
                             Status = status
                             Cnf = bits
-                        }
-
-            | ConfigurationFieldRaw.OtherModeRaw (mode, bits) ->
-                return
-                    OtherModeRaw
-                        {
-                            Mode = mode
-                            IdNum = idNum
-                            Mfr = mfr
-                            Version = version
-                            DevType = devType
-                            Acc = acc
-                            Status = status
-                            Cnf = bits
+                            Verification = verification
                         }
         }
 
@@ -139,15 +128,13 @@ module LongHeader =
                 and! status = StatusByte.fromRaw header.Status
                 and! cnf = ConfigurationFieldMode0.fromRaw header.Cnf
                 return
-                    raw
-                    |> Field.withValue (
-                        Mode0 {
-                            Device = device
-                            Acc = acc
-                            Status = status
-                            Cnf = cnf
-                        }
-                    )
+                    Mode0 {
+                        Device = device
+                        Acc = acc
+                        Status = status
+                        Cnf = cnf
+                    }
+                    |> Field.withValue raw
 
             | Mode5Raw header ->
                 let! device =
@@ -160,15 +147,13 @@ module LongHeader =
                 and! status = StatusByte.fromRaw header.Status
                 and! cnf = ConfigurationFieldMode5.fromRaw header.Cnf
                 return
-                    raw
-                    |> Field.withValue (
-                        Mode5 {
-                            Device = device
-                            Acc = acc
-                            Status = status
-                            Cnf = cnf
-                        }
-                    )
+                    Mode5 {
+                        Device = device
+                        Acc = acc
+                        Status = status
+                        Cnf = cnf
+                    }
+                    |> Field.withValue raw
 
             | OtherModeRaw header ->
                 let! _device =

@@ -1,6 +1,8 @@
-namespace Metering.Mbus.Protocol.Frames.Application
+namespace Metering.Mbus.Protocol.Frames.ApplicationLayer
 
+open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Validators.Core
 module ValidationUtility = Metering.Common.Decoding.Validators.Utility
@@ -15,9 +17,11 @@ module RecordsRaw =
     let toList (Records records) =
         records
 
-    let parse: Parser<RecordsRaw> =
-        parseUntilEnd RecordRaw.parse
-        |>> Records
+    let parse: Parser<Field<RecordsRaw>> =
+        parseField
+            "APL Data"
+            <| parseUntilEnd RecordRaw.parse
+        |>> Field.map Records
 
 type RspUdData =
     private

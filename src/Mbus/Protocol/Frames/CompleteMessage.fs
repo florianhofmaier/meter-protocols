@@ -7,13 +7,15 @@ open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Types
 open Metering.Common.Decoding.Validators.Core
 open Metering.Mbus.Protocol.Frames.Application
+open Metering.Mbus.Protocol.Frames.DataLinkLayer
+open Metering.Mbus.Protocol.Frames.DataLinkLayer.UserData
 open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
 open Metering.Mbus.Protocol.Frames.Transport
 open Metering.Mbus.Protocol.Security
 
 type CompleteMessageRaw =
     {
-        Dll: Field<DllVariableLengthRaw>
+        Dll: Field<VariableLengthFrameRaw>
         Tpl: Field<TplRaw>
     }
 
@@ -36,7 +38,7 @@ type AplExpansionRaw =
 
 type CompleteMessageExpandedRaw =
     {
-        Dll: Field<DllVariableLengthRaw>
+        Dll: Field<VariableLengthFrameRaw>
         Tpl: Field<TplRaw>
         Payload: AplExpansionRaw
     }
@@ -101,11 +103,11 @@ module FrameVariableLengthRaw =
         )
 
     let parseCompleteMessageFromDll
-        (dll: Field<DllVariableLengthRaw>)
+        (dll: Field<VariableLengthFrameRaw>)
         : Decoder<Field<FrameVariableLengthRaw>> =
 
         let source =
-            dll.Value.UserData.Value.HigherLayerData
+            dll.Value.UserData.Value.LinkUserData
 
         if not source.Value.IsEmpty
            && CiFieldTpl.isAfl source.Value.Span[0] then
@@ -207,7 +209,7 @@ module FrameVariableLengthExpandedRaw =
         let ci =
             raw.Tpl.Value
             |> TplRaw.ci
-            |> fun field -> field.Value
+            |> _.Value
 
         decoder {
             let! payload =
@@ -362,10 +364,10 @@ module private CompleteMessageCrossLayer =
 
         let cDirection, cRole =
             if cValue &&& 0x40uy = 0x40uy then
-                CiDirection.CommandToDevice,
+                CiDirection.ToDevice,
                 $"primary command (PRM=1, function=0x{cValue &&& 0x0Fuy:X1})"
             else
-                CiDirection.ResponseFromDevice,
+                CiDirection.FromDevice,
                 $"secondary response (PRM=0, function=0x{cValue &&& 0x0Fuy:X1})"
 
         let ciField =
@@ -379,8 +381,8 @@ module private CompleteMessageCrossLayer =
 
         let expected =
             match cDirection with
-            | CiDirection.CommandToDevice -> "a command-to-device CI"
-            | CiDirection.ResponseFromDevice -> "a response-from-device CI"
+            | CiDirection.ToDevice -> "a command-to-device CI"
+            | CiDirection.FromDevice -> "a response-from-device CI"
 
         ensure
             ciField
