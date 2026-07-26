@@ -1,4 +1,4 @@
-namespace Metering.Mbus.Protocol.Frames.Transport
+namespace Metering.Mbus.Protocol.Frames.TransportLayer
 
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
@@ -7,7 +7,7 @@ open Metering.Mbus.Protocol.Frames
 
 type TplWithLongHeaderRaw =
     {
-        Ci: Field<LongHeaderCiField>
+        Ci: Field<CiFieldTplLongHeader>
         Header: Field<LongHeaderRaw>
         AplData: Field<AplDataRaw>
     }
@@ -28,7 +28,7 @@ module TplWithLongHeaderRaw =
 
 type TplWithLongHeader =
     {
-        Ci: Field<LongHeaderCiField>
+        Ci: Field<CiFieldTplLongHeader>
         Header: Field<LongHeader>
     }
 

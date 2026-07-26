@@ -1,4 +1,4 @@
-namespace Metering.Mbus.Protocol.Frames.Transport
+namespace Metering.Mbus.Protocol.Frames.TransportLayer
 
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
@@ -7,13 +7,16 @@ open Metering.Mbus.Protocol.Frames
 
 type TplWithNoneHeaderRaw =
     {
-        Ci: Field<NoneHeaderCiField>
+        Ci: Field<CiFieldTplNoneHeader>
         AplData: Field<AplDataRaw>
     }
 
 module TplWithNoneHeaderRaw =
 
-    let parse ci : Parser<TplWithNoneHeaderRaw> =
+    let parse
+        (ci: Field<CiFieldTplNoneHeader>)
+        : Parser<TplWithNoneHeaderRaw> =
+
         parser {
             let! aplData = AplDataRaw.parse
 
@@ -26,7 +29,7 @@ module TplWithNoneHeaderRaw =
 
 type TplWithNoneHeader =
     {
-        Ci: Field<NoneHeaderCiField>
+        Ci: Field<CiFieldTplNoneHeader>
     }
 
 module TplWithNoneHeader =

@@ -798,9 +798,9 @@ let ``pure DLL parser preserves CI span and does not parse TPL`` () =
         frame 0x08uy 0x01uy [| 0xFFuy; 0xAAuy |]
 
     let raw =
-        parseExactly DllVariableLengthRaw.parse bytes
+        parseExactly VariableLengthFrameRaw.parse bytes
 
-    let higher = raw.Value.UserData.Value.HigherLayerData
+    let higher = raw.Value.UserData.Value.LinkUserData
     higher.Value.ToArray() |> should equal [| 0xFFuy; 0xAAuy |]
     higher.Span.Offset |> should equal 6
     higher.Span.Length |> should equal 2

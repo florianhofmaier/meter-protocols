@@ -3,6 +3,7 @@ namespace Metering.Mbus.Protocol.Messages
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
 open Metering.Mbus.Protocol.Frames
+open Metering.Mbus.Protocol.Frames.DataLinkLayer.UserData
 open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -22,10 +23,10 @@ module RequestUserData =
         | { Value = AField.Diagnosis } ->
             passed RequestUserDataAddress.Diagnosis
 
-        | ({ Value = AField.RepeaterMgmt } as field) ->
+        | { Value = AField.RepeaterMgmt } as field ->
             failed field "REQ_UD2 does not allow primary master repeater management address 251"
 
-        | ({ Value = AField.Broadcast } as field) ->
+        | { Value = AField.Broadcast } as field ->
             failed field "REQ_UD2 requires a response and does not allow broadcast address 255"
 
     let private frameFailed frame message =

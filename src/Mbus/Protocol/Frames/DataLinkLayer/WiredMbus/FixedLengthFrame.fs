@@ -5,6 +5,27 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Validators.Core
+open Metering.Mbus.Protocol.Frames.DataLinkLayer.UserData
+
+type FixedLengthUserDataRaw =
+    {
+        CField: Field<CFieldRaw>
+        AField: Field<AFieldRaw>
+    }
+
+module FixedLengthUserDataRaw =
+
+    let parse : Parser<Field<FixedLengthUserDataRaw>> =
+        parseField "User Data"
+        <| parser {
+            let! cField = CFieldRaw.parse
+            let! aField = AFieldRaw.parse
+
+            return {
+                CField = cField
+                AField = aField
+            }
+        }
 
 type FixedLengthFrameRaw =
     {
@@ -17,7 +38,7 @@ type FixedLengthFrameRaw =
 module FixedLengthFrameRaw =
 
     let parse : Parser<Field<FixedLengthFrameRaw>> =
-        parseField "Fixed Length"
+        parseField "Format FT 1.2 Frame With Fixed Length"
         <| parser {
             let! _ = StartFixedLength.parse
 
@@ -39,6 +60,30 @@ module FixedLengthFrameRaw =
                 Crc = crc
                 End = endField
             }
+        }
+
+type FixedLengthUserData =
+    {
+        CField: Field<CField>
+        AField: Field<AField>
+    }
+
+module FixedLengthUserData =
+
+    let fromRaw
+        (raw: Field<FixedLengthUserDataRaw>)
+        : Validation<Field<FixedLengthUserData>> =
+
+        validator {
+            let! cField = CField.fromRaw raw.Value.CField
+            let! aField = AField.fromRaw raw.Value.AField
+
+            return
+                raw
+                |> Field.withValue {
+                    CField = cField
+                    AField = aField
+                }
         }
 
 type FixedLengthFrame =

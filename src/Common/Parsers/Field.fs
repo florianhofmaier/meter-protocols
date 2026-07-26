@@ -30,25 +30,6 @@ module Field =
     let withValue value field =
         map (fun _ -> value) field
 
-type ParsedField<'a> = Field<'a>
-
-module ParsedField =
-
-    let value field =
-        Field.value field
-
-    let id field =
-        Field.id field
-
-    let span field =
-        Field.span field
-
-    let map f field =
-        Field.map f field
-
-    let withValue value field =
-        Field.withValue value field
-
 module FieldParser =
 
     open Metering.Common.Decoding.Parsers.Core

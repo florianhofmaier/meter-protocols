@@ -1,4 +1,4 @@
-namespace Metering.Mbus.Protocol.Security
+namespace Metering.Mbus.Protocol.Frames.TransportLayer.Security
 
 open System
 open System.Buffers.Binary
@@ -9,7 +9,8 @@ open Metering.Common.Decoding.Parsers.Types
 open Metering.Common.Decoding.Validators.Core
 open Metering.Common.Security.Cryptography
 open Metering.Mbus.Protocol.Frames.DeviceIdentification
-open Metering.Mbus.Protocol.Frames.Transport
+open Metering.Mbus.Protocol.Frames.TransportLayer
+open Metering.Mbus.Protocol.Frames.TransportLayer.Security
 
 type CryptographicFailure =
     | DecryptionOrVerificationFailed

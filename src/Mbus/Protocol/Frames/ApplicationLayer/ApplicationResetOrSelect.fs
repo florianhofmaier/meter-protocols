@@ -1,4 +1,4 @@
-namespace Metering.Mbus.Protocol.Frames.Application
+namespace Metering.Mbus.Protocol.Frames.ApplicationLayer
 
 open System
 open Metering.Common.Decoding.Parsers

@@ -1,4 +1,4 @@
-namespace Metering.Mbus.Protocol.Frames.Transport
+namespace Metering.Mbus.Protocol.Frames.TransportLayer
 
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Binary
@@ -14,7 +14,7 @@ module AccessNumberRaw =
     let value (AccessNumber v) = v
 
     let parse : Parser<Field<AccessNumberRaw>> =
-        parseField "AccessNumber" parseU8
+        parseField "Access Number" parseU8
         |>> Field.map AccessNumber
 
 type AccessNumber =

@@ -1,4 +1,4 @@
-namespace Metering.Mbus.Protocol.Frames.Application
+namespace Metering.Mbus.Protocol.Frames.ApplicationLayer
 
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
@@ -9,7 +9,6 @@ open Metering.Mbus.Protocol.Frames
 type AplRaw =
     | RspUdData of RecordsRaw
     | AlarmBits of Field<Alarms>
-    | SelectedDevice of Field<SelectionOfDeviceRaw>
     | SndUdData of RecordsRaw
     | ApplicationResetOrSelect of Field<ApplicationResetOrSelectRaw>
 

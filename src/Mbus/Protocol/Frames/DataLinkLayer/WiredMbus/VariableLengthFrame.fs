@@ -6,8 +6,33 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Validators.Core
+open Metering.Mbus.Protocol.Frames.DataLinkLayer.UserData
 
-type DllVariableLengthRaw =
+type VariableLengthUserDataRaw =
+    {
+        CField: Field<CFieldRaw>
+        AField: Field<AFieldRaw>
+        LinkUserData: Field<ReadOnlyMemory<byte>>
+    }
+
+module VariableLengthUserDataRaw =
+
+    let parse : Parser<Field<VariableLengthUserDataRaw>> =
+        parseField "User Data"
+        <| parser {
+            let! cField = CFieldRaw.parse
+            let! aField = AFieldRaw.parse
+            let! linkUserData =
+                parseField "Link User Data" takeAll
+
+            return {
+                CField = cField
+                AField = aField
+                LinkUserData = linkUserData
+            }
+        }
+
+type VariableLengthFrameRaw =
     {
         UserData: Field<VariableLengthUserDataRaw>
         CrcBytes: CrcBytes
@@ -15,10 +40,10 @@ type DllVariableLengthRaw =
         End: Field<EndFieldRaw>
     }
 
-module DllVariableLengthRaw =
+module VariableLengthFrameRaw =
 
-    let parse : Parser<Field<DllVariableLengthRaw>> =
-        parseField "Variable Length"
+    let parse : Parser<Field<VariableLengthFrameRaw>> =
+        parseField "Format FT 1.2 Frame With Variable Length"
         <| parser {
             let! _ = StartVariableLength.parse
 
@@ -50,6 +75,32 @@ module DllVariableLengthRaw =
             }
         }
 
+type VariableLengthUserData =
+    {
+        CField: Field<CField>
+        AField: Field<AField>
+        HigherLayerData: Field<ReadOnlyMemory<byte>>
+    }
+
+module VariableLengthUserData =
+
+    let fromRaw
+        (raw: Field<VariableLengthUserDataRaw>)
+        : Validation<Field<VariableLengthUserData>> =
+
+        validator {
+            let! cField = CField.fromRaw raw.Value.CField
+            and! aField = AField.fromRaw raw.Value.AField
+
+            return
+                raw
+                |> Field.withValue {
+                    CField = cField
+                    AField = aField
+                    HigherLayerData = raw.Value.LinkUserData
+                }
+        }
+
 type DllVariableLength =
     {
         CField: Field<CField>
@@ -60,7 +111,7 @@ type DllVariableLength =
 module DllVariableLength =
 
     let fromRaw
-        (raw: Field<DllVariableLengthRaw>)
+        (raw: Field<VariableLengthFrameRaw>)
         : Validation<Field<DllVariableLength>> =
 
         validator {
@@ -79,12 +130,3 @@ module DllVariableLength =
                     HigherLayerData = userData.Value.HigherLayerData
                 }
         }
-
-type VariableLengthFrameRaw = DllVariableLengthRaw
-type VariableLengthFrame = DllVariableLength
-
-module VariableLengthFrameRaw =
-    let parse = DllVariableLengthRaw.parse
-
-module VariableLengthFrame =
-    let fromRaw = DllVariableLength.fromRaw
