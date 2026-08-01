@@ -2,7 +2,6 @@ namespace Metering.Common.Decoding.Decoders
 
 open System
 open System.Collections.Generic
-open Metering.Common.Decoding.Decoders.Core
 open Metering.Common.Decoding.Parsers.Types
 
 type InMemorySourceStore(createReader: ReaderFactory) =

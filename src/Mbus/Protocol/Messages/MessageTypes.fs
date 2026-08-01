@@ -1,10 +1,10 @@
 namespace Metering.Mbus.Protocol.Messages
 
-open Metering.Mbus.Protocol.Frames.Application
+open Metering.Mbus.Protocol.Frames.ApplicationLayer
 open Metering.Mbus.Protocol.Frames
 open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
 open Metering.Mbus.Protocol.Frames.DeviceIdentification
-open Metering.Mbus.Protocol.Frames.Transport
+open Metering.Mbus.Protocol.Frames.TransportLayer
 open Metering.Mbus.Protocol.Records
 
 type LinkLayerReset =
@@ -12,7 +12,7 @@ type LinkLayerReset =
         Address: AField
     }
 
-type DeviceSelection = Metering.Mbus.Protocol.Frames.Application.SelectionOfDevice
+type DeviceSelection = Metering.Mbus.Protocol.Frames.DataLinkLayer.UserData.SelectionOfDevice
 
 type SelectionOfDevice =
     {

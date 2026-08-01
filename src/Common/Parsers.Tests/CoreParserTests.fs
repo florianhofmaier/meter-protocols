@@ -109,7 +109,8 @@ let ``Combine executes first parser before second`` () =
         ResizeArray<string>()
 
     let first : Parser<unit> =
-        fun _ -> observed.Add("first")
+        fun _ ->
+            observed.Add("first")
 
     let second : Parser<int> =
         fun _ ->

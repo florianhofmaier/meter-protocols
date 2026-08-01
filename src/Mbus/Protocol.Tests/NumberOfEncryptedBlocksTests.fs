@@ -2,7 +2,7 @@ module Metering.Mbus.Protocol.Tests.NumberOfEncryptedBlocksTests
 
 open Xunit
 open FsUnit.Xunit
-open Metering.Mbus.Protocol.Frames.Transport
+open Metering.Mbus.Protocol.Frames.TransportLayer
 
 [<Fact>]
 let ``zero N bits map to no encrypted data`` () =

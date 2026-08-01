@@ -8,6 +8,7 @@
 
     <ItemGroup>
         <Compile Include="EncryptionError.fs" />
+        <Compile Include="Secrets.fs" />
         <Compile Include="AesGcm.fs" />
         <Compile Include="AesCbc.fs" />
         <Compile Include="SensitiveBuffer.fs" />

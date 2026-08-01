@@ -7,7 +7,7 @@ open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Types
 open Metering.Common.Decoding.Validators.Core
 open Metering.Mbus.Protocol.Frames
-open Metering.Mbus.Protocol.Security
+open Metering.Mbus.Protocol.Frames.TransportLayer.Security
 open Metering.Mbus.Protocol.Tests.TestSupport
 
 let private payloadField id offset length =

@@ -6,6 +6,7 @@ open FsUnit.Xunit
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Parsers.ParserRunner
 open Metering.Common.Decoding.Parsers.Tests.TestSupport
@@ -173,8 +174,7 @@ let ``parseField replaces unknown error source with parser context source`` () =
         RecordingTracer()
 
     let parser : Parser<int> =
-        fun _ ->
-            raise (ParserException { Source = SourceId.unknown; Pos = 12; Msg = "bad" })
+        failWith { Source = SourceId.unknown; Pos = 12; Msg = "bad" }
 
     match runExactlyWithSource (SourceId.create 7) (reader [||]) (tracer :> IFieldTracer) (parseField "bad" parser) with
     | Error error ->
@@ -196,8 +196,7 @@ let ``parseField preserves explicit parser error source`` () =
         RecordingTracer()
 
     let parser : Parser<int> =
-        fun _ ->
-            raise (ParserException { Source = SourceId.create 99; Pos = 12; Msg = "bad" })
+        failWith { Source = SourceId.create 99; Pos = 12; Msg = "bad" }
 
     match runExactlyWithSource (SourceId.create 7) (reader [||]) (tracer :> IFieldTracer) (parseField "bad" parser) with
     | Error error ->

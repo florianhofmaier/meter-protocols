@@ -1,14 +1,16 @@
 namespace Metering.Mbus.Protocol.Frames.DeviceIdentification
 
+open System
+open System.Buffers.Binary
 open Metering.Common.Decoding.Parsers
-open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
+open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Validators.Core
 open Metering.Mbus.Protocol.Utility
 
 type IdNumberRaw =
-    private RawIdNumber of uint32
+    private RawIdNumber of ReadOnlyMemory<byte>
 
 type IdNumber =
     private
@@ -16,12 +18,22 @@ type IdNumber =
 
 module IdNumberRaw =
 
-    let value (RawIdNumber value) =
+    let private length = 4
+
+    let bytes (RawIdNumber value) =
         value
 
     let parse : Parser<Field<IdNumberRaw>> =
-        parseField "Identification Number" parseU32LittleEndian
-        |>> Field.map RawIdNumber
+        parseField
+            "Identification Number"
+            (take length |>> RawIdNumber)
+
+    let copyTo destination raw =
+        (bytes raw).Span.CopyTo destination
+
+    let toUint32 raw =
+        let mem = bytes raw
+        BinaryPrimitives.ReadUInt32LittleEndian mem.Span
 
 module IdNumber =
 
@@ -37,7 +49,7 @@ module IdNumber =
         (raw: Field<IdNumberRaw>)
         : Validation<Field<IdNumber>> =
 
-        let value = IdNumberRaw.value raw.Value
+        let value = IdNumberRaw.toUint32 raw.Value
 
         match Bcd.tryFindInvalidBcdNibble digitCount value with
         | Some (_, nibble) ->

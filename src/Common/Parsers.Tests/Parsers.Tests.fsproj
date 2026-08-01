@@ -14,6 +14,7 @@
         <Compile Include="ErrorHandlingTests.fs" />
         <Compile Include="UtilityParserTests.fs" />
         <Compile Include="FieldTests.fs" />
+        <Compile Include="ParserSourceTests.fs" />
         <Compile Include="BinaryParserTests.fs" />
         <Compile Include="ParserRunnerTests.fs" />
     </ItemGroup>

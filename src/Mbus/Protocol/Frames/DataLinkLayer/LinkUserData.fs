@@ -1,7 +1,7 @@
 namespace Metering.Mbus.Protocol.Frames.DataLinkLayer
 
 open Metering.Common.Decoding.Parsers
-open Metering.Mbus.Protocol.Frames.Transport
+open Metering.Mbus.Protocol.Frames.TransportLayer
 
 type UnfragmentedLinkUserDataRaw =
     {

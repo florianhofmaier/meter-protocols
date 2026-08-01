@@ -31,6 +31,7 @@
         <Compile Include="Records\Values\Value.fs" />
         <Compile Include="Records\RecordRaw.fs" />
         <Compile Include="Records\Record.fs" />
+        <Compile Include="Frames\Protection\UnprotectionIssue.fs"/>
         <Compile Include="Frames\DeviceIdentification\IdNumber.fs" />
         <Compile Include="Frames\DeviceIdentification\Manufacturer.fs" />
         <Compile Include="Frames\DeviceIdentification\Version.fs" />
@@ -48,11 +49,12 @@
         <Compile Include="Frames\TransportLayer\Mode.fs" />
         <Compile Include="Frames\TransportLayer\ConfigurationField.fs" />
         <Compile Include="Frames\TransportLayer\DecryptionVerification.fs" />
-        <Compile Include="Frames\TransportLayer\Security\SecurityContext.fs" />
         <Compile Include="Frames\TransportLayer\ShortHeader.fs" />
         <Compile Include="Frames\TransportLayer\LongHeader.fs" />
+        <Compile Include="Frames\TransportLayer\TplHeader.fs" />
+        <Compile Include="Frames\TransportLayer\AplData.fs" />
+        <Compile Include="Frames\TransportLayer\Security\SecurityContext.fs" />
         <Compile Include="Frames\TransportLayer\Security\Mode5.fs" />
-        <Compile Include="Frames\TransportLayer\Security\UnprotectionIssue.fs" />
         <Compile Include="Frames\TransportLayer\TplWithNoneHeader.fs" />
         <Compile Include="Frames\TransportLayer\TplWithShortHeader.fs" />
         <Compile Include="Frames\TransportLayer\TplWithLongHeader.fs" />
@@ -61,10 +63,10 @@
         <Compile Include="Frames\NetworkLayer\Nwl.fs"/>
         <Compile Include="Frames\ExtendedLinkLayer\CcField.fs"/>
         <Compile Include="Frames\ExtendedLinkLayer\Ell.fs" />
-        <Compile Include="Frames\DataLinkLayer\UserData\CField.fs"/>
-        <Compile Include="Frames\DataLinkLayer\UserData\SelectionOfDevice.fs" />
-        <Compile Include="Frames\DataLinkLayer\UserData\MbusProtocol.fs" />
-        <Compile Include="Frames\DataLinkLayer\UserData\LinkUserData.fs" />
+        <Compile Include="Frames\DataLinkLayer\CField.fs" />
+        <Compile Include="Frames\DataLinkLayer\WiredMbus\UserData\SelectionOfDevice.fs" />
+        <Compile Include="Frames\DataLinkLayer\WiredMbus\UserData\MbusProtocol.fs" />
+        <Compile Include="Frames\DataLinkLayer\WiredMbus\UserData\LinkUserData.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\StartField.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\LField.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\AField.fs" />
@@ -73,8 +75,7 @@
         <Compile Include="Frames\DataLinkLayer\WiredMbus\SingleCharacterFrame.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\FixedLengthFrame.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\VariableLengthFrame.fs" />
-        <Compile Include="Frames\CompleteMessage.fs" />
-        <Compile Include="Frames\WiredMbusFrame.fs" />
+        <Compile Include="Frames\DataLinkLayer\WiredMbus\WiredMbusFrame.fs" />
         <Compile Include="Messages\MessageTypes.fs" />
         <Compile Include="Messages\RequestUserData.fs" />
         <Compile Include="Messages\PrimaryStationMessage.fs" />
@@ -87,6 +88,7 @@
       <ProjectReference Include="..\..\Common\Parsers\Parsers.fsproj" />
       <ProjectReference Include="..\..\Common\Decoders\Decoders.fsproj" />
       <ProjectReference Include="..\..\Common\Security\Cryptography\Cryptography.fsproj" />
+      <ProjectReference Include="..\..\Common\Utility\Utility.fsproj" />
       <ProjectReference Include="..\..\Common\Validators\Validators.fsproj" />
       <ProjectReference Include="..\PublicTypes\PublicTypes.fsproj" />
     </ItemGroup>

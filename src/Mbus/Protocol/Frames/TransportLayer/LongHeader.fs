@@ -4,6 +4,7 @@ open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
+open Metering.Common.Security.Cryptography.AesCbc
 open Metering.Mbus.Protocol.Frames.DeviceIdentification
 
 type LongHeaderMode0Raw =
@@ -14,7 +15,7 @@ type LongHeaderMode0Raw =
         DevType: Field<DeviceTypeRaw>
         Acc: Field<AccessNumberRaw>
         Status: Field<StatusByteRaw>
-        Cnf: Field<ConfigFieldBitsRaw>
+        Cnf: Field<ConfigurationFieldBitsRaw>
     }
 
 type LongHeaderMode5Raw =
@@ -25,31 +26,30 @@ type LongHeaderMode5Raw =
         DevType: Field<DeviceTypeRaw>
         Acc: Field<AccessNumberRaw>
         Status: Field<StatusByteRaw>
-        Cnf: Field<ConfigFieldBitsRaw>
-        Verification: Field<DecryptionVerificationRaw>
+        Cnf: Field<ConfigurationFieldBitsRaw>
     }
 
-type LongHeaderOtherModeRaw =
-    {
-        Mode: byte
-        IdNum: Field<IdNumberRaw>
-        Mfr: Field<ManufacturerRaw>
-        Version: Field<VersionRaw>
-        DevType: Field<DeviceTypeRaw>
-        Acc: Field<AccessNumberRaw>
-        Status: Field<StatusByteRaw>
-        Cnf: Field<ConfigFieldBitsRaw>
-    }
+module LongHeaderMode5Raw =
+
+    let numberOfEncryptedBytes header =
+        let blocks = ConfigurationFieldBitsRaw.value header.Cnf.Value
+        int blocks * AesCbc.blockLength
 
 type LongHeaderRaw =
     | Mode0Raw of LongHeaderMode0Raw
     | Mode5Raw of LongHeaderMode5Raw
-    | OtherModeRaw of LongHeaderOtherModeRaw
 
 module LongHeaderRaw =
 
+    let numOfEncryptedBytes header =
+        match header with
+        | Mode0Raw _ ->
+            0
+        | Mode5Raw mode5 ->
+            LongHeaderMode5Raw.numberOfEncryptedBytes mode5
+
     let parse : Parser<Field<LongHeaderRaw>> =
-        parseField "Long Tpl Header"
+        parseField "Long TPL Header"
         <| parser {
             let! idNum = IdNumberRaw.parse
             let! mfr = ManufacturerRaw.parse
@@ -57,36 +57,20 @@ module LongHeaderRaw =
             let! devType = DeviceTypeRaw.parse
             let! acc = AccessNumberRaw.parse
             let! status = StatusByteRaw.parse
-            let! cnf = ConfigFieldRaw.parse
+            let! cnf = ConfigurationFieldRaw.parse
 
             match cnf.Value with
-            | ConfigFieldRaw.Mode0Raw bits ->
-                return
-                    Mode0Raw
-                        {
-                            IdNum = idNum
-                            Mfr = mfr
-                            Version = version
-                            DevType = devType
-                            Acc = acc
-                            Status = status
-                            Cnf = bits
-                        }
+            | ConfigurationFieldRaw.Mode0Raw bits ->
+                return Mode0Raw {
+                    IdNum = idNum; Mfr = mfr; Version = version; DevType = devType
+                    Acc = acc; Status = status; Cnf = bits
+                }
 
-            | ConfigFieldRaw.Mode5Raw bits ->
-                let! verification = DecryptionVerificationRaw.parse
-                return
-                    Mode5Raw
-                        {
-                            IdNum = idNum
-                            Mfr = mfr
-                            Version = version
-                            DevType = devType
-                            Acc = acc
-                            Status = status
-                            Cnf = bits
-                            Verification = verification
-                        }
+            | ConfigurationFieldRaw.Mode5Raw bits ->
+                return Mode5Raw {
+                    IdNum = idNum; Mfr = mfr; Version = version; DevType = devType
+                    Acc = acc; Status = status; Cnf = bits
+                }
         }
 
 type LongHeaderMode0 =
@@ -118,56 +102,17 @@ module LongHeader =
         validator {
             match raw.Value with
             | Mode0Raw header ->
-                let! device =
-                    DeviceIdentification.fromRaw
-                        header.IdNum
-                        header.Mfr
-                        header.Version
-                        header.DevType
+                let! device = DeviceIdentification.fromRawElements header.IdNum header.Mfr header.Version header.DevType
                 and! acc = AccessNumber.fromRaw header.Acc
                 and! status = StatusByte.fromRaw header.Status
                 and! cnf = ConfigurationFieldMode0.fromRaw header.Cnf
-                return
-                    Mode0 {
-                        Device = device
-                        Acc = acc
-                        Status = status
-                        Cnf = cnf
-                    }
-                    |> Field.withValue raw
+                return raw |> Field.withValue (Mode0 { Device = device; Acc = acc; Status = status; Cnf = cnf })
 
             | Mode5Raw header ->
-                let! device =
-                    DeviceIdentification.fromRaw
-                        header.IdNum
-                        header.Mfr
-                        header.Version
-                        header.DevType
+                let! device = DeviceIdentification.fromRawElements header.IdNum header.Mfr header.Version header.DevType
                 and! acc = AccessNumber.fromRaw header.Acc
                 and! status = StatusByte.fromRaw header.Status
                 and! cnf = ConfigurationFieldMode5.fromRaw header.Cnf
-                return
-                    Mode5 {
-                        Device = device
-                        Acc = acc
-                        Status = status
-                        Cnf = cnf
-                    }
-                    |> Field.withValue raw
+                return raw |> Field.withValue (Mode5 { Device = device; Acc = acc; Status = status; Cnf = cnf })
 
-            | OtherModeRaw header ->
-                let! _device =
-                    DeviceIdentification.fromRaw
-                        header.IdNum
-                        header.Mfr
-                        header.Version
-                        header.DevType
-                and! _acc = AccessNumber.fromRaw header.Acc
-                and! _status = StatusByte.fromRaw header.Status
-                and! unsupported : Field<LongHeader> =
-                    failed
-                        header.Cnf
-                        (Mode.unsupportedMessage header.Mode)
-
-                return unsupported
         }

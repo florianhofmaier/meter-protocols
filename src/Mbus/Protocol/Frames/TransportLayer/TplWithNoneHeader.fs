@@ -2,18 +2,15 @@ namespace Metering.Mbus.Protocol.Frames.TransportLayer
 
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.FieldParser
+open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Validators.Core
 open Metering.Mbus.Protocol.Frames
-open Metering.Mbus.Protocol.Frames.ApplicationLayer
-
-type AplDataNoHeaderRaw =
-    | SndUdData of RecordsRaw
-    | ApplicationResetOrSelect of ApplicationResetOrSelectRaw
 
 type TplWithNoneHeaderRaw =
     {
-        Ci: Field<Unit>
-        AplData: Field<AplDataNoHeaderRaw>
+        Ci: Field<CiFieldTplNoneHeader>
+        AplData: Field<AplDataRaw>
     }
 
 module TplWithNoneHeaderRaw =
@@ -23,68 +20,18 @@ module TplWithNoneHeaderRaw =
         : Parser<TplWithNoneHeaderRaw> =
 
         parser {
-             match ci.Value with
-             | CiFieldTplNoneHeader.ApplicationResetOrSelect ->
-                 let! aplData =
-                     ApplicationResetOrSelectRaw.parse
-                     |>> Field.map AplDataNoHeaderRaw.ApplicationResetOrSelect
+            let! aplData =
+                parseField "APL Data" (takeAll |>> AplDataRaw.create)
 
-                 return {
-                     Ci = Field.withValue ci ()
-                     AplData = aplData
-                 }
-
-             | CiFieldTplNoneHeader.Command ->
-                 let! aplData =
-                     RecordsRaw.parse
-                     |>> Field.map AplDataNoHeaderRaw.SndUdData
-
-                 return
-                     {
-                         Ci = Field.withValue ci ()
-                         AplData = aplData
-                     }
+            return { Ci = ci; AplData = aplData }
         }
-
-type AplDataNoHeader =
-    | SndUdData of SndUdData
-    | ApplicationResetOrSelect of ApplicationResetOrSelect
 
 type TplWithNoneHeader =
     {
-        Ci: Field<Unit>
-        AplData: Field<AplDataNoHeader>
+        Ci: Field<CiFieldTplNoneHeader>
     }
 
 module TplWithNoneHeader =
 
-    let fromRaw
-        (raw: TplWithNoneHeaderRaw)
-        : Validation<TplWithNoneHeader> =
-
-        validator {
-            match raw.AplData.Value with
-            | AplDataNoHeaderRaw.ApplicationResetOrSelect rawAplData ->
-                let! aplData =
-                    rawAplData
-                    |> Field.withValue raw.AplData
-                    |> ApplicationResetOrSelect.fromRaw
-                    |> map (Field.map AplDataNoHeader.ApplicationResetOrSelect)
-
-                return {
-                    Ci = raw.Ci
-                    AplData = aplData
-                }
-
-            | AplDataNoHeaderRaw.SndUdData rawAplData ->
-                let! aplData =
-                    rawAplData
-                    |> SndUdData.fromRaw
-                    |> map AplDataNoHeader.SndUdData
-                    |> map (Field.withValue raw.AplData)
-
-                return {
-                    Ci = raw.Ci
-                    AplData = aplData
-                }
-        }
+    let fromRaw (raw: TplWithNoneHeaderRaw) =
+        passed { Ci = raw.Ci }

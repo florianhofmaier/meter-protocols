@@ -5,16 +5,16 @@ open Metering.Common.Decoding.Parsers.Core
 open Utility
 
 let parseU8 : Parser<uint8> =
-    _.Reader.Read(1).Span[0]
+    take 1 |>> fun bytes -> bytes.Span[0]
 
 let peekU8 : Parser<uint8> =
-    _.Reader.Peek(1).Span[0]
+    peek 1 |>> fun bytes -> bytes.Span[0]
 
 let expectU8 expected : Parser<unit> =
    expect parseU8 expected
 
 let parseI8 : Parser<int8> =
-    _.Reader.Read(1).Span[0] |>> int8
+    parseU8 |>> int8
 
 let parseU16LittleEndian : Parser<uint16> =
     parser {

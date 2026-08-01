@@ -1,14 +1,16 @@
 namespace Metering.Mbus.Protocol.Frames.DeviceIdentification
 
+open System
+open System.Buffers.Binary
 open Metering.Common.Decoding.Parsers
-open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
+open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Validators.Core
 
 type ManufacturerRaw =
     private
-        RawManufacturer of uint16
+        RawManufacturer of ReadOnlyMemory<byte>
 
 type Manufacturer =
     private
@@ -16,12 +18,22 @@ type Manufacturer =
 
 module ManufacturerRaw =
 
-    let value (RawManufacturer value) =
+    let private length = 2
+
+    let bytes (RawManufacturer value) =
         value
 
     let parse : Parser<Field<ManufacturerRaw>> =
-        parseField "Manufacturer" parseU16LittleEndian
-        |>> Field.map RawManufacturer
+        parseField
+            "Manufacturer"
+            (take length |>> RawManufacturer)
+
+    let copyTo destination raw =
+        (bytes raw).Span.CopyTo destination
+
+    let toUint16 raw =
+        let mem = bytes raw
+        BinaryPrimitives.ReadUInt16LittleEndian mem.Span
 
 module private ManufacturerBytes =
 
@@ -43,7 +55,7 @@ module Manufacturer =
         (raw: Field<ManufacturerRaw>)
         : Validation<Field<Manufacturer>> =
 
-        let value = ManufacturerRaw.value raw.Value
+        let value = ManufacturerRaw.toUint16 raw.Value
 
         if ManufacturerBytes.containsWildcard value then
             failed raw "Wildcard byte 0xFF is not allowed in manufacturer identification"

@@ -1,17 +1,20 @@
 module Metering.Common.Decoding.Parsers.ParserRunner
 
 open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Common.Decoding.Parsers.Types
 
 let private createContext
     (source: SourceId)
     (reader: IByteReader)
+    (sources: ISourceStore)
     (trace: IFieldTracer)
     : ParserContext =
 
     {
         Reader = reader
         Source = source
+        Sources = sources
         Trace = trace
     }
 
@@ -30,59 +33,52 @@ let private trailingInputError
 let runWithSource
     (source: SourceId)
     (reader: IByteReader)
+    (sources: ISourceStore)
     (trace: IFieldTracer)
     (parser: Parser<'a>)
     : Result<'a, ParserError> =
 
     let context =
-        createContext source reader trace
+        createContext source reader sources trace
 
-    try
-        Ok (parser context)
-    with
-    | :? ParserException as ex ->
-        ex.Error
-        |> ParserError.withDefaultSource source
-        |> Error
+    execute parser context
+    |> Result.mapError (ParserError.withDefaultSource source)
 
 let run
     (reader: IByteReader)
+    (sources: ISourceStore)
     (trace: IFieldTracer)
     (parser: Parser<'a>)
     : Result<'a, ParserError> =
 
-    runWithSource SourceId.root reader trace parser
+    runWithSource SourceId.root reader sources trace parser
 
 let runExactlyWithSource
     (source: SourceId)
     (reader: IByteReader)
+    (sources: ISourceStore)
     (trace: IFieldTracer)
     (parser: Parser<'a>)
     : Result<'a, ParserError> =
 
     let context =
-        createContext source reader trace
+        createContext source reader sources trace
 
-    try
-        let value =
-            parser context
-
+    execute parser context
+    |> Result.mapError (ParserError.withDefaultSource source)
+    |> Result.bind (fun value ->
         if reader.Remaining = 0 then
             Ok value
         else
             reader
             |> trailingInputError source
-            |> Error
-    with
-    | :? ParserException as ex ->
-        ex.Error
-        |> ParserError.withDefaultSource source
-        |> Error
+            |> Error)
 
 let runExactly
     (reader: IByteReader)
+    (sources: ISourceStore)
     (trace: IFieldTracer)
     (parser: Parser<'a>)
     : Result<'a, ParserError> =
 
-    runExactlyWithSource SourceId.root reader trace parser
+    runExactlyWithSource SourceId.root reader sources trace parser

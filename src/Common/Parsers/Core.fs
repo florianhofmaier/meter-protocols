@@ -6,6 +6,7 @@ type ParserContext =
     {
         Reader : IByteReader
         Source : SourceId
+        Sources : ISourceStore
         Trace : IFieldTracer
     }
 

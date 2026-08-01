@@ -1,5 +1,7 @@
 namespace Metering.Common.Decoding.Parsers
 
+open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Common.Decoding.Parsers.Types
 
 type Field<'a> =
@@ -27,8 +29,13 @@ module Field =
             Value = f field.Value
         }
 
-    let withValue field value =
+    let withValue value field =
         map (fun _ -> value) field
+
+    let mapParser parser field =
+        parser
+        |>> fun value ->
+            field |> withValue value
 
 module FieldParser =
 
@@ -53,10 +60,8 @@ module FieldParser =
             let id =
                 ctx.Trace.BeginField(name, startSpan)
 
-            try
-                let value =
-                    inner ctx
-
+            match execute inner ctx with
+            | Ok value ->
                 let span =
                     {
                         Source = ctx.Source
@@ -71,12 +76,10 @@ module FieldParser =
                     Span = span
                     Value = value
                 }
-
-            with
-            | :? ParserException as ex ->
+            | Error parserError ->
                 let error =
-                    ex.Error
+                    parserError
                     |> ParserError.withDefaultSource ctx.Source
 
                 ctx.Trace.FailField(id, error)
-                raise (ParserException error)
+                failWith error ctx

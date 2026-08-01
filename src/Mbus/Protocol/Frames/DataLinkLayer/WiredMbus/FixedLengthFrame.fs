@@ -5,7 +5,7 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Validators.Core
-open Metering.Mbus.Protocol.Frames.DataLinkLayer.UserData
+open Metering.Mbus.Protocol.Frames.DataLinkLayer
 
 type FixedLengthUserDataRaw =
     {

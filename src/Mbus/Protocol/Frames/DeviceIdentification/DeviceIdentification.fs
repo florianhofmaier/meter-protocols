@@ -3,6 +3,14 @@ namespace Metering.Mbus.Protocol.Frames.DeviceIdentification
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
 
+type DeviceIdentificationRaw =
+    {
+        IdNum: Field<IdNumberRaw>
+        Mfr: Field<ManufacturerRaw>
+        Version: Field<VersionRaw>
+        DevType: Field<DeviceTypeRaw>
+    }
+
 type DeviceIdentification =
     {
         IdNum: Field<IdNumber>
@@ -11,9 +19,11 @@ type DeviceIdentification =
         DevType: Field<DeviceType>
     }
 
+
+
 module DeviceIdentification =
 
-    let fromRaw
+    let fromRawElements
         (idNum: Field<IdNumberRaw>)
         (mfr: Field<ManufacturerRaw>)
         (version: Field<VersionRaw>)
@@ -34,3 +44,8 @@ module DeviceIdentification =
                     DevType = devType
                 }
         }
+
+    let fromRaw (raw: DeviceIdentificationRaw)
+        : Validation<DeviceIdentification> =
+
+        fromRawElements raw.IdNum raw.Mfr raw.Version raw.DevType

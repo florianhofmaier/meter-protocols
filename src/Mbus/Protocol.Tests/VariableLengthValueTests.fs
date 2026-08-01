@@ -9,6 +9,11 @@ open Metering.Common.Decoding.Validators.Core
 open Metering.Mbus.Protocol.Records
 open Metering.Mbus.Protocol.Tests.TestSupport
 
+let private peekU8 reader =
+    match reader.Peek 1 with
+    | Ok bytes -> bytes.Span[0]
+    | Error error -> failwith error.Msg
+
 let private parsedRawField raw length =
     {
         Id = FieldId.create 99
@@ -41,7 +46,7 @@ let ``positive BCD LVAR consumes declared payload bytes and leaves following mar
         payload.Value.ToArray() |> should equal [| 0x34uy; 0x12uy |]
         r.Position |> should equal 3
         r.Remaining |> should equal 1
-        r.Peek(1).Span[0] |> should equal 0x99uy
+        peekU8 r |> should equal 0x99uy
 
     | Ok value ->
         failwith $"Expected positive BCD, got %A{value}"
@@ -67,7 +72,7 @@ let ``negative BCD LVAR consumes declared payload bytes and leaves following mar
         payload.Value.ToArray() |> should equal [| 0x34uy; 0x12uy |]
         r.Position |> should equal 3
         r.Remaining |> should equal 1
-        r.Peek(1).Span[0] |> should equal 0x99uy
+        peekU8 r |> should equal 0x99uy
 
     | Ok value ->
         failwith $"Expected negative BCD, got %A{value}"

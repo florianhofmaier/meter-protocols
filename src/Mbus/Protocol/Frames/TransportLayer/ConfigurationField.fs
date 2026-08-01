@@ -7,25 +7,25 @@ open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
 
-type ConfigFieldBitsRaw =
+type ConfigurationFieldBitsRaw =
     private
-        ConfigFieldBits of uint16
+        ConfigurationFieldBits of uint16
 
-type ConfigFieldRaw =
-    | Mode0Raw of Field<ConfigFieldBitsRaw>
-    | Mode5Raw of Field<ConfigFieldBitsRaw>
+type ConfigurationFieldRaw =
+    | Mode0Raw of Field<ConfigurationFieldBitsRaw>
+    | Mode5Raw of Field<ConfigurationFieldBitsRaw>
 
-module ConfigFieldBitsRaw =
+module ConfigurationFieldBitsRaw =
 
-    let value (ConfigFieldBits v) = v
+    let value (ConfigurationFieldBits v) = v
 
-    let parse : Parser<Field<ConfigFieldBitsRaw>> =
+    let parse : Parser<Field<ConfigurationFieldBitsRaw>> =
         parseField
             "Configuration Field"
             parseU16LittleEndian
-        |>> Field.map ConfigFieldBits
+        |>> Field.map ConfigurationFieldBits
 
-module ConfigFieldRaw =
+module ConfigurationFieldRaw =
 
     let bits =
         function
@@ -36,15 +36,15 @@ module ConfigFieldRaw =
         cnf
         |> bits
         |> _.Value
-        |> ConfigFieldBitsRaw.value
+        |> ConfigurationFieldBitsRaw.value
 
-    let parse : Parser<Field<ConfigFieldRaw>> =
+    let parse : Parser<Field<ConfigurationFieldRaw>> =
         parser {
-            let! bits = ConfigFieldBitsRaw.parse
+            let! bits = ConfigurationFieldBitsRaw.parse
 
             let value =
                 bits.Value
-                |> ConfigFieldBitsRaw.value
+                |> ConfigurationFieldBitsRaw.value
 
             match Mode.tryMap value with
             | Some Mode.Mode0 ->
@@ -54,12 +54,8 @@ module ConfigFieldRaw =
                 return bits |> Field.map (fun _ -> Mode5Raw bits)
 
             | None ->
-                let mode = Mode.rawValue value
-
-                return!
-                    failBefore
-                        2
-                        $"Unsupported security mode: {mode}"
+                let mode = Mode.rawValue value |> byte
+                return! failBefore 2 $"Unsupported security mode {mode}."
         }
 
 module BitFields =
@@ -123,11 +119,11 @@ type ConfigurationFieldMode0 =
 module ConfigurationFieldMode0 =
 
     let fromRaw
-        (raw: Field<ConfigFieldBitsRaw>)
+        (raw: Field<ConfigurationFieldBitsRaw>)
         : Validation<Field<ConfigurationFieldMode0>> =
 
         validator {
-            let cnf = ConfigFieldBitsRaw.value raw.Value
+            let cnf = ConfigurationFieldBitsRaw.value raw.Value
 
             let! cc =
                 match ContentOfMessage.tryMap cnf with
@@ -162,11 +158,11 @@ type ConfigurationFieldMode5 =
 module ConfigurationFieldMode5 =
 
     let fromRaw
-        (raw: Field<ConfigFieldBitsRaw>)
+        (raw: Field<ConfigurationFieldBitsRaw>)
         : Validation<Field<ConfigurationFieldMode5>> =
 
         validator {
-            let cnf = ConfigFieldBitsRaw.value raw.Value
+            let cnf = ConfigurationFieldBitsRaw.value raw.Value
 
             let! cc =
                 match ContentOfMessage.tryMap cnf with
@@ -174,7 +170,7 @@ module ConfigurationFieldMode5 =
                 | None -> failed raw "Invalid ContentOfMessage"
 
             let encryptedLength =
-                EncryptedLengthIndicator.map cnf
+                NumberOfEncryptedBlocks.map cnf
 
             return
                 raw

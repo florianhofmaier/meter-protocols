@@ -8,6 +8,11 @@ open Metering.Common.Decoding.Decoders.Core
 open Metering.Common.Decoding.Decoders.Tests.TestSupport
 open Metering.Common.Decoding.Parsers.Types
 
+let private read count (reader: IByteReader) =
+    match reader.Read count with
+    | Ok bytes -> bytes
+    | Error error -> failwith error.Msg
+
 [<Fact>]
 let ``source ids are deterministic unique and do not collide`` () =
     let readerFactory =
@@ -53,7 +58,7 @@ let ``AddRoot stores metadata and bytes`` () =
     let reader =
         store.CreateReader source.Id
 
-    reader.Read(2).ToArray()
+    read 2 reader |> fun bytes -> bytes.ToArray()
     |> should equal [| 0xAAuy; 0xBBuy |]
 
     readerFactory.Calls |> should equal [ { Bytes = [| 0xAAuy; 0xBBuy |]; Offset = 0 } ]
@@ -87,7 +92,8 @@ let ``AddDerived stores origin transform metadata and bytes`` () =
     }
 
     store.CreateReader source.Id
-    |> fun reader -> reader.Read(1).ToArray()
+    |> read 1
+    |> fun bytes -> bytes.ToArray()
     |> should equal [| 0xCCuy |]
 
 [<Fact>]
@@ -107,10 +113,10 @@ let ``CreateReader returns independent readers at position zero`` () =
     let second =
         store.CreateReader source.Id
 
-    first.Read(1).ToArray() |> should equal [| 0xAAuy |]
+    read 1 first |> fun bytes -> bytes.ToArray() |> should equal [| 0xAAuy |]
     first.Position |> should equal 1
     second.Position |> should equal 0
-    second.Read(2).ToArray() |> should equal [| 0xAAuy; 0xBBuy |]
+    read 2 second |> fun bytes -> bytes.ToArray() |> should equal [| 0xAAuy; 0xBBuy |]
 
     readerFactory.Calls
     |> should equal [
@@ -135,7 +141,7 @@ let ``zero length sources work`` () =
         store.CreateReader source.Id
 
     reader.Remaining |> should equal 0
-    reader.Read(0).ToArray() |> should equal [||]
+    read 0 reader |> fun bytes -> bytes.ToArray() |> should equal [||]
 
 [<Fact>]
 let ``unknown source id throws deliberate programming error`` () =

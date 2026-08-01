@@ -5,6 +5,20 @@ open ErrorHandling
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.Types
 
+let private fromReaderResult
+    (ctx: ParserContext)
+    (result: Result<'a, ReaderError>)
+    : 'a =
+
+    match result with
+    | Ok value -> value
+    | Error error ->
+        failWith {
+            Source = ctx.Source
+            Pos = error.Pos
+            Msg = error.Msg
+        } ctx
+
 let expect<'a when 'a : equality>
     (parse: Parser<'a>)
     (expected: 'a) : Parser<unit> =
@@ -18,16 +32,25 @@ let expect<'a when 'a : equality>
     }
 
 let skip (count: int) : Parser<unit> =
-    _.Reader.Skip(count)
+    fun ctx ->
+        ctx.Reader.Skip(count)
+        |> fromReaderResult ctx
 
 let remaining : Parser<int> =
-    _.Reader.Remaining
+    fun ctx -> ctx.Reader.Remaining
 
 let position : Parser<int> =
-    _.Reader.Position
+    fun ctx -> ctx.Reader.Position
 
 let take (count: int) : Parser<ReadOnlyMemory<byte>> =
-    _.Reader.Read(count)
+    fun ctx ->
+        ctx.Reader.Read(count)
+        |> fromReaderResult ctx
+
+let peek (count: int) : Parser<ReadOnlyMemory<byte>> =
+    fun ctx ->
+        ctx.Reader.Peek(count)
+        |> fromReaderResult ctx
 
 let takeAll : Parser<ReadOnlyMemory<byte>> =
     remaining >>= take
@@ -48,38 +71,35 @@ let bufferSliceAt (start: int) (count: int) : Parser<ReadOnlyMemory<byte>> =
            || localStart < 0L
            || localEnd > int64 ctx.Reader.Buffer.Length then
 
-            raise (
-                ParserException
-                    {
-                        Source = ctx.Source
-                        Pos = ctx.Reader.Position
-                        Msg =
-                            $"Cannot slice buffer at absolute offset {start} with length {count}. Current buffer starts at offset {bufferAbsoluteStart} and has length {ctx.Reader.Buffer.Length}."
-                    }
-            )
-
-        ctx.Reader.Buffer.Slice(int localStart, count)
+            failWith {
+                Source = ctx.Source
+                Pos = ctx.Reader.Position
+                Msg =
+                    $"Cannot slice buffer at absolute offset {start} with length {count}. Current buffer starts at offset {bufferAbsoluteStart} and has length {ctx.Reader.Buffer.Length}."
+            } ctx
+        else
+            ctx.Reader.Buffer.Slice(int localStart, count)
 
 let runOnSubSlice (count: int) (parse: Parser<'a>) : Parser<'a> =
     fun ctx ->
         let subReader =
             ctx.Reader.Slice(count)
+            |> fromReaderResult ctx
 
-        let result =
+        let value =
             parse { ctx with Reader = subReader }
 
         if subReader.Remaining <> 0 then
-            raise (
-                ParserException
-                    {
-                        Source = ctx.Source
-                        Pos = subReader.Position
-                        Msg = $"Sub-slice not fully consumed. {subReader.Remaining} byte(s) remaining."
-                    }
-            )
+            failWith {
+                Source = ctx.Source
+                Pos = subReader.Position
+                Msg = $"Sub-slice not fully consumed. {subReader.Remaining} byte(s) remaining."
+            } ctx
 
         ctx.Reader.Skip(count)
-        result
+        |> fromReaderResult ctx
+
+        value
 
 let parseUntilEnd (p: Parser<'a>) : Parser<'a list> =
     fun ctx ->
@@ -92,15 +112,12 @@ let parseUntilEnd (p: Parser<'a>) : Parser<'a list> =
                 let after = ctx.Reader.Position
 
                 if after = before then
-                    raise (
-                        ParserException
-                            {
-                                Source = ctx.Source
-                                Pos = before
-                                Msg = "Parser did not consume any input in parseUntilEnd."
-                            }
-                    )
-
-                loop (item :: acc)
+                    failWith {
+                        Source = ctx.Source
+                        Pos = before
+                        Msg = "Parser did not consume any input in parseUntilEnd."
+                    } ctx
+                else
+                    loop (item :: acc)
 
         loop []

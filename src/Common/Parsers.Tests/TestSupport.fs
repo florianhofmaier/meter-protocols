@@ -1,7 +1,9 @@
 module Metering.Common.Decoding.Parsers.Tests.TestSupport
 
 open System
+open System.Collections.Generic
 open Metering.Common.Decoding.ByteReaders
+open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Types
 
 type TraceEvent =
@@ -23,6 +25,54 @@ type NoopTracer() =
 
 let trace =
     NoopTracer() :> IFieldTracer
+
+type TestSourceStore() =
+    let buffers =
+        Dictionary<SourceId, ReadOnlyMemory<byte>>()
+
+    let sources =
+        ResizeArray<SourceInfo>()
+
+    let mutable nextId =
+        0
+
+    let add
+        name
+        origin
+        transform
+        (bytes: ReadOnlyMemory<byte>)
+        sensitive =
+
+        let info: SourceInfo =
+            {
+                Id = SourceId.create nextId
+                Name = name
+                Origin = origin
+                Transform = transform
+                Length = bytes.Length
+                Sensitive = sensitive
+            }
+
+        nextId <- nextId + 1
+        buffers.Add(info.Id, bytes)
+        sources.Add info
+        info
+
+    member _.Sources =
+        sources |> Seq.toList
+
+    interface ISourceStore with
+        member _.AddRoot name bytes sensitive =
+            add name None SourceTransform.Root bytes sensitive
+
+        member _.AddDerived name origin transform bytes sensitive =
+            add name (Some origin) transform bytes sensitive
+
+        member _.CreateReader source =
+            ByteReaderFactory.Create(buffers[source], 0)
+
+let sources =
+    TestSourceStore() :> ISourceStore
 
 type RecordingTracer(?firstId: int) =
     let events =
@@ -60,3 +110,15 @@ let reader (bytes: byte[]) =
 
 let readerAt offset (bytes: byte[]) =
     ByteReaderFactory.Create(memory bytes, offset)
+
+let run reader trace parser =
+    ParserRunner.run reader sources trace parser
+
+let runWithSource source reader trace parser =
+    ParserRunner.runWithSource source reader sources trace parser
+
+let runExactly reader trace parser =
+    ParserRunner.runExactly reader sources trace parser
+
+let runExactlyWithSource source reader trace parser =
+    ParserRunner.runExactlyWithSource source reader sources trace parser

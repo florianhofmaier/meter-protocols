@@ -9,23 +9,14 @@ type ShortHeaderMode0Raw =
     {
         Acc: Field<AccessNumberRaw>
         Status: Field<StatusByteRaw>
-        Cnf: Field<ConfigFieldBitsRaw>
+        Cnf: Field<ConfigurationFieldBitsRaw>
     }
 
 type ShortHeaderMode5Raw =
     {
         Acc: Field<AccessNumberRaw>
         Status: Field<StatusByteRaw>
-        Cnf: Field<ConfigFieldBitsRaw>
-        Verification: Field<DecryptionVerificationRaw>
-    }
-
-type ShortHeaderOtherModeRaw =
-    {
-        Mode: byte
-        Acc: Field<AccessNumberRaw>
-        Status: Field<StatusByteRaw>
-        Cnf: Field<ConfigFieldBitsRaw>
+        Cnf: Field<ConfigurationFieldBitsRaw>
     }
 
 type ShortHeaderRaw =
@@ -35,32 +26,17 @@ type ShortHeaderRaw =
 module ShortHeaderRaw =
 
     let parse : Parser<Field<ShortHeaderRaw>> =
-        parseField "Short Tpl Header"
+        parseField "Short TPL Header"
         <| parser {
             let! acc = AccessNumberRaw.parse
             let! status = StatusByteRaw.parse
-            let! cnf = ConfigFieldRaw.parse
+            let! cnf = ConfigurationFieldRaw.parse
 
             match cnf.Value with
-            | ConfigFieldRaw.Mode0Raw bits ->
-                return
-                    Mode0Raw
-                        {
-                            Acc = acc
-                            Status = status
-                            Cnf = bits
-                        }
-
-            | ConfigFieldRaw.Mode5Raw bits ->
-                let! verification = DecryptionVerificationRaw.parse
-                return
-                    Mode5Raw
-                        {
-                            Acc = acc
-                            Status = status
-                            Cnf = bits
-                            Verification = verification
-                        }
+            | ConfigurationFieldRaw.Mode0Raw bits ->
+                return Mode0Raw { Acc = acc; Status = status; Cnf = bits }
+            | ConfigurationFieldRaw.Mode5Raw bits ->
+                return Mode5Raw { Acc = acc; Status = status; Cnf = bits }
         }
 
 type ShortHeaderMode0 =
@@ -93,23 +69,16 @@ module ShortHeader =
                 let! acc = AccessNumber.fromRaw header.Acc
                 and! status = StatusByte.fromRaw header.Status
                 and! cnf = ConfigurationFieldMode0.fromRaw header.Cnf
-                return
-                    Mode0 {
-                        Acc = acc
-                        Status = status
-                        Cnf = cnf
-                    }
-                    |> Field.withValue raw
+                return raw |> Field.withValue (Mode0 { Acc = acc; Status = status; Cnf = cnf })
 
             | Mode5Raw header ->
-                let! acc = AccessNumber.fromRaw header.Acc
-                and! status = StatusByte.fromRaw header.Status
-                and! cnf = ConfigurationFieldMode5.fromRaw header.Cnf
-                return
-                    Mode5 {
-                        Acc = acc
-                        Status = status
-                        Cnf = cnf
-                    }
-                    |> Field.withValue raw
+                let! _acc = AccessNumber.fromRaw header.Acc
+                and! _status = StatusByte.fromRaw header.Status
+                and! _cnf = ConfigurationFieldMode5.fromRaw header.Cnf
+                and! unsupported: Field<ShortHeader> =
+                    failed
+                        header.Cnf
+                        "Wired M-Bus security mode 5 requires a long TPL header. Actual header type: short TPL header; actual security mode: 5. EN 13757-7:2018, 9.4.4 and Table 48."
+                return unsupported
+
         }

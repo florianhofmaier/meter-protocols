@@ -1,61 +1,79 @@
 namespace Metering.Mbus.Protocol.Frames.TransportLayer.Security
 
 open System
+open Metering.Common.Decoding.Validators.Core
+open Metering.Common.Security.Cryptography
+open Metering.Common.Security.Cryptography.AesCbc
+open Metering.Common.Utility.Result
+open Metering.Mbus.Protocol.Frames.DeviceIdentification
+open Metering.Mbus.Protocol.Frames.Protection
+open Metering.Mbus.Protocol.Frames.TransportLayer
 
-type Mode5Key =
-    private Mode5Key of ReadOnlyMemory<byte>
+type Mode5ExternalContext(key: Secret128) =
+    member _.Key = key
 
-type Mode5KeyCreationError =
-    | InvalidLength of actualLength: int
+type IExternalSecurityContextResolver =
+    abstract ResolveMode5Context:
+        meterIdentity: DeviceIdentification ->
+            Mode5ExternalContext option
+
+module Mode5Iv =
+
+    let create (meterAddress: DeviceIdentificationRaw) accessNr =
+        let ivBytes = Array.zeroCreate AesCbCIv.length
+        let destination = ivBytes.AsSpan()
+
+        ManufacturerRaw.copyTo
+            (destination.Slice(0, 2))
+            meterAddress.Mfr.Value
+
+        IdNumberRaw.copyTo
+            (destination.Slice(2, 4))
+            meterAddress.IdNum.Value
+
+        destination[6] <- VersionRaw.value meterAddress.Version.Value
+        destination[7] <- DeviceTypeRaw.value meterAddress.DevType.Value
+        destination.Slice(8, 8).Fill(accessNr)
+
+        AesCbCIv.create ivBytes
+        |> Result.mapError EncryptionError
 
 type Mode5SecurityContext =
-    private Mode5SecurityContext of Mode5Key
-
-type SecurityContext =
-    | NoSecurity
-    | Mode5 of Mode5SecurityContext
-
-module Mode5Key =
-
-    let create
-        (bytes: ReadOnlyMemory<byte>)
-        : Result<Mode5Key, Mode5KeyCreationError> =
-
-        if bytes.Length = 16
-        then Ok (Mode5Key bytes)
-        else Error (InvalidLength bytes.Length)
-
-    let value
-        (Mode5Key bytes)
-        : ReadOnlyMemory<byte> =
-
-        bytes
+    {
+        Key: Secret128
+        Iv: AesCbCIv
+    }
 
 module Mode5SecurityContext =
 
-    let create
-        (key: Mode5Key)
-        : Mode5SecurityContext =
+    let private validateMeterAddress meterAddress=
+        match DeviceIdentification.fromRaw meterAddress with
+        | Failed (failures, _) ->
+            Error (InvalidFrameStructure failures)
 
-        Mode5SecurityContext key
+        | Passed (validAddress, _) ->
+            Ok validAddress
 
-    let key
-        (Mode5SecurityContext key)
-        : Mode5Key =
+    let private resolveKey
+        (resolver: IExternalSecurityContextResolver)
+        (meterAddress: DeviceIdentification)=
 
-        key
+        match resolver.ResolveMode5Context meterAddress with
+        | None ->
+            Error (UnprotectionIssue.EncryptionError KeyUnavailable)
 
-    let keyBytes context =
-        context
-        |> key
-        |> Mode5Key.value
+        | Some value ->
+            Ok value.Key
 
-module SecurityContext =
+    let create meterAddress accessNum keyResolver =
+        result {
+            let accessNumber = AccessNumberRaw.value accessNum
+            let! iv = Mode5Iv.create meterAddress accessNumber
+            let! validMeterAddress = validateMeterAddress meterAddress
+            let! key = resolveKey keyResolver validMeterAddress
 
-    let none =
-        NoSecurity
-
-    let mode5 key =
-        key
-        |> Mode5SecurityContext.create
-        |> Mode5
+            return {
+                Key = key
+                Iv = iv
+            }
+        }

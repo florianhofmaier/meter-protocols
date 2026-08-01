@@ -1,5 +1,6 @@
 namespace Metering.Mbus.Protocol.Frames.ApplicationLayer
 
+open System
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser

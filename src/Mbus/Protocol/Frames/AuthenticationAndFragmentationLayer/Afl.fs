@@ -17,7 +17,8 @@ module AflRaw =
             match ci with
             | CiField.Afl ->
                 return!
-                    fail "Authentication and fragmentation layer (AFL) is not supported"
+                    fail
+                        "Unsupported but standard-conformant AFL variant; the supported path is a complete TPL message. Actual CI=0x90. EN 13757-7:2018, 5.2, Table 2."
 
             | _ ->
                 return None

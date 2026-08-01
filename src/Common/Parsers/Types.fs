@@ -28,6 +28,12 @@ module SourceId =
     let isUnknown source =
         source = unknown
 
+type ReaderError =
+    {
+        Pos : int
+        Msg : string
+    }
+
 type IByteReader =
 
     abstract Buffer : ReadOnlyMemory<byte>
@@ -35,19 +41,19 @@ type IByteReader =
     abstract Remaining : int
 
     abstract Read:
-        count: int -> ReadOnlyMemory<byte>
+        count: int -> Result<ReadOnlyMemory<byte>, ReaderError>
 
     abstract Peek:
-        count: int -> ReadOnlyMemory<byte>
+        count: int -> Result<ReadOnlyMemory<byte>, ReaderError>
 
     abstract Slice:
-        count: int -> IByteReader
+        count: int -> Result<IByteReader, ReaderError>
 
     abstract Skip:
-        count: int -> unit
+        count: int -> Result<unit, ReaderError>
 
-type ByteReaderFactory =
-    ReadOnlyMemory<byte> -> IByteReader
+type ReaderFactory =
+    ReadOnlyMemory<byte> -> int -> IByteReader
 
 type ParserError =
     {
@@ -55,11 +61,6 @@ type ParserError =
         Pos : int
         Msg : string
     }
-
-type ParserException(error: ParserError) =
-    inherit Exception(error.Msg)
-
-    member _.Error = error
 
 module ParserError =
 
@@ -100,6 +101,25 @@ type SourceInfo =
         Length : int
         Sensitive : bool
     }
+
+type ISourceStore =
+
+    abstract AddRoot :
+        name: string ->
+        bytes: ReadOnlyMemory<byte> ->
+        sensitive: bool ->
+        SourceInfo
+
+    abstract AddDerived :
+        name: string ->
+        origin: SourceSpan ->
+        transform: SourceTransform ->
+        bytes: ReadOnlyMemory<byte> ->
+        sensitive: bool ->
+        SourceInfo
+
+    abstract CreateReader :
+        source: SourceId -> IByteReader
 
 type IFieldTracer =
 

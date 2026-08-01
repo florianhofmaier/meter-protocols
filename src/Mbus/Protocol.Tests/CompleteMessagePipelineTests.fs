@@ -6,12 +6,13 @@ open FsUnit.Xunit
 open Metering.Common.Decoding.Decoders
 open Metering.Common.Decoding.Decoders.Core
 open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Parsers.Types
 open Metering.Common.Decoding.Validators.Core
 open Metering.Mbus.Protocol.Frames
 open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
-open Metering.Mbus.Protocol.Frames.Transport
+open Metering.Mbus.Protocol.Frames.TransportLayer
 open Metering.Mbus.Protocol.Messages
-open Metering.Mbus.Protocol.Security
+open Metering.Mbus.Protocol.Frames.TransportLayer.Security
 open Metering.Mbus.Protocol.Tests.TestSupport
 
 let private frame cField address higherLayerData =
@@ -103,6 +104,11 @@ let private failureMessages =
         |> List.map (fun issue -> issue.Message)
     | actual ->
         failwith $"Expected validation failure, got %A{actual}"
+
+let private parseFailure =
+    function
+    | DecodeFailed (ParseFailed error, _) -> error
+    | actual -> failwith $"Expected parse failure, got %A{actual}"
 
 [<Fact>]
 let ``valid primary command direction passes and owns a decoded APL`` () =
@@ -252,8 +258,8 @@ let ``wrong mode five key returns protected cryptographic failure`` () =
             match message.Payload with
             | AplContent.Protected protectedApl ->
                 match protectedApl.Failure with
-                | UnprotectionFailure.CryptographicFailure
-                    DecryptionOrVerificationFailed -> ()
+                | UnprotectionIssue.CryptographicFailure
+                    CryptographicFailure.DecryptionOrVerificationFailed -> ()
                 | actual ->
                     failwith $"Expected cryptographic failure, got %A{actual}"
             | actual -> failwith $"Expected cryptographic protected payload, got %A{actual}"
@@ -295,7 +301,7 @@ let ``root validation accumulates DLL and multiple TPL header issues`` () =
         |> should be True)
 
 [<Fact>]
-let ``standard defined unsupported security mode has one authoritative issue`` () =
+let ``standard defined unsupported security mode stops parsing at configuration`` () =
     let higherLayer =
         longHeaderMode0
             [| 0x02uy; 0x03uy; 0x04uy; 0x05uy |]
@@ -305,32 +311,15 @@ let ``standard defined unsupported security mode has one authoritative issue`` (
             0x0100us
             [| 0x2Fuy |]
 
-    let bytes = frame 0x09uy 0x01uy higherLayer
-    let messages =
-        decode SecurityContext.none bytes
-        |> failureMessages
-
-    messages
-    |> List.filter (fun message -> message.Contains("security mode 1"))
-    |> List.length
-    |> should equal 1
-
-    messages
-    |> List.exists (fun message ->
-        message.Contains("Unsupported, but standard-conformant"))
-    |> should be True
-
-    messages
-    |> List.exists (fun message -> message.Contains("Invalid function code"))
-    |> should be True
-
-    messages
-    |> List.exists (fun message ->
-        message.Contains("APL expansion was skipped"))
-    |> should be False
+    frame 0x09uy 0x01uy higherLayer
+    |> decode SecurityContext.none
+    |> parseFailure
+    |> fun error ->
+        error.Msg.Contains("Unsupported, but standard-conformant security mode 1")
+        |> should be True
 
 [<Fact>]
-let ``reserved security mode has a distinct standard invalid issue`` () =
+let ``reserved security mode stops parsing at configuration`` () =
     let higherLayer =
         longHeaderMode0
             [| 0x02uy; 0x03uy; 0x04uy; 0x05uy |]
@@ -340,21 +329,12 @@ let ``reserved security mode has a distinct standard invalid issue`` () =
             0x0600us
             [| 0x2Fuy |]
 
-    let messages =
-        frame 0x08uy 0x01uy higherLayer
-        |> decode SecurityContext.none
-        |> failureMessages
-
-    messages
-    |> List.filter (fun message ->
-        message.Contains("Reserved/standard-invalid security mode value 6"))
-    |> List.length
-    |> should equal 1
-
-    messages
-    |> List.exists (fun message ->
-        message.Contains("APL expansion was skipped"))
-    |> should be False
+    frame 0x08uy 0x01uy higherLayer
+    |> decode SecurityContext.none
+    |> parseFailure
+    |> fun error ->
+        error.Msg.Contains("Reserved/standard-invalid security mode value 6")
+        |> should be True
 
 [<Fact>]
 let ``wired short header mode zero is structurally accepted`` () =
@@ -382,7 +362,7 @@ let ``wired short header mode zero is structurally accepted`` () =
         failwith $"Expected structurally accepted Mode 0 short header, got %A{actual}"
 
 [<Fact>]
-let ``wired short header mode five fails in parser stage`` () =
+let ``wired short header mode five fails in root validation`` () =
     let bytes =
         frame
             0x08uy
@@ -392,34 +372,20 @@ let ``wired short header mode five fails in parser stage`` () =
                 0x05F0us
                 (Array.zeroCreate 16))
 
-    match decode SecurityContext.none bytes with
-    | DecodeFailed (ParseFailed error, _) ->
-        error.Msg.Contains("requires a long TPL header")
-        |> should be True
+    let messages = decode SecurityContext.none bytes |> failureMessages
 
-        error.Msg.Contains("Actual TPL.CI=0x7A")
-        |> should be True
+    [ "requires a long TPL header"; "short TPL header"; "security mode: 5"; "Table 48" ]
+    |> List.iter (fun expected ->
+        messages
+        |> List.exists _.Contains(expected)
+        |> should be True)
 
-        error.Msg.Contains("short TPL header")
-        |> should be True
-
-        error.Msg.Contains("actual security mode: 5")
-        |> should be True
-
-        error.Msg.Contains("Table 48")
-        |> should be True
-
-        error.Msg.Contains("IV")
-        |> should be False
-
-        error.Msg.Contains("SecurityContextNotUsable")
-        |> should be False
-
-    | actual ->
-        failwith $"Expected parser-stage short-header Mode 5 failure, got %A{actual}"
+    messages
+    |> List.exists _.Contains("SecurityContextNotUsable")
+    |> should be False
 
 [<Fact>]
-let ``wired CI 0x57 short header mode five fails in parser stage`` () =
+let ``wired CI 0x57 short header mode five fails in root validation`` () =
     let bytes =
         frame
             0x53uy
@@ -429,34 +395,19 @@ let ``wired CI 0x57 short header mode five fails in parser stage`` () =
                 0x05F0us
                 (Array.zeroCreate 16))
 
-    match decode SecurityContext.none bytes with
-    | DecodeFailed (ParseFailed error, _) ->
-        [
-            "requires a long TPL header"
-            "CI=0x57"
-            "short TPL header"
-            "security mode: 5"
-            "9.4.4"
-            "Table 48"
-        ]
-        |> List.iter (fun expected ->
-            error.Msg.Contains(expected)
-            |> should be True)
+    let messages = decode SecurityContext.none bytes |> failureMessages
 
-        [
-            "SecurityContextNotUsable"
-            "authentication"
-            "decryption"
-            "Unsupported, but standard-conformant TPL CI"
-            "Reserved TPL CI"
-            "AFL"
-        ]
-        |> List.iter (fun forbidden ->
-            error.Msg.Contains(forbidden)
-            |> should be False)
+    [ "requires a long TPL header"; "short TPL header"; "security mode: 5"; "9.4.4"; "Table 48" ]
+    |> List.iter (fun expected ->
+        messages
+        |> List.exists _.Contains(expected)
+        |> should be True)
 
-    | actual ->
-        failwith $"Expected parser-stage CI 0x57 short-header Mode 5 failure, got %A{actual}"
+    [ "SecurityContextNotUsable"; "authentication"; "decryption"; "AFL" ]
+    |> List.iter (fun forbidden ->
+        messages
+        |> List.exists _.Contains(forbidden)
+        |> should be False)
 
 [<Fact>]
 let ``CI 0x57 selects ApplicationResetOrSelect APL parser and passes primary direction`` () =
@@ -476,8 +427,8 @@ let ``CI 0x57 selects ApplicationResetOrSelect APL parser and passes primary dir
             match message.Payload with
             | AplContent.Decoded apl ->
                 match apl.Value with
-                | Metering.Mbus.Protocol.Frames.Application.Apl.ApplicationResetOrSelect
-                    Metering.Mbus.Protocol.Frames.Application.ApplicationReset -> ()
+                | Metering.Mbus.Protocol.Frames.ApplicationLayer.Apl.ApplicationResetOrSelect
+                    Metering.Mbus.Protocol.Frames.ApplicationLayer.ApplicationReset -> ()
 
                 | actual ->
                     failwith $"Expected application reset APL, got %A{actual}"
@@ -488,43 +439,16 @@ let ``CI 0x57 selects ApplicationResetOrSelect APL parser and passes primary dir
     | actual -> failwith $"Expected valid CI 0x57 command, got %A{actual}"
 
 [<Fact>]
-let ``short header unsupported mode is semantically classified once`` () =
+let ``short header unsupported mode stops parsing at configuration`` () =
     let higherLayer =
         shortHeader 0x7Auy 0x0100us [| 0x2Fuy |]
 
-    let raw =
-        parseExactly TplRaw.parse higherLayer
-
-    match raw.Value with
-    | TplRaw.ShortHeader short ->
-        match short.Header.Value with
-        | ShortHeaderRaw.OtherModeRaw other ->
-            other.Mode |> should equal 1uy
-        | actual ->
-            failwith $"Expected preserved short-header mode 1, got %A{actual}"
-
-    | actual ->
-        failwith $"Expected preserved short-header mode 1 Raw value, got %A{actual}"
-
-    let messages =
-        frame 0x08uy 0x01uy higherLayer
-        |> decode SecurityContext.none
-        |> failureMessages
-
-    messages
-    |> List.filter (fun message -> message.Contains("security mode 1"))
-    |> List.length
-    |> should equal 1
-
-    messages
-    |> List.exists (fun message ->
-        message.Contains("Unsupported, but standard-conformant"))
-    |> should be True
-
-    messages
-    |> List.exists (fun message ->
-        message.Contains("APL expansion was skipped"))
-    |> should be False
+    frame 0x08uy 0x01uy higherLayer
+    |> decode SecurityContext.none
+    |> parseFailure
+    |> fun error ->
+        error.Msg.Contains("Unsupported, but standard-conformant security mode 1")
+        |> should be True
 
 [<Fact>]
 let ``CI 0x5A from EN 13757-7 Table 2 is standard-defined unsupported`` () =

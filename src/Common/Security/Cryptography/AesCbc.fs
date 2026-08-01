@@ -3,56 +3,64 @@ module Metering.Common.Security.Cryptography.AesCbc
 open System
 open System.Security.Cryptography
 
-let private blockLength =
-    16
+type AesCbCIv =
+    private AesCbCIv of byte[]
 
-let private validateKey (key: ReadOnlyMemory<byte>) =
-    match key.Length with
-    | 16 | 24 | 32 -> Ok ()
-    | length -> Error (InvalidKeyLength length)
+module AesCbCIv =
 
-let private validateIv (iv: ReadOnlyMemory<byte>) =
-    if iv.Length = blockLength then Ok ()
-    else Error (InvalidInitializationVectorLength iv.Length)
+    let length = 16
 
-let private validateCipherText (cipherText: ReadOnlyMemory<byte>) =
-    if cipherText.Length % blockLength = 0 then Ok ()
-    else Error (CryptographicFailure $"AES-CBC ciphertext length must be a multiple of {blockLength} byte(s)")
+    let create (iv: byte[]) =
+        if iv.Length = length then
+            Ok (AesCbCIv iv)
+        else
+            Error (InvalidInitializationVectorLength iv.Length)
 
-let decrypt
-    (key: ReadOnlyMemory<byte>)
-    (iv: ReadOnlyMemory<byte>)
-    (cipherText: ReadOnlyMemory<byte>)
-    : Result<ReadOnlyMemory<byte>, EncryptionError> =
+    let toArray (AesCbCIv iv) =
+        iv
 
-    match validateKey key, validateIv iv, validateCipherText cipherText with
-    | Error e, _, _
-    | _, Error e, _
-    | _, _, Error e ->
-        Error e
+module AesCbc =
 
-    | Ok (), Ok (), Ok () ->
-        try
-            use aes =
-                Aes.Create()
+    let blockLength = 16
 
-            aes.Mode <- CipherMode.CBC
-            aes.Padding <- PaddingMode.None
-            aes.Key <- key.ToArray()
-            aes.IV <- iv.ToArray()
+    let private validateCipherText (cipherText: ReadOnlyMemory<byte>) =
+        if cipherText.Length % blockLength = 0 then Ok ()
+        else Error (CryptographicFailure $"AES-CBC ciphertext length must be a multiple of {blockLength} byte(s)")
 
-            use decryptor =
-                aes.CreateDecryptor()
+    let decrypt
+        (key: Secret128)
+        (iv: AesCbCIv)
+        (cipherText: ReadOnlyMemory<byte>)
+        (offset: int)
+        (count: int)
+        : Result<ReadOnlyMemory<byte>, EncryptionError> =
 
-            let plain =
-                decryptor.TransformFinalBlock(
-                    cipherText.ToArray(),
-                    0,
-                    cipherText.Length
-                )
+        match validateCipherText cipherText with
+        | Error e ->
+            Error e
 
-            Ok (ReadOnlyMemory<byte> plain)
+        | Ok () ->
+            try
+                use aes =
+                    Aes.Create()
 
-        with
-        | :? CryptographicException as ex ->
-            Error (CryptographicFailure ex.Message)
+                aes.Mode <- CipherMode.CBC
+                aes.Padding <- PaddingMode.None
+                aes.Key <- key.ToArray
+                aes.IV <- AesCbCIv.toArray iv
+
+                use decryptor =
+                    aes.CreateDecryptor()
+
+                let plain =
+                    decryptor.TransformFinalBlock(
+                        cipherText.ToArray(),
+                        offset,
+                        count
+                    )
+
+                Ok (ReadOnlyMemory<byte> plain)
+
+            with
+            | :? CryptographicException as ex ->
+                Error (CryptographicFailure ex.Message)

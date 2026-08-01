@@ -2,7 +2,7 @@ module Metering.Mbus.Protocol.Tests.Mode5SecurityContextTests
 
 open Xunit
 open FsUnit.Xunit
-open Metering.Mbus.Protocol.Security
+open Metering.Mbus.Protocol.Frames.TransportLayer.Security
 open Metering.Mbus.Protocol.Tests.TestSupport
 
 let private validKeyBytes =

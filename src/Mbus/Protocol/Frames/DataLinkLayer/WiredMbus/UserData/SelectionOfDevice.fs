@@ -1,4 +1,4 @@
-namespace Metering.Mbus.Protocol.Frames.DataLinkLayer.UserData
+namespace Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus.UserData
 
 open System
 open Metering.Common.Decoding.Parsers
@@ -68,7 +68,7 @@ module SelectionOfDeviceRaw =
     let private isSelectionOfDevice (ciField: CiField) =
         match ciField with
         | LowerLayerManagement
-            (CiLowerLayerManagement.SelectionOfDevice _) ->
+            CiLowerLayerManagement.SelectionOfDevice ->
             true
 
         | _ ->
@@ -126,7 +126,7 @@ module IdNumberSelection =
         (raw: Field<IdNumberRaw>)
         : Validation<IdNumberSelection> =
 
-        let value = IdNumberRaw.value raw.Value
+        let value = IdNumberRaw.toUint32 raw.Value
 
         match Bcd.tryFindInvalidBcdOrWildcardNibble digitCount value with
         | Some (_, nibble) ->
@@ -165,7 +165,7 @@ module ManufacturerSelection =
         (raw: Field<ManufacturerRaw>)
         : Validation<ManufacturerSelection> =
 
-        let value = ManufacturerRaw.value raw.Value
+        let value = ManufacturerRaw.toUint16 raw.Value
         let pattern, mask = ManufacturerSelectionBytes.patternAndMask value
 
         passed (ManufacturerSelectionPattern (pattern, mask))

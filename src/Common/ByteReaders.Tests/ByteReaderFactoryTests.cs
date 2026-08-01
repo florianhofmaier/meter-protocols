@@ -24,7 +24,7 @@ public class ByteReaderFactoryTests
         var reader = ByteReaderFactory.Create(new byte[] { 0x01, 0x02 }, 27);
 
         Assert.Equal(27, reader.Position);
-        reader.Read(1);
+        Assert.True(reader.Read(1).IsOk);
         Assert.Equal(28, reader.Position);
     }
 
@@ -49,7 +49,7 @@ public class ByteReaderFactoryTests
         var first = ByteReaderFactory.Create(bytes);
         var second = ByteReaderFactory.Create(bytes);
 
-        first.Read(1);
+        Assert.True(first.Read(1).IsOk);
 
         Assert.Equal(1, first.Position);
         Assert.Equal(0, second.Position);
@@ -64,6 +64,6 @@ public class ByteReaderFactoryTests
         Assert.Empty(reader.Buffer.ToArray());
         Assert.Equal(0, reader.Position);
         Assert.Equal(0, reader.Remaining);
-        Assert.Empty(reader.Read(0).ToArray());
+        Assert.Empty(reader.Read(0).ResultValue.ToArray());
     }
 }

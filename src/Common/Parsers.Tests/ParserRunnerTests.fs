@@ -5,6 +5,7 @@ open Xunit
 open FsUnit.Xunit
 open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Common.Decoding.Parsers.ParserRunner
 open Metering.Common.Decoding.Parsers.Tests.TestSupport
 open Metering.Common.Decoding.Parsers.Types
@@ -24,7 +25,7 @@ let ``runWithSource supplies requested source to parser errors`` () =
         failwith $"Expected parser error, got {value}"
 
 [<Fact>]
-let ``unknown source from byte reader is defaulted to runner source`` () =
+let ``byte reader failure uses runner source`` () =
     let source =
         SourceId.create 42
 
@@ -43,8 +44,7 @@ let ``explicit parser error source is not overwritten`` () =
         SourceId.create 99
 
     let parser : Parser<int> =
-        fun _ ->
-            raise (ParserException { Source = explicitSource; Pos = 3; Msg = "bad" })
+        failWith { Source = explicitSource; Pos = 3; Msg = "bad" }
 
     match runWithSource (SourceId.create 42) (reader [||]) trace parser with
     | Error error ->
@@ -116,10 +116,9 @@ let ``exact runner rejects zero-consumption parser on non-empty input`` () =
         failwith $"Expected trailing input error, got {value}"
 
 [<Fact>]
-let ``parser exceptions become error parser error`` () =
+let ``parser failures become parser errors`` () =
     let parser : Parser<int> =
-        fun _ ->
-            raise (ParserException { Source = SourceId.unknown; Pos = 5; Msg = "bad" })
+        failWith { Source = SourceId.unknown; Pos = 5; Msg = "bad" }
 
     match runExactly (reader [||]) trace parser with
     | Error error ->

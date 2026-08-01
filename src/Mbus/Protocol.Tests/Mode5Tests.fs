@@ -4,11 +4,11 @@ open System
 open Xunit
 open FsUnit.Xunit
 open Metering.Common.Decoding.ByteReaders
-open Metering.Common.Decoding.Decoders.Core
+open Metering.Common.Decoding.Parsers.ParserRunner
 open Metering.Common.Decoding.Parsers.Types
 open Metering.Common.Decoding.Validators.Core
-open Metering.Mbus.Protocol.Frames.Transport
-open Metering.Mbus.Protocol.Security
+open Metering.Mbus.Protocol.Frames.TransportLayer
+open Metering.Mbus.Protocol.Frames.TransportLayer.Security
 open Metering.Mbus.Protocol.Tests.TestSupport
 
 type CapturingSourceStore() =
@@ -89,22 +89,25 @@ let private run context encryptedLength payload =
     let store = CapturingSourceStore()
 
     let result =
-        Mode5.expandLongHeader
-            context
-            (header encryptedLength)
-            (bytesField payload)
-            (decoderContext (store :> ISourceStore))
+        Metering.Common.Decoding.Parsers.ParserRunner.run
+            (ByteReaderFactory.Create(ReadOnlyMemory<byte>.Empty, 0))
+            (store :> ISourceStore)
+            trace
+            (Mode5.expandLongHeader
+                context
+                (header encryptedLength)
+                (bytesField payload))
 
     result, store
 
 let private outcome =
     function
-    | Decoded (value, _) -> value
+    | Ok value -> value
     | actual -> failwith $"Expected Mode 5 outcome, got %A{actual}"
 
 let private failures =
     function
-    | Mode5ExpansionOutcome.Invalid failures ->
+    | Mode5ExpansionRaw.InvalidProtectionLayout failures ->
         failures
         |> Failures.toList
         |> List.map (fun issue -> issue.Message)
@@ -132,10 +135,11 @@ let ``no security context retains protected layout`` () =
         run SecurityContext.none (fixedBlocks 1) validCipherText
 
     match outcome result with
-    | Mode5ExpansionOutcome.Protected (layout, SecurityContextNotUsable) ->
-        layout.OriginalPayload.Value.ToArray() |> should equal validCipherText
-        layout.EncryptedPart.Value.Length |> should equal 16
-        layout.ClearSuffix |> should equal None
+    | Mode5ExpansionRaw.Protected protectedApl ->
+        protectedApl.Failure |> should equal UnprotectionIssue.SecurityContextNotUsable
+        protectedApl.OriginalPayload.Value.ToArray() |> should equal validCipherText
+        protectedApl.EncryptedPart.Value.Length |> should equal 16
+        protectedApl.ClearSuffix |> should equal None
     | actual -> failwith $"Expected protected outcome, got %A{actual}"
 
 [<Fact>]
@@ -145,10 +149,10 @@ let ``wrong key is a protected cryptographic failure`` () =
         run (mode5Context wrongKey) AllRemainingDataEncrypted validCipherText
 
     match outcome result with
-    | Mode5ExpansionOutcome.Protected (
-        _,
-        UnprotectionFailure.CryptographicFailure DecryptionOrVerificationFailed
-      ) -> ()
+    | Mode5ExpansionRaw.Protected {
+        Failure = UnprotectionIssue.CryptographicFailure
+            CryptographicFailure.DecryptionOrVerificationFailed
+      } -> ()
     | actual -> failwith $"Expected cryptographic protected outcome, got %A{actual}"
 
 [<Fact>]
@@ -159,7 +163,7 @@ let ``partial encryption combines decrypted prefix and clear suffix`` () =
         run (mode5Context validKey) (fixedBlocks 1) payload
 
     match outcome result with
-    | Mode5ExpansionOutcome.Unprotected source ->
+    | Mode5ExpansionRaw.Unprotected source ->
         source.Value.ToArray()
         |> should equal (Array.append expectedPlainPrefix suffix)
         source.Span.Source |> should equal (SourceId.create 101)
@@ -174,9 +178,9 @@ let ``failed partial unprotection retains clear suffix without deriving a source
         run (mode5Context validKey) (fixedBlocks 1) payload
 
     match outcome result with
-    | Mode5ExpansionOutcome.Protected (layout, _) ->
-        layout.EncryptedPart.Value.Length |> should equal 16
-        layout.ClearSuffix.Value.Value.ToArray() |> should equal suffix
+    | Mode5ExpansionRaw.Protected protectedApl ->
+        protectedApl.EncryptedPart.Value.Length |> should equal 16
+        protectedApl.ClearSuffix.Value.Value.ToArray() |> should equal suffix
         store.DerivedSource |> should equal None
     | actual -> failwith $"Expected retained protected layout, got %A{actual}"
 
@@ -187,7 +191,7 @@ let ``zero encrypted blocks returns the original unprotected source`` () =
         run SecurityContext.none NoEncryptedData payload
 
     match outcome result with
-    | Mode5ExpansionOutcome.Unprotected source ->
+    | Mode5ExpansionRaw.Unprotected source ->
         source.Value.ToArray() |> should equal payload
         source.Span |> should equal (bytesField payload).Span
         store.DerivedSource |> should equal None
@@ -212,7 +216,7 @@ let ``all remaining is not capped at fifteen blocks`` () =
         run (mode5Context validKey) AllRemainingDataEncrypted cipherText
 
     match outcome result with
-    | Mode5ExpansionOutcome.Unprotected source ->
+    | Mode5ExpansionRaw.Unprotected source ->
         source.Value.Length |> should equal 254
     | actual -> failwith $"Expected all 256 encrypted bytes, got %A{actual}"
 

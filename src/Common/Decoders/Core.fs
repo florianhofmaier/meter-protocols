@@ -15,28 +15,6 @@ type DecodeResult<'a> =
     | Decoded of 'a * Notice list
     | DecodeFailed of DecodeFailure * Notice list
 
-type ReaderFactory =
-    ReadOnlyMemory<byte> -> int -> IByteReader
-
-type ISourceStore =
-
-    abstract AddRoot :
-        name: string ->
-        bytes: ReadOnlyMemory<byte> ->
-        sensitive: bool ->
-        SourceInfo
-
-    abstract AddDerived :
-        name: string ->
-        origin: SourceSpan ->
-        transform: SourceTransform ->
-        bytes: ReadOnlyMemory<byte> ->
-        sensitive: bool ->
-        SourceInfo
-
-    abstract CreateReader :
-        source: SourceId -> IByteReader
-
 type DecodeContext =
     {
         CreateReader : ReaderFactory
@@ -69,7 +47,7 @@ module Core =
             let reader =
                 context.CreateReader source.Value source.Span.Offset
 
-            match ParserRunner.runExactlyWithSource source.Span.Source reader context.Trace parser with
+            match ParserRunner.runExactlyWithSource source.Span.Source reader context.Sources context.Trace parser with
             | Ok value ->
                 Decoded (value, [])
 
@@ -102,39 +80,6 @@ module Core =
 
             | Failed (failures, notices) ->
                 DecodeFailed (ValidationFailed failures, notices)
-
-    let createDerivedSource
-        (name: string)
-        (transform: SourceTransform)
-        (sensitive: bool)
-        (origin: Field<_>)
-        (bytes: ReadOnlyMemory<byte>)
-        : Decoder<Field<ReadOnlyMemory<byte>>> =
-
-        fun context ->
-            let source =
-                context.Sources.AddDerived
-                    name
-                    origin.Span
-                    transform
-                    bytes
-                    sensitive
-
-            context.Trace.SourceCreated source
-
-            Decoded (
-                {
-                    Id = origin.Id
-                    Span =
-                        {
-                            Source = source.Id
-                            Offset = 0
-                            Length = bytes.Length
-                        }
-                    Value = bytes
-                },
-                []
-            )
 
 type DecoderBuilder() =
 

@@ -5,7 +5,7 @@ open FsUnit.Xunit
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.ParserRunner
 open Metering.Common.Decoding.Parsers.Types
-open Metering.Mbus.Protocol.Frames.Transport
+open Metering.Mbus.Protocol.Frames.TransportLayer
 open Metering.Mbus.Protocol.Tests.TestSupport
 
 type private ExpectedEncryptedLength =
@@ -109,24 +109,25 @@ let ``mode zero preserves high low-byte nibble without mode five encrypted lengt
     | actual ->
         failwith $"Expected Mode0Raw, got %A{actual}"
 
-let private assertUnsupportedMode bytes expectedMode =
-    let raw =
-        parseExactly ConfigurationFieldRaw.parse bytes
-
-    match raw.Value with
-    | OtherModeRaw (mode, bits) ->
-        mode |> should equal expectedMode
-        assertRawField raw bits
-    | actual ->
-        failwith $"Expected preserved OtherModeRaw, got %A{actual}"
+let private assertUnsupportedMode bytes (expectedText: string) =
+    match parseResult ConfigurationFieldRaw.parse bytes with
+    | Error error ->
+        error.Pos |> should equal 0
+        error.Msg.Contains(expectedText) |> should be True
+    | Ok actual ->
+        failwith $"Expected unsupported-mode parser failure, got %A{actual}"
 
 [<Fact>]
-let ``unsupported mode is preserved in raw configuration field`` () =
-    assertUnsupportedMode [| 0x00uy; 0x01uy |] 1uy
+let ``unsupported standard mode stops configuration parsing`` () =
+    assertUnsupportedMode
+        [| 0x00uy; 0x01uy |]
+        "Unsupported, but standard-conformant security mode 1"
 
 [<Fact>]
-let ``unsupported max raw mode is preserved`` () =
-    assertUnsupportedMode [| 0x00uy; 0x1Fuy |] 31uy
+let ``reserved mode stops configuration parsing`` () =
+    assertUnsupportedMode
+        [| 0x00uy; 0x1Fuy |]
+        "Reserved/standard-invalid security mode value 31"
 
 [<Fact>]
 let ``mode zero is classified as supported`` () =

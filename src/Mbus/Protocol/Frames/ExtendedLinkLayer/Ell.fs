@@ -42,7 +42,7 @@ module EllRaw =
             | Ell ell ->
 
                 match ell with
-                | CiFieldEll.NoDllEncryption _ ->
+                | CiFieldEll.NoDllEncryption ->
 
                     return!
                         EllNoEncryptionRaw.parse ci
@@ -68,6 +68,5 @@ module EllRaw =
             | _ ->
                 return None
         }
-
 
 
