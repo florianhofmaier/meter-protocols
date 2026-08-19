@@ -14,7 +14,7 @@ module AesCbCIv =
         if iv.Length = length then
             Ok (AesCbCIv iv)
         else
-            Error (InvalidInitializationVectorLength iv.Length)
+            Error (EncryptionError $"Invalid initialization vectorLength: {iv.Length}")
 
     let toArray (AesCbCIv iv) =
         iv
@@ -25,7 +25,7 @@ module AesCbc =
 
     let private validateCipherText (cipherText: ReadOnlyMemory<byte>) =
         if cipherText.Length % blockLength = 0 then Ok ()
-        else Error (CryptographicFailure $"AES-CBC ciphertext length must be a multiple of {blockLength} byte(s)")
+        else Error (EncryptionError $"AES-CBC ciphertext length must be a multiple of {blockLength} byte(s)")
 
     let decrypt
         (key: Secret128)
@@ -63,4 +63,4 @@ module AesCbc =
 
             with
             | :? CryptographicException as ex ->
-                Error (CryptographicFailure ex.Message)
+                Error (EncryptionError ex.Message)

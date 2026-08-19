@@ -5,8 +5,7 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Mbus.Protocol.Frames
 
-type NwlRaw =
-    private Nwl of Unit
+type NwlRaw = Unit
 
 module NwlRaw =
 
@@ -22,3 +21,5 @@ module NwlRaw =
             | _ ->
                 return None
         }
+
+type Nwl = Unit

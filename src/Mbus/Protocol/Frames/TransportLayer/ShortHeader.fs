@@ -4,6 +4,7 @@ open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
+open Metering.Common.Decoding.Validators.Utility
 
 type ShortHeaderMode0Raw =
     {
@@ -61,21 +62,21 @@ module ShortHeader =
 
     let fromRaw
         (raw: Field<ShortHeaderRaw>)
-        : Validation<Field<ShortHeader>> =
+        : Validation<ShortHeader> =
 
         validator {
             match raw.Value with
             | Mode0Raw header ->
-                let! acc = AccessNumber.fromRaw header.Acc
-                and! status = StatusByte.fromRaw header.Status
-                and! cnf = ConfigurationFieldMode0.fromRaw header.Cnf
-                return raw |> Field.withValue (Mode0 { Acc = acc; Status = status; Cnf = cnf })
+                let! acc = validateField AccessNumber.fromRaw header.Acc
+                and! status = validateField StatusByte.fromRaw header.Status
+                and! cnf = validateField ConfigurationFieldMode0.fromRaw header.Cnf
+                return Mode0 { Acc = acc; Status = status; Cnf = cnf }
 
             | Mode5Raw header ->
                 let! _acc = AccessNumber.fromRaw header.Acc
                 and! _status = StatusByte.fromRaw header.Status
                 and! _cnf = ConfigurationFieldMode5.fromRaw header.Cnf
-                and! unsupported: Field<ShortHeader> =
+                and! unsupported: ShortHeader =
                     failed
                         header.Cnf
                         "Wired M-Bus security mode 5 requires a long TPL header. Actual header type: short TPL header; actual security mode: 5. EN 13757-7:2018, 9.4.4 and Table 48."

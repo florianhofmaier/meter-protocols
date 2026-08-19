@@ -5,6 +5,7 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Validators.Core
+open Metering.Common.Decoding.Validators.Utility
 open Metering.Mbus.Protocol.Frames
 
 type TplWithLongHeaderRaw =
@@ -36,6 +37,9 @@ type TplWithLongHeader =
 
 module TplWithLongHeader =
 
-    let fromRaw (raw: TplWithLongHeaderRaw) =
-        LongHeader.fromRaw raw.Header
+    let fromRaw
+        (raw: TplWithLongHeaderRaw)
+        : Validation<TplWithLongHeader> =
+
+        validateField LongHeader.fromRaw raw.Header
         |> map (fun header -> { Ci = raw.Ci; Header = header })

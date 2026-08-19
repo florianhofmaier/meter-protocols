@@ -34,12 +34,12 @@ module ApplicationResetOrSelect =
 
     let fromRaw
         (raw: Field<ApplicationResetOrSelectRaw>)
-        : Validation<Field<ApplicationResetOrSelect>> =
+        : Validation<ApplicationResetOrSelect> =
 
         validator {
             match raw.Value with
             | ApplicationResetRaw ->
-                return Field.withValue ApplicationReset raw
+                return ApplicationReset
 
             | ApplicationSelectRaw bytes ->
                 let! () =
@@ -48,5 +48,5 @@ module ApplicationResetOrSelect =
                         $"Application select subcode is expected to be at most {maxSubcodeBytes} byte(s), but it's {bytes.Length} byte(s)"
                         (bytes.Length <= maxSubcodeBytes)
 
-                return Field.withValue (ApplicationSelect bytes) raw
+                return ApplicationSelect bytes
         }

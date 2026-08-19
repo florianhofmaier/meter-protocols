@@ -22,7 +22,7 @@ module UsageFlag =
             match value with
             | 0x00uy -> return NotUsed
             | 0x01uy -> return Used
-            | other -> return! fail $"invalid A-XDR usage flag 0x{other:X2}"
+            | other -> return! failure $"invalid A-XDR usage flag 0x{other:X2}"
         }
 
 type Optional<'a> =
@@ -194,7 +194,7 @@ module Boolean =
             match value with
             | 0x00uy -> return Boolean false
             | 0x01uy -> return Boolean true
-            | other -> return! fail $"invalid A-XDR BOOLEAN value 0x{other:X2}"
+            | other -> return! failure $"invalid A-XDR BOOLEAN value 0x{other:X2}"
         }
 
 type Integer8 =

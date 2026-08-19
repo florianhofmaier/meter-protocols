@@ -61,7 +61,7 @@ module WiredMbusFrame =
             FixedLengthFrame.fromRaw field
             |> map WiredMbusFrame.FixedLength
         | WiredMbusFrameRaw.VariableLength field ->
-            V.fromRaw field
+            VariableLengthFrame.fromRaw field.Value.UserData
             |> map WiredMbusFrame.VariableLength
 
     let decode

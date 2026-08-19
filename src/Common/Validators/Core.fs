@@ -37,7 +37,7 @@ module Failures =
 let passed value =
     Passed (value, [])
 
-let fail (field: Field<_>) message =
+let failure (field: Field<_>) message =
     Failures.single
         ({
             FieldId = field.Id
@@ -45,7 +45,7 @@ let fail (field: Field<_>) message =
         }: Issue)
 
 let failed (field: Field<_>) message =
-    Failed (fail field message, [])
+    Failed (failure field message, [])
 
 let info (field: Field<_>) message =
     Passed (

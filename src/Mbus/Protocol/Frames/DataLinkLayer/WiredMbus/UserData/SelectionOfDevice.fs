@@ -74,8 +74,9 @@ module SelectionOfDeviceRaw =
         | _ ->
             false
 
-    let parse : Parser<SelectionOfDeviceRaw> =
-        parser {
+    let parse : Parser<Field<SelectionOfDeviceRaw>> =
+        parseField "Link Layer User Data"
+        <| parser {
             let! ci = CiField.parse
 
             if not (isSelectionOfDevice ci.Value) then

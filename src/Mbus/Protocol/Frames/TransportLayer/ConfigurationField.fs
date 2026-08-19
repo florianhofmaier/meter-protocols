@@ -120,7 +120,7 @@ module ConfigurationFieldMode0 =
 
     let fromRaw
         (raw: Field<ConfigurationFieldBitsRaw>)
-        : Validation<Field<ConfigurationFieldMode0>> =
+        : Validation<ConfigurationFieldMode0> =
 
         validator {
             let cnf = ConfigurationFieldBitsRaw.value raw.Value
@@ -130,17 +130,15 @@ module ConfigurationFieldMode0 =
                 | Some c -> passed c
                 | None -> failed raw "Invalid ContentOfMessage"
 
-            return
-                raw
-                |> Field.withValue {
-                    HopCounter = BitFields.mapHopCounter cnf
-                    RepeaterAccess = BitFields.mapRepeaterAccess cnf
-                    ContentOfMsg = cc
-                    Mode = Mode.Mode0
-                    Synchronized = BitFields.mapSynchronized cnf
-                    Accessibility = BitFields.mapAccessibility cnf
-                    BidirectionalCommunication = BitFields.mapBidirectionalCommunication cnf
-                }
+            return {
+                HopCounter = BitFields.mapHopCounter cnf
+                RepeaterAccess = BitFields.mapRepeaterAccess cnf
+                ContentOfMsg = cc
+                Mode = Mode.Mode0
+                Synchronized = BitFields.mapSynchronized cnf
+                Accessibility = BitFields.mapAccessibility cnf
+                BidirectionalCommunication = BitFields.mapBidirectionalCommunication cnf
+            }
         }
 
 type ConfigurationFieldMode5 =
@@ -148,7 +146,7 @@ type ConfigurationFieldMode5 =
         HopCounter: bool
         RepeaterAccess: bool
         ContentOfMsg: ContentOfMessage
-        EncryptedLength: EncryptedLengthIndicator
+        NumOfEncryptedBlocks: NumberOfEncryptedBlocks
         Mode: Mode
         Synchronized: bool
         Accessibility: bool
@@ -178,7 +176,7 @@ module ConfigurationFieldMode5 =
                     HopCounter = BitFields.mapHopCounter cnf
                     RepeaterAccess = BitFields.mapRepeaterAccess cnf
                     ContentOfMsg = cc
-                    EncryptedLength = encryptedLength
+                    NumOfEncryptedBlocks = encryptedLength
                     Mode = Mode.Mode5
                     Synchronized = BitFields.mapSynchronized cnf
                     Accessibility = BitFields.mapAccessibility cnf

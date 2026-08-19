@@ -1,8 +1,8 @@
 namespace Metering.Mbus.Protocol.Messages
 
 open Metering.Mbus.Protocol.Frames.ApplicationLayer
-open Metering.Mbus.Protocol.Frames
 open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
+open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus.UserData
 open Metering.Mbus.Protocol.Frames.DeviceIdentification
 open Metering.Mbus.Protocol.Frames.TransportLayer
 open Metering.Mbus.Protocol.Records
@@ -12,11 +12,9 @@ type LinkLayerReset =
         Address: AField
     }
 
-type DeviceSelection = Metering.Mbus.Protocol.Frames.DataLinkLayer.UserData.SelectionOfDevice
-
-type SelectionOfDevice =
+type Selection =
     {
-        Selection: DeviceSelection
+        Selection: SelectionOfDevice
     }
 
 type PrimaryAddress =
@@ -56,11 +54,11 @@ type MeterAddress =
     }
 
 type PrimaryStationMessage =
-    // | LinkLayerReset of LinkLayerReset
-    // | SelectionOfDevice of SelectionOfDevice
-    // | ChangePrimaryAddress of ChangePrimaryAddress
+    | LinkLayerReset of LinkLayerReset
+    | Selection of Selection
+    | ChangePrimaryAddress of ChangePrimaryAddress
     | RequestUserData of RequestUserData
-    // | RequestAlarms of RequestAlarms
+    | RequestAlarms of RequestAlarms
 
 type ResponseUserData =
     {

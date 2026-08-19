@@ -4,10 +4,9 @@ open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
-open Metering.Common.Utility.Result
 open Metering.Mbus.Protocol.Frames
+open Metering.Mbus.Protocol.Frames.ApplicationLayer
 open Metering.Mbus.Protocol.Frames.DeviceIdentification
-open Metering.Mbus.Protocol.Frames.Protection
 open Metering.Mbus.Protocol.Frames.TransportLayer.Security
 
 type TplRaw =
@@ -82,20 +81,19 @@ module TplRaw =
                     return Unprotected originalSource
 
                 | ShortHeader { Header = { Value = ShortHeaderRaw.Mode5Raw _ } } ->
-                    let failures =
-                        fail tpl "Short header with Mode 5 is not supported."
-
-                    return Protected {
+                    return AplDataExpanded.Protected {
                         Bytes = originalSource
-                        Failure = InvalidFrameStructure failures
+                        Error =
+                            failure tpl "Short header with Mode 5 is not supported."
+                            |> Validation
                     }
 
                 | LongHeader { Header = { Value = LongHeaderRaw.Mode5Raw header } } ->
                     match createMode5Ctx resolver header with
-                    | Error err ->
-                        return Protected {
+                    | Error error ->
+                        return AplDataExpanded.Protected {
                             Bytes = originalSource
-                            Failure = EncryptionError err
+                            Error = error
                         }
 
                     | Ok ctx ->
@@ -112,17 +110,22 @@ module Tpl =
 
     let fromRaw
         (raw: Field<TplRaw>)
-        : Validation<Field<Tpl>> =
+        : Validation<Tpl> =
 
         validator {
             match raw.Value with
             | TplRaw.NoneHeader tpl ->
-                let! valid = TplWithNoneHeader.fromRaw tpl
-                return raw |> Field.withValue (Tpl.NoneHeader valid)
+                return!
+                    TplWithNoneHeader.fromRaw tpl
+                    |> map Tpl.NoneHeader
+
             | TplRaw.ShortHeader tpl ->
-                let! valid = TplWithShortHeader.fromRaw tpl
-                return raw |> Field.withValue (Tpl.ShortHeader valid)
+                return!
+                    TplWithShortHeader.fromRaw tpl
+                    |> map Tpl.ShortHeader
+
             | TplRaw.LongHeader tpl ->
-                let! valid = TplWithLongHeader.fromRaw tpl
-                return raw |> Field.withValue (Tpl.LongHeader valid)
+                return!
+                    TplWithLongHeader.fromRaw tpl
+                    |> map Tpl.LongHeader
         }

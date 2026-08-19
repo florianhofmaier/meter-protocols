@@ -137,5 +137,5 @@ module RecordRaw =
 
         | _ ->
             return!
-                failBefore 1 $"invalid DIF: 0x{dif:X2}"
+                fail $"invalid DIF: 0x{dif:X2}"
     }

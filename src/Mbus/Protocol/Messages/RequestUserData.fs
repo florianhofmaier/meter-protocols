@@ -2,9 +2,10 @@ namespace Metering.Mbus.Protocol.Messages
 
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
-open Metering.Mbus.Protocol.Frames
-open Metering.Mbus.Protocol.Frames.DataLinkLayer.UserData
+open Metering.Mbus.Protocol.Frames.DataLinkLayer
 open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
+open Metering.Mbus.Protocol.Frames.WiredMbus
+
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module RequestUserData =

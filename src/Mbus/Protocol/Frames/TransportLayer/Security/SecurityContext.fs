@@ -5,8 +5,8 @@ open Metering.Common.Decoding.Validators.Core
 open Metering.Common.Security.Cryptography
 open Metering.Common.Security.Cryptography.AesCbc
 open Metering.Common.Utility.Result
+open Metering.Mbus.Protocol.Frames.ApplicationLayer
 open Metering.Mbus.Protocol.Frames.DeviceIdentification
-open Metering.Mbus.Protocol.Frames.Protection
 open Metering.Mbus.Protocol.Frames.TransportLayer
 
 type Mode5ExternalContext(key: Secret128) =
@@ -36,7 +36,6 @@ module Mode5Iv =
         destination.Slice(8, 8).Fill(accessNr)
 
         AesCbCIv.create ivBytes
-        |> Result.mapError EncryptionError
 
 type Mode5SecurityContext =
     {
@@ -49,7 +48,7 @@ module Mode5SecurityContext =
     let private validateMeterAddress meterAddress=
         match DeviceIdentification.fromRaw meterAddress with
         | Failed (failures, _) ->
-            Error (InvalidFrameStructure failures)
+            Error failures
 
         | Passed (validAddress, _) ->
             Ok validAddress
@@ -60,17 +59,32 @@ module Mode5SecurityContext =
 
         match resolver.ResolveMode5Context meterAddress with
         | None ->
-            Error (UnprotectionIssue.EncryptionError KeyUnavailable)
+            "No external security context found for meter address."
+            |> EncryptionError.create
+            |> Error
 
         | Some value ->
             Ok value.Key
 
-    let create meterAddress accessNum keyResolver =
+    let create
+        (meterAddress: DeviceIdentificationRaw)
+        (accessNum: AccessNumberRaw)
+        (keyResolver: IExternalSecurityContextResolver)
+        : Result<Mode5SecurityContext, UnprotectionError> =
         result {
             let accessNumber = AccessNumberRaw.value accessNum
-            let! iv = Mode5Iv.create meterAddress accessNumber
-            let! validMeterAddress = validateMeterAddress meterAddress
-            let! key = resolveKey keyResolver validMeterAddress
+
+            let! iv =
+                Mode5Iv.create meterAddress accessNumber
+                |> Result.mapError UnprotectionError.Encryption
+
+            let! validMeterAddress =
+                validateMeterAddress meterAddress
+                |> Result.mapError UnprotectionError.Validation
+
+            let! key =
+                resolveKey keyResolver validMeterAddress
+                |> Result.mapError UnprotectionError.Encryption
 
             return {
                 Key = key

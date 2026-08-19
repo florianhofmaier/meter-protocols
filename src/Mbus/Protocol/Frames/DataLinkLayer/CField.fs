@@ -104,15 +104,11 @@ module CField =
             let! () = validateReservedBit raw
             and! func = PrimaryFunction.validate raw
 
-            return
-                raw
-                |> Field.withValue (
-                    Primary {
-                    Fcb = fcbAcd
-                    Fcv = fcvDfc
-                    Func = func
-                    }
-                )
+            return Primary {
+                Fcb = fcbAcd
+                Fcv = fcvDfc
+                Func = func
+            }
         }
 
     let private validateSecondary raw fcbAcd fcvDfc =
@@ -120,20 +116,16 @@ module CField =
             let! () = validateReservedBit raw
             and! func = SecondaryFunction.validate raw
 
-            return
-                raw
-                |> Field.withValue (
-                    Secondary {
-                    Acd = fcbAcd
-                    Dfc = fcvDfc
-                    Func = func
-                    }
-                )
+            return Secondary {
+                Acd = fcbAcd
+                Dfc = fcvDfc
+                Func = func
+            }
         }
 
     let fromRaw
         (raw: Field<CFieldRaw>)
-        : Validation<Field<CField>> =
+        : Validation<CField> =
 
         validator {
             let b = CFieldRaw.value raw.Value

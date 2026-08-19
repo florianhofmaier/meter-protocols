@@ -4,6 +4,8 @@ open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Common.Decoding.Parsers.FieldParser
+open Metering.Common.Decoding.Validators.Core
+open Metering.Common.Decoding.Validators.Utility
 open Metering.Mbus.Protocol.Frames
 open Metering.Mbus.Protocol.Frames.TransportLayer
 
@@ -69,4 +71,32 @@ module EllRaw =
                 return None
         }
 
+type EllNoEncryption =
+    {
+        Cc: Field<CcField>
+        Acc: Field<AccessNumber>
+    }
 
+type Ell =
+    | NoDllEncryption of EllNoEncryption
+
+module Ell =
+
+    let fromRaw (raw: Field<EllRaw>) : Validation<Ell> =
+
+        validator {
+            match raw.Value with
+            | EllRaw.NoDllEncryption ell ->
+                let! cc =
+                    ell.Cc
+                    |> validateField CcField.fromRaw
+
+                and! acc =
+                    ell.Acc
+                    |> validateField AccessNumber.fromRaw
+
+                return NoDllEncryption {
+                    Cc = cc
+                    Acc = acc
+                }
+        }

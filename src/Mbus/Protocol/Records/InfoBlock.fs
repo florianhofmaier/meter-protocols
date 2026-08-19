@@ -14,14 +14,14 @@ module InfoBlockRaw =
         raw
 
     let firstByte (InfoBlock raw) =
-        raw.Span.[0]
+        raw.Span[0]
 
-    let private maxExtBytes = 10
+    let private maxBytes = 11
 
     let private parseBytes : Parser<ReadOnlyMemory<byte>> =
 
         let rec loop i acc = parser {
-            if i >= maxExtBytes then
+            if i >= maxBytes then
                 return! fail "too many extension bytes in info block (limit 10)"
 
             let! b = parseU8

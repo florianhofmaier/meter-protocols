@@ -5,8 +5,7 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Mbus.Protocol.Frames
 
-type AflRaw =
-    private Afl of Unit
+type AflRaw = Unit
 
 module AflRaw =
 
@@ -23,3 +22,5 @@ module AflRaw =
             | _ ->
                 return None
         }
+
+type Afl = Unit

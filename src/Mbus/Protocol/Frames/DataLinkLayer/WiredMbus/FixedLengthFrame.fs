@@ -5,6 +5,7 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Validators.Core
+open Metering.Common.Decoding.Validators.Utility
 open Metering.Mbus.Protocol.Frames.DataLinkLayer
 
 type FixedLengthUserDataRaw =
@@ -75,8 +76,13 @@ module FixedLengthUserData =
         : Validation<Field<FixedLengthUserData>> =
 
         validator {
-            let! cField = CField.fromRaw raw.Value.CField
-            let! aField = AField.fromRaw raw.Value.AField
+            let! cField =
+                raw.Value.CField
+                |> validateField CField.fromRaw
+
+            let! aField =
+                raw.Value.AField
+                |> validateField AField.fromRaw
 
             return
                 raw
