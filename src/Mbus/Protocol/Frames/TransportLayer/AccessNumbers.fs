@@ -27,8 +27,7 @@ module AccessNumber =
 
     let fromRaw
         (raw: Field<AccessNumberRaw>)
-        : Validation<Field<AccessNumber>> =
+        : Validation<AccessNumber> =
 
-        raw
-        |> Field.withValue (AccessNumber (AccessNumberRaw.value raw.Value))
+        AccessNumber (AccessNumberRaw.value raw.Value)
         |> passed

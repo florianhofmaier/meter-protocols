@@ -39,8 +39,6 @@ module Field =
 
 module FieldParser =
 
-    open Metering.Common.Decoding.Parsers.Core
-
     let parseField
         (name: string)
         (inner: Parser<'a>)

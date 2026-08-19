@@ -1,12 +1,14 @@
 namespace Metering.Mbus.Protocol.Messages
 
 open Metering.Common.Decoding.Validators.Core
+open Metering.Common.Security.Cryptography
 open Metering.Mbus.Protocol.Frames
 open Metering.Mbus.Protocol.Frames.ApplicationLayer
 open Metering.Mbus.Protocol.Frames.DataLinkLayer
-open Metering.Mbus.Protocol.Frames.DataLinkLayer.UserData
 open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
+open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus.UserData
 open Metering.Mbus.Protocol.Frames.TransportLayer
+open Metering.Mbus.Protocol.Frames.WiredMbus
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module ResponseUserData =
@@ -41,34 +43,45 @@ module ResponseUserData =
     let private completeMessage =
         function
         | WiredMbusFrame.VariableLength field ->
-            match field.Value with
-            | FrameVariableLength.CompleteMessage message -> Some message
+            match field.Value.LinkUserData with
+            | LinkUserData.MbusProtocol (MbusProtocolUserData.Complete message) ->
+                Some (field.Value, message.Value)
+            | _ ->
+                None
         | _ ->
             None
 
-    let private responseControl message =
-        match message.Dll.Value.CField.Value with
+    let private isResponseCi =
+        function
+        | Tpl.ShortHeader tpl ->
+            tpl.Ci.Value = CiFieldTplShortHeader.Response
+        | Tpl.LongHeader tpl ->
+            tpl.Ci.Value = CiFieldTplLongHeader.Response
+        | Tpl.NoneHeader _ ->
+            false
+
+    let private responseControl (frame: VariableLengthFrame) =
+        match frame.CField.Value with
         | CField.Secondary secondary
             when secondary.Func.Value = SecondaryFunction.ResponseUserData ->
             Some secondary
         | _ ->
             None
 
-    let private decodedResponse message =
-        match message.Payload with
-        | AplContent.Decoded apl ->
-            match apl.Value with
-            | Apl.RspUdData response -> Some response
-            | _ -> None
-        | AplContent.Protected _ ->
-            None
+    let private unprotectionFailed (protectedApl: AplProtectedRaw) =
+        match protectedApl.Error with
+        | UnprotectionError.Encryption error ->
+            failed
+                protectedApl.Bytes
+                $"RSP_UD application payload could not be unprotected: {EncryptionError.value error}"
+        | UnprotectionError.Validation failures ->
+            Failed (failures, [])
 
     let matchesFrame frame =
         match completeMessage frame with
-        | Some message ->
-            responseControl message |> Option.isSome
-            && decodedResponse message |> Option.isSome
-            && longHeader message.Tpl.Value |> Option.isSome
+        | Some (dll, message) ->
+            responseControl dll |> Option.isSome
+            && isResponseCi message.Tpl.Value
         | None ->
             false
 
@@ -78,51 +91,55 @@ module ResponseUserData =
 
         validator {
             match completeMessage frame with
-            | Some message ->
-                match responseControl message, message.Payload with
-                | Some _, AplContent.Protected _ ->
-                    return!
-                        frameFailed
-                            frame
-                            "RSP_UD application payload is protected and unavailable; decoded response data is required."
-
-                | Some control, AplContent.Decoded apl ->
-                    match apl.Value, longHeader message.Tpl.Value with
-                    | Apl.RspUdData response,
-                      Some (device, accessNumber, status) ->
-                        return {
-                            Acd = control.Acd
-                            Dfc = control.Dfc
-                            Status = status
-                            AccessNumber = accessNumber
-                            MeterAddress = {
-                                IdNum = device.IdNum.Value
-                                Mfr = device.Mfr.Value
-                                Version = device.Version.Value
-                                DevType = device.DevType.Value
-                            }
-                            UserData = RspUdData.records response
-                            MfrData = RspUdData.mfrData response
-                            MoreFollows = RspUdData.moreFollows response
-                        }
-
-                    | Apl.RspUdData _, None ->
-                        return!
-                            frameFailed
-                                frame
-                                "RSP_UD legacy message mapping requires a long TPL header with meter identification."
-
-                    | _ ->
-                        return!
-                            frameFailed
-                                frame
-                                "RSP_UD frame does not contain response user-data APL."
-
-                | None, _ ->
+            | Some (dll, message) ->
+                match responseControl dll with
+                | None ->
                     return!
                         frameFailed
                             frame
                             "frame does not use the secondary RSP_UD control function."
+
+                | Some control ->
+                    if not (isResponseCi message.Tpl.Value) then
+                        return!
+                            frameFailed
+                                frame
+                                "frame does not use an RSP_UD response CI field."
+                    else
+                        match message.Apl with
+                        | Apl.Protected protectedApl ->
+                            return! unprotectionFailed protectedApl
+
+                        | Apl.RspUdData response ->
+                            match longHeader message.Tpl.Value with
+                            | Some (device, accessNumber, status) ->
+                                return {
+                                    Acd = control.Acd
+                                    Dfc = control.Dfc
+                                    Status = status
+                                    AccessNumber = accessNumber
+                                    MeterAddress = {
+                                        IdNum = device.IdNum.Value
+                                        Mfr = device.Mfr.Value
+                                        Version = device.Version.Value
+                                        DevType = device.DevType.Value
+                                    }
+                                    UserData = RspUdData.records response
+                                    MfrData = RspUdData.mfrData response
+                                    MoreFollows = RspUdData.moreFollows response
+                                }
+
+                            | None ->
+                                return!
+                                    frameFailed
+                                        frame
+                                        "RSP_UD legacy message mapping requires a long TPL header with meter identification."
+
+                        | _ ->
+                            return!
+                                frameFailed
+                                    frame
+                                    "RSP_UD frame does not contain response user-data APL."
 
             | None ->
                 return!

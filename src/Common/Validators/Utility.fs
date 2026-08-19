@@ -1,6 +1,16 @@
 module Metering.Common.Decoding.Validators.Utility
 
+open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
+
+let validateField
+    (validate: Field<'raw> -> Validation<'valid>)
+    (raw: Field<'raw>)
+    : Validation<Field<'valid>> =
+
+    validate raw
+    |> map (fun valid ->
+        raw |> Field.withValue valid)
 
 let sequence
     (items: Validation<'a> list)

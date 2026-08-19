@@ -1,10 +1,12 @@
 namespace Metering.Common.Security.Cryptography
 
 type EncryptionError =
-    | KeyUnavailable
-    | InvalidKeyLength of int
-    | InvalidNonceLength of int
-    | InvalidInitializationVectorLength of int
-    | InvalidTagLength of int
-    | AuthenticationFailed
-    | CryptographicFailure of string
+    private EncryptionError of string
+
+module EncryptionError =
+
+    let create message =
+        EncryptionError message
+
+    let value (EncryptionError message) =
+        message

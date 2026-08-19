@@ -50,7 +50,7 @@ module StatusByte =
 
     let fromRaw
         (raw: Field<StatusByteRaw>)
-        : Validation<Field<StatusByte>> =
+        : Validation<StatusByte> =
 
         let value = StatusByteRaw.value raw.Value
 
@@ -70,5 +70,4 @@ module StatusByte =
             Bit6 = bit6
             Bit7 = bit7
         }
-        |> fun value -> Field.withValue value raw
         |> passed

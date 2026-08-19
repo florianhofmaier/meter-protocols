@@ -5,9 +5,9 @@ open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.ParserSource
 open Metering.Common.Decoding.Parsers.Types
+open Metering.Common.Security.Cryptography
 open Metering.Common.Security.Cryptography.AesCbc
 open Metering.Mbus.Protocol.Frames.ApplicationLayer
-open Metering.Mbus.Protocol.Frames.Protection
 open Metering.Mbus.Protocol.Frames.TransportLayer
 
 module Mode5 =
@@ -30,8 +30,8 @@ module Mode5 =
                 parser {
                     return
                         Protected {
-                            Bytes = bytes.Value
-                            Failure = UnprotectionIssue.EncryptionError err
+                            Bytes = bytes
+                            Error = UnprotectionError.Encryption err
                         }
                 }
 
@@ -42,8 +42,10 @@ module Mode5 =
                 parser {
                     return
                         Protected {
-                            Bytes = bytes.Value
-                            Failure = EncryptionVerificationFailed
+                            Bytes = bytes
+                            Error =
+                                EncryptionError.create "Encryption verification failed"
+                                |> UnprotectionError.Encryption
                         }
                 }
 

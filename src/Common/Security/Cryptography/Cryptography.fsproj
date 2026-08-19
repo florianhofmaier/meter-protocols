@@ -14,4 +14,8 @@
         <Compile Include="SensitiveBuffer.fs" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\..\Validators\Validators.fsproj" />
+    </ItemGroup>
+
 </Project>

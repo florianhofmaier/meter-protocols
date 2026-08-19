@@ -1,7 +1,7 @@
 namespace Metering.Mbus.Protocol.Messages
 
 open Metering.Common.Decoding.Validators.Core
-open Metering.Mbus.Protocol.Frames
+open Metering.Mbus.Protocol.Frames.WiredMbus
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Message =

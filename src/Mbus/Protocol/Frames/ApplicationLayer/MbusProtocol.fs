@@ -1,11 +1,11 @@
 namespace Metering.Mbus.Protocol.Frames.ApplicationLayer
 
-open System
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Validators.Core
+
 module ValidationUtility = Metering.Common.Decoding.Validators.Utility
 open Metering.Mbus.Protocol.Records
 

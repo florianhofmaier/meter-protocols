@@ -68,7 +68,7 @@ let private assertMode5 bytes expectedEncryptedLength =
         assertValidatedField bits validated
         validated.Value.Mode |> should equal Mode.Mode5
         validated.Value.ContentOfMsg |> should equal ContentOfMessage.StandardData
-        assertEncryptedLength expectedEncryptedLength validated.Value.EncryptedLength
+        assertEncryptedLength expectedEncryptedLength validated.Value.NumOfEncryptedBlocks
 
     | actual ->
         failwith $"Expected Mode5Raw, got %A{actual}"

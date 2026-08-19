@@ -47,32 +47,30 @@ module AField =
 
     let fromRaw
         (raw: Field<AFieldRaw>)
-        : Validation<Field<AField>> =
+        : Validation<AField> =
 
         let value = AFieldRaw.value raw.Value
 
-        match AFieldRaw.value raw.Value with
+        match value with
             | 0uy ->
-                raw |> Field.withValue Unconfigured |> passed
+                passed Unconfigured
 
             | 251uy ->
-                raw |> Field.withValue RepeaterMgmt |> passed
+                passed RepeaterMgmt
 
             | 253uy ->
-                raw |> Field.withValue SelectionOfDevice |> passed
+                passed SelectionOfDevice
 
             | 254uy ->
-                raw |> Field.withValue Diagnosis |> passed
+                passed Diagnosis
 
             | 255uy ->
-                raw |> Field.withValue Broadcast |> passed
+                passed Broadcast
 
             | _ ->
                 match PrimAdr.tryCreate value with
                 | Some adr ->
-                    raw
-                    |> Field.withValue (Configured adr)
-                    |> passed
+                    passed (Configured adr)
 
                 | None ->
                     failed raw $"Invalid AField value: 0x{value:X2}"

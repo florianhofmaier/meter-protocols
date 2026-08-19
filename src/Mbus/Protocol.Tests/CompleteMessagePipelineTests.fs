@@ -768,7 +768,7 @@ let ``decoded RSP UD is restored through all message adapters`` () =
     | actual -> failwith $"Expected decoded frame, got %A{actual}"
 
 [<Fact>]
-let ``protected RSP UD is not mapped to decoded response data`` () =
+let ``protected RSP UD is identified and reports its unprotection error`` () =
     let bytes =
         frame
             0x08uy
@@ -779,17 +779,51 @@ let ``protected RSP UD is not mapped to decoded response data`` () =
 
     match decode SecurityContext.none bytes with
     | Metering.Common.Decoding.Decoders.Core.Decoded (decodedFrame, _) ->
-        ResponseUserData.matchesFrame decodedFrame |> should be False
+        ResponseUserData.matchesFrame decodedFrame |> should be True
 
         match ResponseUserData.fromFrame decodedFrame with
         | Failed (failures, _) ->
             failures
             |> Failures.toList
             |> List.exists (fun issue ->
-                issue.Message.Contains("protected and unavailable"))
+                issue.Message.Contains("No external security context found for meter address."))
             |> should be True
         | actual -> failwith $"Expected protected-response mapping failure, got %A{actual}"
     | actual -> failwith $"Expected valid protected frame, got %A{actual}"
+
+[<Fact>]
+let ``protected alarm is rejected by CI before its unprotection error`` () =
+    let protectedAlarm =
+        mode5LongHeader 0x05F0us
+        |> Array.mapi (fun index value ->
+            if index = 0 then 0x75uy else value)
+
+    let bytes =
+        frame
+            0x08uy
+            0x01uy
+            (Array.append protectedAlarm (Array.zeroCreate 16))
+
+    match decode SecurityContext.none bytes with
+    | Metering.Common.Decoding.Decoders.Core.Decoded (decodedFrame, _) ->
+        ResponseUserData.matchesFrame decodedFrame |> should be False
+
+        match ResponseUserData.fromFrame decodedFrame with
+        | Failed (failures, _) ->
+            let messages =
+                failures
+                |> Failures.toList
+                |> List.map _.Message
+
+            messages
+            |> List.exists _.Contains("response CI field")
+            |> should be True
+
+            messages
+            |> List.exists _.Contains("No external security context")
+            |> should be False
+        | actual -> failwith $"Expected CI classification failure, got %A{actual}"
+    | actual -> failwith $"Expected valid protected alarm frame, got %A{actual}"
 
 [<Fact>]
 let ``AFL CI is classified as unsupported standard conformant`` () =

@@ -5,8 +5,8 @@ open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
+open Metering.Common.Security.Cryptography
 open Metering.Mbus.Protocol.Frames
-open Metering.Mbus.Protocol.Frames.Protection
 
 type AplParsedRaw =
     | RspUdData of Field<RecordsRaw>
@@ -14,15 +14,19 @@ type AplParsedRaw =
     | SndUdData of Field<RecordsRaw>
     | ApplicationResetOrSelect of Field<ApplicationResetOrSelectRaw>
 
+type UnprotectionError =
+    | Encryption of EncryptionError
+    | Validation of Failures
+
 type AplProtectedRaw =
     {
         Bytes: Field<ReadOnlyMemory<byte>>
-        Failure: UnprotectionIssue
+        Error: UnprotectionError
     }
 
 type AplRaw =
     | Parsed of AplParsedRaw
-    | Protected of AplProtectedRaw
+    | Protected of Field<AplProtectedRaw>
 
 module AplRaw =
 
@@ -67,31 +71,39 @@ type Apl =
     | AlarmBits of Alarms
     | SndUdData of SndUdData
     | ApplicationResetOrSelect of ApplicationResetOrSelect
+    | Protected of AplProtectedRaw
 
 module Apl =
 
     let fromRaw
-        (raw: Field<AplRaw>)
-        : Validation<Field<Apl>> =
+        (raw: AplRaw)
+        : Validation<Apl> =
 
         validator {
-            match raw.Value with
-            | AplRaw.RspUdData records ->
-                let! data = RspUdData.fromRaw records.Value
-                return raw |> Field.withValue (RspUdData data)
+            match raw with
+            | AplRaw.Protected bytes ->
+                return Protected bytes.Value
 
-            | AplRaw.SndUdData records ->
-                let! data = SndUdData.fromRaw records.Value
-                return raw |> Field.withValue (SndUdData data)
+            | Parsed apl ->
+                match apl with
+                | AplParsedRaw.RspUdData data ->
+                    return!
+                        data.Value
+                        |> RspUdData.fromRaw
+                        |> map RspUdData
 
-            | AplRaw.AlarmBits alarms ->
-                return raw |> Field.withValue (AlarmBits alarms.Value)
+                | AplParsedRaw.SndUdData data ->
+                    return!
+                        data.Value
+                        |> SndUdData.fromRaw
+                        |> map SndUdData
 
-            | AplRaw.ApplicationResetOrSelect aplRaw ->
-                let! resetOrSelect = ApplicationResetOrSelect.fromRaw aplRaw
-                return
-                    raw
-                    |> Field.withValue (
-                        ApplicationResetOrSelect resetOrSelect.Value
-                    )
+                | AplParsedRaw.AlarmBits data ->
+                    return AlarmBits data.Value
+
+                | AplParsedRaw.ApplicationResetOrSelect data ->
+                    return!
+                        data
+                        |> ApplicationResetOrSelect.fromRaw
+                        |> map ApplicationResetOrSelect
         }

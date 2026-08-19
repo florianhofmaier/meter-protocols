@@ -5,6 +5,7 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Validators.Core
+open Metering.Common.Decoding.Validators.Utility
 open Metering.Mbus.Protocol.Frames.DataLinkLayer
 open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus.UserData
 open Metering.Mbus.Protocol.Frames.TransportLayer.Security
@@ -13,7 +14,7 @@ type VariableLengthUserDataRaw =
     {
         CField: Field<CFieldRaw>
         AField: Field<AFieldRaw>
-        LinkUserData: Field<LinkUserDataRaw>
+        LinkUserData: LinkUserDataRaw
     }
 
 module VariableLengthUserDataRaw =
@@ -82,28 +83,36 @@ module VariableLengthFrameRaw =
             }
         }
 
-type VariableLengthUserData =
+type VariableLengthFrame =
     {
         CField: Field<CField>
         AField: Field<AField>
-        HigherLayerData: Field<LinkUserData>
+        LinkUserData: LinkUserData
     }
 
-module VariableLengthUserData =
+module VariableLengthFrame =
 
     let fromRaw
         (raw: Field<VariableLengthUserDataRaw>)
-        : Validation<Field<VariableLengthUserData>> =
+        : Validation<Field<VariableLengthFrame>> =
 
         validator {
-            let! cField = CField.fromRaw raw.Value.CField
-            and! aField = AField.fromRaw raw.Value.AField
+            let! cField =
+                raw.Value.CField
+                |> validateField CField.fromRaw
 
-            return
-                raw
-                |> Field.withValue {
-                    CField = cField
-                    AField = aField
-                    HigherLayerData = raw.Value.LinkUserData
-                }
+            and! aField =
+                raw.Value.AField
+                |> validateField AField.fromRaw
+
+            and! linkUserData =
+                LinkUserData.fromRaw raw.Value.LinkUserData
+
+            let frame = {
+                CField = cField
+                AField = aField
+                LinkUserData = linkUserData
+            }
+
+            return Field.withValue frame raw
         }

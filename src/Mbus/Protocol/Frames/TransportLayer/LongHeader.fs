@@ -4,6 +4,7 @@ open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
+open Metering.Common.Decoding.Validators.Utility
 open Metering.Common.Security.Cryptography.AesCbc
 open Metering.Mbus.Protocol.Frames.DeviceIdentification
 
@@ -32,8 +33,10 @@ type LongHeaderMode5Raw =
 module LongHeaderMode5Raw =
 
     let numberOfEncryptedBytes header =
-        let blocks = ConfigurationFieldBitsRaw.value header.Cnf.Value
-        int blocks * AesCbc.blockLength
+        ConfigurationFieldBitsRaw.value header.Cnf.Value
+        |> NumberOfEncryptedBlocks.map
+        |> NumberOfEncryptedBlocks.value
+        |> (*) AesCbc.blockLength
 
 type LongHeaderRaw =
     | Mode0Raw of LongHeaderMode0Raw
@@ -97,22 +100,22 @@ module LongHeader =
 
     let fromRaw
         (raw: Field<LongHeaderRaw>)
-        : Validation<Field<LongHeader>> =
+        : Validation<LongHeader> =
 
         validator {
             match raw.Value with
             | Mode0Raw header ->
                 let! device = DeviceIdentification.fromRawElements header.IdNum header.Mfr header.Version header.DevType
-                and! acc = AccessNumber.fromRaw header.Acc
-                and! status = StatusByte.fromRaw header.Status
-                and! cnf = ConfigurationFieldMode0.fromRaw header.Cnf
-                return raw |> Field.withValue (Mode0 { Device = device; Acc = acc; Status = status; Cnf = cnf })
+                and! acc = validateField AccessNumber.fromRaw header.Acc
+                and! status = validateField StatusByte.fromRaw header.Status
+                and! cnf = validateField ConfigurationFieldMode0.fromRaw header.Cnf
+                return Mode0 { Device = device; Acc = acc; Status = status; Cnf = cnf }
 
             | Mode5Raw header ->
                 let! device = DeviceIdentification.fromRawElements header.IdNum header.Mfr header.Version header.DevType
-                and! acc = AccessNumber.fromRaw header.Acc
-                and! status = StatusByte.fromRaw header.Status
+                and! acc = validateField AccessNumber.fromRaw header.Acc
+                and! status = validateField StatusByte.fromRaw header.Status
                 and! cnf = ConfigurationFieldMode5.fromRaw header.Cnf
-                return raw |> Field.withValue (Mode5 { Device = device; Acc = acc; Status = status; Cnf = cnf })
+                return Mode5 { Device = device; Acc = acc; Status = status; Cnf = cnf }
 
         }

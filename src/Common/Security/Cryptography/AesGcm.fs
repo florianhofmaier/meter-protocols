@@ -9,15 +9,15 @@ let private tagLength =
 let private validateKey (key: ReadOnlyMemory<byte>) =
     match key.Length with
     | 16 | 24 | 32 -> Ok ()
-    | length -> Error (InvalidKeyLength length)
+    | length -> Error (EncryptionError $"Invalid key length: {length}")
 
 let private validateNonce (nonce: ReadOnlyMemory<byte>) =
     if nonce.Length = 12 then Ok ()
-    else Error (InvalidNonceLength nonce.Length)
+    else Error (EncryptionError $"Invalid nonce length: {nonce.Length}")
 
 let private validateTag (tag: ReadOnlyMemory<byte>) =
     if tag.Length = tagLength then Ok ()
-    else Error (InvalidTagLength tag.Length)
+    else Error (EncryptionError $"Invalid tag length: {tag.Length}")
 
 let decrypt
     (key: ReadOnlyMemory<byte>)
@@ -54,11 +54,11 @@ let decrypt
         with
         | :? AuthenticationTagMismatchException ->
             CryptographicOperations.ZeroMemory(plain)
-            Error AuthenticationFailed
+            Error (EncryptionError "AuthenticationFailed")
 
         | :? CryptographicException as ex ->
             CryptographicOperations.ZeroMemory(plain)
-            Error (CryptographicFailure ex.Message)
+            Error (EncryptionError $"Decryption failed: {ex.Message}")
 
 let verifyTag
     (key: ReadOnlyMemory<byte>)
