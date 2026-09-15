@@ -1,0 +1,25 @@
+= DLMS/COSEM Conformance
+
+Status:: Legacy-Implementierung; nicht bewertet
+
+Die bestehende DLMS-Implementierung ist älter als der aktuelle Core. Vorhandener Code ist keine Konformitätsaussage. Die Verifikation beginnt nach der Festlegung des Migrationsumfangs.
+
+[cols="2,3,2,4"]
+|===
+|Spezifikation |Umfang |Status |Noch erforderlicher Nachweis
+
+|DLMS UA 1000-2 Green Book Ed. 12
+|Kommunikationsprofile, ACSE, xDLMS und Security
+|Legacy; nicht bewertet
+|Zuordnung pro Profil und APDU mit automatisierten Tests
+
+|DLMS UA 1000-1 Blue Book Ed. 17 Part 1
+|COSEM-Datenmodell und Interface Classes
+|Legacy; nicht bewertet
+|Zuordnung der Interface Classes und Datentypen mit automatisierten Tests
+
+|DLMS UA 1000-1 Blue Book Ed. 17 Part 2
+|OBIS-Identifikationssystem
+|Legacy; nicht bewertet
+|Zuordnung der Identifikatoren mit automatisierten Tests
+|===

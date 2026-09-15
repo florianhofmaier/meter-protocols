@@ -1,0 +1,57 @@
+= meter-protocols Anforderungen
+:toc:
+:sectnums:
+
+Diese Anforderungen beschreiben das Ziel der Library. Der protokollspezifische Implementierungsstand steht in den Conformance-Dokumenten.
+
+== 1. Capabilities
+
+[cols="1,4"]
+|===
+|ID |Fähigkeit
+
+|CAP-001
+|Eine Nachricht in typisierte Protokollstrukturen dekodieren und alle erreichbaren Teilergebnisse erhalten.
+
+|CAP-002
+|Erkannte Felder mit Bedeutung, Wert oder Diagnostics, Bytebereich und Source analysieren.
+
+|CAP-003
+|Gültige Protokollmodelle als standardkonforme Nachrichten serialisieren.
+
+|CAP-004
+|Protokollspezifischen Schutz mit externem Schlüsselmaterial anwenden und freilegen, ohne die geschützte Darstellung zu verlieren.
+
+|CAP-005
+|Zustandsbehaftete Kommunikation für M-Bus Master/Slave und DLMS/COSEM Client/Server unterstützen.
+
+|CAP-006
+|Eine idiomatische öffentliche C#-API anbieten, während der Protokoll-Core in F# modelliert werden kann.
+|===
+
+== 2. Qualitätsszenarien
+
+[cols="1,3,3"]
+|===
+|ID |Kontext und Auslöser |Erwartete Reaktion
+
+|QS-001
+|Eine erreichbare Struktur enthält mehrere unabhängige semantische Fehler.
+|Die Validierung meldet alle erkannten Fehler in einem Durchlauf und ordnet jeden Fehler seinem Field zu.
+
+|QS-002
+|Eine gültige Nachricht wird analysiert.
+|Jedes erkannte Field bleibt seiner Source und seinem Bytebereich zugeordnet; erfolgreiche Validierung entfernt die Provenienz nicht.
+
+|QS-003
+|Eine untere Stufe ist semantisch ungültig, aber Grenze und Diskriminator des nächsten Payloads sind bekannt.
+|Der Decoder erhält die Diagnostics und dekodiert die erreichbare höhere Stufe weiter.
+
+|QS-004
+|Ein geschützter Payload kann wegen fehlendem Kontext oder fehlgeschlagener Verifikation nicht freigelegt werden.
+|Geschützte Bytes und Envelope bleiben analysierbar; die unterlassene oder fehlgeschlagene Transformation ist explizit und es wird kein innerer Payload erfunden.
+
+|QS-005
+|Eine C#-Anwendung führt einen üblichen Build-, Decode- oder Analysevorgang aus.
+|Ein kompilierendes C#-Beispiel nutzt die öffentliche API, ohne interne F#-Repräsentationstypen konstruieren oder pattern-matchen zu müssen.
+|===

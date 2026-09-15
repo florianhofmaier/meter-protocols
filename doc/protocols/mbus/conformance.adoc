@@ -1,0 +1,35 @@
+= M-Bus Conformance
+
+Status:: Erste Bestandsaufnahme
+
+Dieses Dokument verfolgt die Abdeckung; es ist noch keine Konformitätserklärung. Ein Feature gilt erst als verifiziert, wenn normative Abschnitte und automatisierte Tests zugeordnet sind.
+
+[cols="2,3,2,4"]
+|===
+|Standard |Umfang |Status |Noch erforderlicher Nachweis
+
+|EN 13757-2:2024
+|Drahtgebundene Bitübertragungs- und Datenverbindungsschicht
+|In Entwicklung
+|Abschnittszuordnung sowie Parser- und Serializer-Tests
+
+|EN 13757-3:2025
+|M-Bus-Anwendungsprotokoll und Datensätze
+|In Entwicklung
+|Abschnittszuordnung sowie Parser-, Validator- und Serializer-Tests
+
+|EN 13757-7:2018
+|Transport-, Fragmentierungs- und Security-Dienste
+|Teilweise implementiert
+|Zuordnung pro Modus, Negativ- und Transformationstests
+
+|EN 13757-4:2019
+|Wireless M-Bus
+|Nicht bewertet
+|Scope-Entscheidung und Abschnittszuordnung
+
+|EN 13757-1:2021
+|Allgemeiner Kontext des Datenaustauschs
+|Nicht bewertet
+|Zuordnung der anwendbaren Anforderungen
+|===

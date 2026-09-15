@@ -1,0 +1,105 @@
+= meter-protocols Architektur
+:toc:
+:toclevels: 2
+:sectnums:
+
+== 1. Zweck und Status
+
+`meter-protocols` ist eine .NET-Library für M-Bus und DLMS/COSEM. Capabilities und Qualitätsszenarien stehen in xref:../requirements.adoc[den Anforderungen].
+
+* M-Bus wird auf dem neuen Core entwickelt; Serializer und Tests sind noch nicht vollständig angepasst.
+* DLMS/COSEM verwendet noch den älteren Core und wird später migriert.
+* Die Grenze zwischen internem F#-Modell und öffentlicher C#-API ist noch offen.
+
+== 2. Randbedingungen
+
+* Zielplattform ist .NET; Protokollmodelle und funktionale Kernlogik werden in F# entwickelt.
+* Normative Protokollaussagen müssen gegen den jeweiligen Standard geprüft werden.
+* `Common` darf keine M-Bus- oder DLMS-Typen kennen.
+* Parser und reine Validatoren führen kein I/O aus.
+* `fromRaw` bezeichnet reine Validierung; Operationen mit Decoder-Kontext oder Transformationen heißen `decode`.
+* Externer Security-Kontext enthält keine Felder, die aus der aktuellen Nachricht stammen.
+
+== 3. Lösungsstrategie
+
+* Parser, Validator und Decoder haben getrennte Verantwortlichkeiten.
+* Raw-Modelle erhalten die erkannte Struktur; validierte Modelle drücken geprüfte Invarianten aus.
+* `Field<'T>` und Sources erhalten die Provenienz für erfolgreiche und fehlerhafte Analysen.
+* Jedes Protokoll besitzt seinen eigenen Decode-Graphen und verwendet gemeinsame Core-Primitiven.
+* Protokollalternativen werden durch Discriminated Unions modelliert, wenn sie reale Varianten ausdrücken.
+
+Das noch offene Stufen- und Ergebnismodell beschreibt das xref:proposals/decode-pipeline.adoc[Proposal zur Decode-Pipeline].
+
+== 4. Bausteine
+
+....
+C# API / zustandsbehaftete Komponenten
+                 |
+       +---------+---------+
+       |                   |
+  M-Bus Protocol      DLMS Protocol
+       |                   |
+       +---------+---------+
+                 |
+             Common Core
+....
+
+* `Common`: Bytezugriff, Parser-, Validator- und Decoder-Primitiven, Fields, Sources, Diagnostics und generische Kryptografie.
+* `Mbus.Protocol`: M-Bus-Strukturen, Regeln und protokollspezifische Security-Parameter.
+* `Mbus.Devices` und `MbusDevices`: zustandsbehaftete beziehungsweise C#-orientierte Nutzung.
+* `Dlms.Protocol` und `Dlms.Server`: DLMS/COSEM-Protokoll und Association-/Serverzustand; derzeit noch auf dem älteren Core.
+
+Abhängigkeiten zeigen zum gemeinsamen Core; der Core kennt keine Protokolle.
+
+=== 4.1 M-Bus
+
+M-Bus-Nachrichten können DLL, ELL, NWL, AFL, TPL und APL enthalten. Vorhandensein und Grenzen hängen von Medium, Nachricht und CI-Feldern ab. Normative Grundlage: EN 13757-3:2025, Einleitung, S. 7 sowie EN 13757-7:2018, 5.1 Tabelle 1 und 5.2, S. 14–15.
+
+Implementierungsstand: xref:../protocols/mbus/conformance.adoc[M-Bus Conformance].
+
+=== 4.2 DLMS/COSEM
+
+DLMS/COSEM trennt Kommunikationsprofile von der Application Layer mit ACSE und xDLMS. Normative Grundlage: DLMS UA 1000-2 Green Book Ed. 12, 4.8, S. 53–56 und 9.1.2, S. 195–196.
+
+Implementierungsstand: xref:../protocols/dlms/conformance.adoc[DLMS/COSEM Conformance].
+
+== 5. Verantwortlichkeiten zur Laufzeit
+
+[cols="1,4"]
+|===
+|Komponente |Verantwortung
+
+|Parser
+|Liest eine Source strukturell und erzeugt Fields und Raw-Modelle. Parser dürfen innerhalb derselben strukturellen Stufe weitere Parser kombinieren.
+
+|Validator
+|Prüft ein Raw-Modell rein, sammelt unabhängige semantische Fehler und erzeugt bei Erfolg ein Modell mit stärkeren Invarianten.
+
+|Decoder
+|Orchestriert strukturelle Stufen, Erreichbarkeit, externen Kontext und Transformationen und erhält bereits erzeugte Ergebnisse und Diagnostics.
+|===
+
+== 6. Querschnittliche Konzepte
+
+* *Raw Model*: strukturell erkannte, möglicherweise semantisch ungültige Daten.
+* *Validated Model*: geprüfte Daten mit den für diese Stufe garantierten Invarianten.
+* *Field*: Wert mit stabiler Identität und Position in einer Source.
+* *Source*: ursprüngliche Bytes oder aus einer Transformation abgeleitete Bytes.
+* *Diagnostic*: Problem mit Bezug zu Field beziehungsweise Source und möglichst einer Standardstelle.
+* *Erreichbarkeit*: Aussage, ob eine weitere strukturelle Stufe ausgeführt werden kann.
+* *Externer Security-Kontext*: ausschließlich von außen bereitgestellte Informationen wie Schlüssel oder Schlüsselauswahl.
+
+== 7. Architekturentscheidungen
+
+* xref:decisions/0001-field-provenance-is-part-of-analysis.adoc[ADR 0001: Field-Provenienz ist Teil des Analysemodells]
+* xref:decisions/0002-separate-parser-validator-and-decoder.adoc[ADR 0002: Parser, Validator und Decoder sind getrennt]
+* xref:decisions/0003-separate-external-security-context.adoc[ADR 0003: Externen Security-Kontext von Frame-Daten trennen]
+
+== 8. Risiken und offene Punkte
+
+* konkretes Ergebnis- und Stufenmodell der Decode-Pipeline;
+* Vereinheitlichung der `Field`-Modellierung und Reduktion unnötiger Hüllen und Mapping-Schritte;
+* Grenze zwischen F#-Implementierung und öffentlicher C#-API;
+* Migration von Serializer und Tests auf den neuen Core;
+* spätere Migration von DLMS/COSEM;
+* unvollständige Protokoll- und Security-Abdeckung.

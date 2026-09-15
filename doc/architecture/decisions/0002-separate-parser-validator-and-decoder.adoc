@@ -1,0 +1,26 @@
+= ADR 0002: Parser, Validator und Decoder sind getrennt
+
+Status:: Accepted
+Datum:: 2026-09-14
+
+== Kontext
+
+Ein Parser, der beim ersten semantisch ungültigen Wert abbricht, verliert analysierbare Struktur und verhindert das Sammeln unabhängiger Fehler. Mehrschichtige und geschützte Nachrichten benötigen zusätzlich Kontext, Transformationen und eine explizite Entscheidung über die nächste erreichbare Stufe.
+
+== Entscheidung
+
+*Parser* lesen eine Source und erzeugen Fields und Raw-Modelle. Sie erkennen Byte-Struktur, Feldgrenzen und Protokollvarianten und schlagen fehl, wenn die verlangte Struktur nicht gelesen werden kann. Parser dürfen innerhalb derselben strukturellen Stufe weitere Parser kombinieren, führen aber keine semantische Validierung oder kontextabhängige Transformation aus.
+
+*Validatoren* prüfen anschließend semantische Regeln. `fromRaw` ist rein, liefert `Validation<_>` und kombiniert unabhängige Prüfungen applikativ. Das Raw-Modell bleibt unabhängig vom Validierungsergebnis verfügbar.
+
+*Decoder* orchestrieren Parser und Validatoren über strukturelle Stufen hinweg. Sie bestimmen die nächste erreichbare Stufe, verwenden externen Kontext, führen Transformationen aus, erzeugen Derived Sources und dekodieren freigelegte Payloads. Bereits erzeugte Strukturen und Diagnostics bleiben dabei erhalten.
+
+Die konkrete Form des Decode-Ergebnisses wird durch diese Entscheidung nicht festgelegt.
+
+== Konsequenzen
+
+* Mehrere unabhängige Validierungsfehler können gemeinsam ausgegeben werden.
+* Strukturelle Parse-Fehler und semantische Diagnostics bleiben unterscheidbar.
+* Validierte Modelle dürfen stärkere Invarianten ausdrücken als Raw-Modelle.
+* Kontext und Seiteneffekte gelangen nicht in reine Parser und Validatoren.
+* Ob nach einer ungültigen Stufe weiter dekodiert werden kann, entscheidet der Decoder über ihre Erreichbarkeit.

@@ -1,0 +1,23 @@
+= ADR 0003: Externen Security-Kontext von Frame-Daten trennen
+
+Status:: Accepted
+Datum:: 2026-09-14
+
+== Kontext
+
+Security-Operationen benötigen sowohl externe Geheimnisse als auch Werte aus der aktuellen Nachricht. Würden Frame-Daten durch den Aufrufer erneut bereitgestellt, könnten sie von den tatsächlich empfangenen Werten abweichen.
+
+Beim M-Bus Mode 5 verwendet der Initialisierungsvektor unter anderem Zähleradresse und Access Number aus dem Frame. Normative Grundlage: EN 13757-7:2018, 9.4.4.1, Tabelle 48, S. 62.
+
+== Entscheidung
+
+Der externe Security-Kontext enthält ausschließlich von außen stammende Informationen wie Schlüssel und Material zur Schlüsselauswahl.
+
+Adresse, Access Number, Configuration Field und andere Felder der aktuellen Nachricht werden aus dem dekodierten Frame bezogen. Fehlen erforderliche Frame-Daten, schlägt die Operation explizit fehl oder das Frame-Modell wird erweitert.
+
+== Konsequenzen
+
+* Der Frame bleibt die einzige Quelle für übertragene Protokollwerte.
+* Aufrufer können Frame-Daten nicht versehentlich widersprüchlich duplizieren.
+* Protokollspezifische Logik erstellt aus Frame und externem Kontext den konkreten Kryptografie-Kontext.
+* Generische Kryptografie kennt keine M-Bus- oder DLMS-Felder.

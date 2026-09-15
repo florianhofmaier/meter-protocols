@@ -1,0 +1,21 @@
+= ADR 0001: Field-Provenienz ist Teil des Analysemodells
+
+Status:: Accepted
+Datum:: 2026-09-14
+
+== Kontext
+
+Die Library soll auch gültige Nachrichten auf Byte-Ebene erklären und Diagnostics einem konkreten Feld zuordnen können. Ein reiner Domain-Wert verliert diese Herkunft.
+
+== Entscheidung
+
+`Field<'T>` transportiert Wert, Field-ID und Source-Span durch Parsing und Validierung. Die Metadaten bleiben erhalten, solange dasselbe analysierbare Feld dargestellt wird.
+
+`Field` wird nicht nur im Fehlerfall verwendet und nicht automatisch um jeden Union Case oder Zwischenwert gelegt. Mehrere Hüllen für dasselbe logische Feld und denselben Span sind zu vermeiden.
+
+== Konsequenzen
+
+* Erfolgreiche und fehlerhafte Analysen verwenden dasselbe Provenienzmodell.
+* Diagnostics können über die Field-ID einem Bytebereich zugeordnet werden.
+* Werttransformationen benötigen Field-erhaltende Operationen wie `Field.map`.
+* Die genaue Field-Topologie bleibt Teil des jeweiligen Protokollmodells.

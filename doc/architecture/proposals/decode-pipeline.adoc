@@ -1,0 +1,46 @@
+= Proposal: Stufenweise Decode-Pipeline
+
+Status:: Proposed
+Datum:: 2026-09-15
+
+== Problem
+
+Layer-Parsing, Validierung, Payload-Freilegung und Parsing des freigelegten Payloads erzeugen derzeit gekoppelten Kontrollfluss. Eine strikte Erfolgskette verliert Analyseinformationen; eine Union über alle Kombinationen wird unverhältnismäßig komplex.
+
+== Ziele
+
+* Raw-Strukturen und Diagnostics jeder erreichten Stufe erhalten.
+* Unabhängige Validierungsfehler sammeln.
+* Fortsetzen, wenn die nächste Stufe strukturell erreichbar ist.
+* Fehlgeschlagene oder unterlassene Transformationen darstellen, ohne einen inneren Payload zu erfinden.
+* Gemeinsame Konzepte für M-Bus und DLMS verwenden, ohne eine gemeinsame Schichthierarchie zu erzwingen.
+
+== Vorgeschlagener Ablauf
+
+Für jede protokollspezifische Stufe führt der Decoder Folgendes aus:
+
+. strukturellen Parser ausführen und Raw-Modell erhalten;
+. Raw-Modell validieren und Validierungsergebnis erhalten;
+. Erreichbarkeit der nächsten Stufe bestimmen;
+. erforderliche Transformation mit Decoder-Kontext ausführen;
+. nach erfolgreicher Transformation eine Derived Source erzeugen;
+. Parser und Validator der nächsten Stufe aufrufen.
+
+Ein Validierungsfehler allein blockiert die Fortsetzung nicht. Blockiert wird, wenn erforderliche Grenzen, Diskriminatoren oder Transformationsergebnisse fehlen.
+
+Strukturelle Ergebnisse müssen zwischen gelesen, nicht lesbar und nicht erreicht unterscheiden. Transformationen müssen Erfolg, Fehlschlag und nicht versucht unterscheiden. Die konkreten F#-Typen sind offen.
+
+== Anwendung auf die Protokolle
+
+Bei M-Bus folgt der Graph den Schichten und CI-Feld-Regeln aus EN 13757-7:2018, 5.1 Tabelle 1 und 5.2, S. 14–15. Mode-5-Freilegung und Teilverschlüsselung sind in 9.4.4.1, Tabelle 48, S. 62 beschrieben.
+
+Bei DLMS/COSEM legt ein Kommunikationsprofil ein Application-APDU frei. Ein geschütztes Application-APDU benötigt vor dem inneren xDLMS-APDU eine Transformation. Siehe DLMS UA 1000-2 Green Book Ed. 12, 4.8, S. 53–56 und 9.1.2, S. 195–196.
+
+== Offene Fragen
+
+* genaue Ergebnis- und Transformationstypen;
+* protokollspezifische Form des Decode-Reports;
+* Darstellung teilweise klarer und geschützter Payload-Segmente;
+* Grenze zwischen internen F#-Ergebnissen und öffentlicher C#-API.
+
+Zugehörige Entscheidung: xref:../decisions/0002-separate-parser-validator-and-decoder.adoc[ADR 0002].
