@@ -7,7 +7,7 @@ For any task that touches M-Bus protocol behavior, parsing, writing, validation,
 Local standards are expected at:
 
 ```text
-../doc/local-standards/mbus/
+doc/local-standards/mbus/
 ```
 
 Use the relevant standard part:
@@ -32,6 +32,16 @@ When changing or reviewing protocol code:
 When modeling protocol states, prefer types that make invalid states unrepresentable. Use discriminated unions, single-case wrappers, and specific records where they express protocol alternatives or required data better than broad records with optional members.
 
 Only allow invalid combinations in the model when excluding them would add disproportionate complexity for the current scope. If taking that shortcut, make the tradeoff explicit in the response and keep validation close to the boundary where the invalid state can enter.
+
+## Architecture Documentation
+
+- `doc/requirements.adoc` defines project capabilities and quality scenarios.
+- `doc/architecture/architecture.adoc` describes the currently accepted architecture.
+- `doc/architecture/decisions/` contains accepted decisions and their rationale.
+- `doc/architecture/proposals/` contains open designs; do not treat them as accepted decisions.
+- `doc/protocols/*/conformance.adoc` tracks standard coverage and must link claims to tests before marking them verified.
+
+Keep target requirements, accepted architecture, open proposals, and implementation status distinct. Update the relevant document when a change alters one of them.
 
 ## Project Conventions
 
