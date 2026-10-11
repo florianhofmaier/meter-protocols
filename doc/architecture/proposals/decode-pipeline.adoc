@@ -3,6 +3,8 @@
 Status:: Prototype
 Datum:: 2026-09-15
 
+Ein xref:layer-codecs-analysis-refactor.adoc[Umbauplan für Layer-Codecs und protokollspezifische Analyse] beschreibt die vorgeschlagene Weiterentwicklung dieses Prototyps. Er trennt normale Dekodierung mit Abbruch bei Fehlern von der Analyse mit Erhalt erreichbarer Teilergebnisse. Die folgenden Stufentypen dokumentieren weiterhin den aktuellen Prototyp.
+
 == Problem
 
 Layer-Parsing, Validierung, Payload-Freilegung und Parsing des freigelegten Payloads erzeugen derzeit gekoppelten Kontrollfluss. Eine strikte Erfolgskette verliert Analyseinformationen; eine Union über alle Kombinationen wird unverhältnismäßig komplex.

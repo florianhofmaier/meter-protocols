@@ -30,6 +30,8 @@
 
 Das noch offene Stufen- und Ergebnismodell beschreibt das xref:proposals/decode-pipeline.adoc[Proposal zur Decode-Pipeline].
 
+Der xref:proposals/layer-codecs-analysis-refactor.adoc[offene Umbauplan für Layer-Codecs und protokollspezifische Analyse] schlägt eine getrennte normale Decode-API und Analyse-API vor. Er beschreibt ein Umbauziel; die folgenden Abschnitte bleiben die derzeit akzeptierte Architektur.
+
 == 4. Bausteine
 
 ....
