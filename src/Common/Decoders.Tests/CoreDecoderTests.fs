@@ -154,6 +154,74 @@ let ``validate maps passed and failed validations while preserving notices`` () 
         failwith $"Expected validation failure, got %A{actual}"
 
 [<Fact>]
+let ``decodeStage retains raw data and semantic validation failure`` () =
+    let ctx, _, _ =
+        baseContext ()
+
+    let source =
+        sourceField 3 7 25 [| 0xAAuy |]
+
+    let validateRaw raw =
+        Failed (Failures.single (issue 2 "invalid value"), [])
+
+    match DecoderCore.decodeStage (parseField "byte" parseU8) validateRaw source ctx with
+    | Decoded (Stage.Reached (raw, Failed (failures, [])), []) ->
+        raw.Value |> should equal 0xAAuy
+        raw.Span |> should equal { Source = SourceId.create 7; Offset = 25; Length = 1 }
+        Failures.toList failures |> should equal [ issue 2 "invalid value" ]
+
+    | actual ->
+        failwith $"Expected a reached but invalid stage, got %A{actual}"
+
+[<Fact>]
+let ``decodeStage captures structural failure as stage data`` () =
+    let ctx, _, _ =
+        baseContext ()
+
+    let source =
+        sourceField 3 7 25 [| 0xAAuy |]
+
+    match DecoderCore.decodeStage (take 2) (fun _ -> passed ()) source ctx with
+    | Decoded (Stage.Malformed error, []) ->
+        error.Source |> should equal (SourceId.create 7)
+        error.Pos |> should equal 25
+
+    | actual ->
+        failwith $"Expected a malformed stage, got %A{actual}"
+
+[<Fact>]
+let ``createDerivedSource registers provenance and returns a field on the derived source`` () =
+    let ctx, _, tracer =
+        baseContext ()
+
+    let origin =
+        sourceField 3 7 25 [| 0xAAuy; 0xBBuy |]
+
+    match
+        DecoderCore.createDerivedSource
+            "plain"
+            (SourceTransform.Decrypt "test")
+            true
+            origin
+            (memory [| 0x01uy |])
+            ctx
+    with
+    | Decoded (derived, []) ->
+        derived.Id |> should equal origin.Id
+        derived.Span |> should equal { Source = SourceId.create 900; Offset = 0; Length = 1 }
+        derived.Value.ToArray() |> should equal [| 0x01uy |]
+
+        match tracer.Events with
+        | [ SourceCreated source ] ->
+            source.Origin |> should equal (Some origin.Span)
+            source.Transform |> should equal (SourceTransform.Decrypt "test")
+            source.Sensitive |> should equal true
+        | actual -> failwith $"Expected one source-created trace event, got %A{actual}"
+
+    | actual ->
+        failwith $"Expected a derived source, got %A{actual}"
+
+[<Fact>]
 let ``decoder expression supports return returnFrom and successful bind`` () =
     let ctx, _, _ =
         baseContext ()

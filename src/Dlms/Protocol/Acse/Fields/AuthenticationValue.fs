@@ -29,7 +29,9 @@ module AuthenticationValueRaw =
                 return! Ber.BitString.parseImplicit|>> AuthenticationValueRaw.BitString
 
             | _ ->
-                return! failure $"unexpected authentication-value choice tag {tag}"
+                return!
+                    Metering.Common.Decoding.Parsers.ErrorHandling.fail
+                        $"unexpected authentication-value choice tag {tag}"
         }
 
 type AuthenticationValue =

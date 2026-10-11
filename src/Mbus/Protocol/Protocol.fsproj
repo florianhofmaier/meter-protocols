@@ -75,6 +75,7 @@
         <Compile Include="Frames\DataLinkLayer\WiredMbus\FixedLengthFrame.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\VariableLengthFrame.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\WiredMbusFrame.fs" />
+        <Compile Include="Frames\DecodePipeline.fs" />
         <Compile Include="Messages\MessageTypes.fs" />
         <Compile Include="Messages\RequestUserData.fs" />
         <Compile Include="Messages\PrimaryStationMessage.fs" />

@@ -1,6 +1,6 @@
 # Agent Instructions
 
-## M-Bus Standard
+## M-Bus Standards
 
 For any task that touches M-Bus protocol behavior, parsing, writing, validation, tests, or code review, first consult the local standard PDFs before making or validating claims or code changes.
 
@@ -12,6 +12,7 @@ doc/local-standards/mbus/
 
 Use the relevant standard part:
 
+- IEC 60870-5-2 for FT 1.2 frame formats, data-link transmission procedures, and link user data terminology inherited by wired M-Bus.
 - EN 13757-2 for wired M-Bus data link and physical communication rules.
 - EN 13757-3 for application protocol, CI/TPL/APL, records, and data encoding.
 - EN 13757-4 for wireless M-Bus behavior.

@@ -89,23 +89,10 @@ let private mapAesGcmError
     : Issue =
 
     let message =
-        match error with
-        | EncryptionError.InvalidKeyLength length ->
-            $"invalid AES-GCM key length: {length} byte(s)"
-
-        | EncryptionError.InvalidNonceLength length ->
-            $"invalid AES-GCM nonce length: {length} byte(s)"
-
-        | EncryptionError.InvalidInitializationVectorLength length ->
-            $"invalid initialization vector length: {length} byte(s)"
-
-        | EncryptionError.InvalidTagLength length ->
-            $"invalid AES-GCM authentication tag length: {length} byte(s)"
-
-        | EncryptionError.AuthenticationFailed ->
+        match EncryptionError.value error with
+        | "AuthenticationFailed" ->
             "AES-GCM authentication failed"
-
-        | EncryptionError.CryptographicFailure message ->
+        | message ->
             $"AES-GCM failure: {message}"
 
     issue field message

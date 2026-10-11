@@ -1,8 +1,9 @@
-module Metering.Dlms.Protocol.Xdlms
+namespace Metering.Dlms.Protocol.Xdlms
 
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
+open Metering.Dlms.Protocol
 open Metering.Dlms.Protocol.Xdlms
 
 type InitiateRequestRaw =
