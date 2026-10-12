@@ -31,22 +31,7 @@ module RequestUserData =
             failed field "REQ_UD2 requires a response and does not allow broadcast address 255"
 
     let private frameFailed frame message =
-        let fieldId =
-            match frame with
-            | WiredMbusFrame.SingleCharacter field ->
-                field.Id
-            | WiredMbusFrame.FixedLength field ->
-                field.Id
-            | WiredMbusFrame.VariableLength field ->
-                field.Id
-
-        Failed (
-            Failures.single {
-                FieldId = fieldId
-                Message = message
-            },
-            []
-        )
+        failed (WiredMbusFrame.asField frame) message
 
     let matchesFrame =
         function

@@ -6,6 +6,7 @@ Dieses Dokument verfolgt die Abdeckung; es ist noch keine Konformitätserklärun
 
 [cols="2,3,2,4"]
 |===
+
 |Standard |Umfang |Status |Noch erforderlicher Nachweis
 
 |EN 13757-2:2024
@@ -32,4 +33,63 @@ Dieses Dokument verfolgt die Abdeckung; es ist noch keine Konformitätserklärun
 |Allgemeiner Kontext des Datenaustauschs
 |Nicht bewertet
 |Zuordnung der anwendbaren Anforderungen
+|===
+
+== Gezielt geprüfter DLL-/TPL-Ausschnitt
+
+Die folgenden Nachweise betreffen die implementierten Layer-Codec- und Orchestrierungsverträge. Sie erklären weder die gesamte Schicht noch den vollständigen Nachrichtenablauf für konform.
+
+[cols="3,4,5"]
+|===
+|Grundlage / Vertrag |Geprüfter Ausschnitt |Testbezug
+
+|IEC 60870-5-2 §3.2, S. 14; EN 13757-2, Anhang F.1/F.2, S. 37
+|Vorhandene FT-1.2-Alternativen, DLL-Bytegrenze und rohe Link User Data; unabhängige Prüfungen von wiederholter Länge, Checksumme und Ende
+|`src/Mbus/LayerCodecs.Tests/LayerCodecTests.fs`: `DLL decodes the supported FT 1.2 alternatives without higher-layer parsing`, `DLL collects independent repeated-length checksum and end errors`
+
+|EN 13757-7 §§7.2–7.4, Tabellen 11–12, S. 25–26
+|Vorhandene TPL-Varianten ohne/mit kurzem/langem Header; Anwendungsbytes bleiben erhalten
+|`LayerCodecTests.fs`: `TPL preserves opaque application bytes for every supported header shape`, `TPL reports a truncated present header as a parse error`
+
+|ADR 0004; QS-001/QS-002; exakter Codec-Eingabevertrag
+|Lokale Fehlerakkumulation, stabile Fields/Spans und Ablehnung unvollständiger bzw. überschüssiger Framebytes
+|`LayerCodecTests.fs`: `fixed-length DLL collects failures for both unsupported C and A alternatives`, `DLL validation retains frame and payload provenance`, `DLL decode rejects truncated or trailing input`
+
+|ADR 0004; EN 13757-7 §7.6, Tabelle 20 sowie §9.4.4, S. 34–35 und 62–63 zur Trennung von TPL-Struktur und geschütztem Inhalt
+|TPL verarbeitet Schutzmetadaten und erhält Bytes; keine Freilegung, kein Schlüsselbedarf und keine Derived Source durch den TPL-Codec
+|`LayerCodecTests.fs`: `TPL mode five decode retains ciphertext without requiring a key or decrypting`. Kein neuer Nachweis über vollständige Mode-5-Conformance.
+
+|ADR 0004; QS-006; EN 13757-3 §7.1, S. 39
+|Zusammengesetzter wired Decoder verwendet das eine DLL-Modell, stoppt vor höherer Verarbeitung bei DLL-Fehlern und erhält DLL-Bytes neben dem separat dekodierten Application Reset
+|`LayerCodecTests.fs`: `wired decoder stops after invalid DLL before parsing malformed higher-layer bytes`, `wired decoder retains DLL bytes alongside separately decoded higher layers`. Nachweis für die DLL-Grenze, keine vollständige Prüfung sämtlicher Decoder-Abbruchpfade.
+
+|EN 13757-2, Anhang F.2, S. 37; EN 13757-7 §7.4, Tabelle 12; EN 13757-3 §6.3.3, Tabelle 6; ADR 0004 / QS-002
+|Öffentlicher `MbusDecoder.decode`-Einstieg für vorhandene RequestUserData-/ResponseUserData-Zuordnungen mit Frame-Provenienz; gültige Frames ohne vorhandene Message-Zuordnung werden ausdrücklich abgewiesen
+|`LayerCodecTests.fs`: `orchestrator returns a request with the parsed frame provenance`, `orchestrator returns response user data after higher-layer processing`, `orchestrator rejects a valid frame without an implemented message mapping`. Kein Nachweis für weitere nur deklarierte Message-Varianten.
+|ADR 0004 / QS-006
+|`Message` führt ausschließlich die fachliche Zuordnung aus; ungültige TPL-Daten verhindern Schlüsselabfrage und APL-Verarbeitung
+|`LayerCodecTests.fs`: `final Message codec only validates the assembled frame`, `orchestrator stops on invalid TPL before key lookup or APL parsing`
+
+|EN 13757-4 §13.2.1–13.2.2, Tabellen 43–44, S. 49–50; EN 13757-7 §5.2
+|CI-abhängige optionale ELL-Struktur mit folgenden Bytes; vorhandene beschädigte ELL und unbekannte CI werden nicht als Abwesenheit behandelt
+|`LayerCodecTests.fs`: `orchestrator represents optional ELL presence and retains the following layer`, `malformed present ELL or unknown CI cannot become absent`. Kein Nachweis zulässiger Layerkombinationen je wired/wireless Kommunikationsprofil.
+
+|EN 13757-7 §7.6.5, Tabelle 20, §7.7.4, Tabelle 31 sowie §9.4.4, Tabelle 48, S. 34–35, 41 und 62–63
+|Mode-5-Blockgrenze, Teilverschlüsselung mit klarem Rest, vollständiger verschlüsselter Inhalt bei gesetzten N-Bits, IV aus validierten Adress-/Access-Feldern, Verifikation und Source-Zuordnung
+|`LayerCodecTests.fs`: `invalid encryption layout fails before key lookup`, `Protection preserves clear suffix and APL is parsed from the derived source`, `failed decryption verification prevents APL and derived source creation`, `zero encrypted blocks preserve the original source without key lookup`, `missing key is a Protection failure and prevents APL parsing`. Kein vollständiger Mode-5-Conformance-Nachweis.
+|EN 13757-7 §8.4, Tabelle 44, S. 50–51; ADR 0004
+|Vorhandener Geräteauswahlpfad wird direkt vom Orchestrator aufgerufen; NWL/AFL bleiben ausdrücklich nicht implementiert
+|`LayerCodecTests.fs`: `orchestrator routes selection directly to its codec without TPL or APL`, `orchestrator rejects unsupported NWL and AFL without reaching TPL`, `ELL codec retains opaque following bytes without calling TPL`. Keine zusätzliche Abdeckung sämtlicher Geräteauswahlregeln.
+|EN 13757-7 §§5.1–5.2, Tabellen 1–2; EN 13757-4 §13.2.2, Tabelle 44, S. 50; ADR 0004
+|Optionale Decode-Einstiege erkennen ihre eigene Präsenz, erhalten bei Abwesenheit das ursprüngliche Byte-Field und liefern bei ELL-Präsenz validierte Daten mit den folgenden Bytes; Fehler bleiben Fehler
+|`LayerCodecTests.fs`: `optional layer codecs preserve the original field when absent`, `optional ELL decode returns validated fields and the following byte field`, `optional ELL decode propagates malformed unsupported and unknown CI errors`, `optional NWL decode propagates unsupported and unknown CI errors`, `orchestrator invokes optional NWL parsing after a present ELL`, `optional AFL decode propagates unsupported and unknown CI errors`, `orchestrator invokes optional AFL parsing after a present ELL and absent NWL`. NWL und AFL bleiben nicht implementiert; kein Nachweis zusätzlicher Layerkombinationen oder Kommunikationsprofile.
+|ADR 0004; EN 13757-3 §7.1, S. 39; EN 13757-4 §13.2.2, Tabelle 44, S. 50
+|`HigherLayersDecoder` verarbeitet abgegrenzte Link User Data eigenständig, erhält deren Provenienz und liefert Header und unverarbeiteten Inhalt; Protection, APL, DLL und Message-Zuordnung gehören zum äußeren Ablauf
+|`LayerCodecTests.fs`: `higher layers decoder returns headers and plain content without APL processing` mit und ohne ELL. Bestehende Abbruch-, Protection- und Orchestrierungstests verwenden den Unterdecoder über `MbusDecoder`. Keine neue AFL-/Reassembly-Unterstützung.
+|EN 13757-7 §7.6, Tabelle 20, §7.6.5 und §9.4.4, Tabelle 48; ADR 0004
+|Higher-Layers-Rückgabe erhält ELL/NWL/AFL/TPL, opaque Klartextbytes oder abgegrenzte Mode-5-Bereiche und frame-derived Kontext; keine Schlüssel, Entschlüsselung oder APL-Verarbeitung. Bereiche erhalten eigene Field-Identitäten und Spans.
+|`LayerCodecTests.fs`: `higher layers decoder preserves opaque plain APL bytes`, `higher layers decoder returns Mode 5 ranges and frame context without decrypting` für Teilverschlüsselung, vollständigen Inhalt und null verschlüsselte Blöcke. Bestehende Protection-/Message-Tests prüfen den anschließenden normalen Ablauf.
+|ADR 0004; EN 13757-7 §5.2, S. 15–16 und §§7.5.1, 7.7.1, Tabellen 21–22; EN 13757-4 §13.2.2, Tabelle 44, S. 50
+|Gemeinsames strukturelles Header-Parsing vor reiner applikativer Validierung; Provenienz bleibt erhalten, unabhängige TPL-Fehler werden gesammelt und abwesende NWL/AFL verbrauchen keine folgende CI
+|`LayerCodecTests.fs`: `grouped higher-layer parsing preserves raw fields and validation preserves their provenance` mit und ohne ELL, `grouped header parsing precedes pure validation and collects independent TPL failures`, `optional NWL and AFL parsers leave the reader at the following CI when absent`. Keine Erweiterung der NWL-/AFL-Unterstützung oder Profil-Konformität.
 |===

@@ -1,38 +1,22 @@
 namespace Metering.Mbus.Protocol.Frames.ApplicationLayer
 
-open System
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
-open Metering.Common.Security.Cryptography
 open Metering.Mbus.Protocol.Frames
 
-type AplParsedRaw =
+type AplRaw =
     | RspUdData of Field<RecordsRaw>
     | AlarmBits of Field<Alarms>
     | SndUdData of Field<RecordsRaw>
     | ApplicationResetOrSelect of Field<ApplicationResetOrSelectRaw>
 
-type UnprotectionError =
-    | Encryption of EncryptionError
-    | Validation of Failures
-
-type AplProtectedRaw =
-    {
-        Bytes: Field<ReadOnlyMemory<byte>>
-        Error: UnprotectionError
-    }
-
-type AplRaw =
-    | Parsed of AplParsedRaw
-    | Protected of Field<AplProtectedRaw>
-
 module AplRaw =
 
     let parse
         (ci : CiFieldTpl)
-        : Parser<Field<AplParsedRaw>> =
+        : Parser<Field<AplRaw>> =
 
         parseField "APL"
         <| parser {
@@ -71,7 +55,6 @@ type Apl =
     | AlarmBits of Alarms
     | SndUdData of SndUdData
     | ApplicationResetOrSelect of ApplicationResetOrSelect
-    | Protected of AplProtectedRaw
 
 module Apl =
 
@@ -81,29 +64,12 @@ module Apl =
 
         validator {
             match raw with
-            | AplRaw.Protected bytes ->
-                return Protected bytes.Value
-
-            | Parsed apl ->
-                match apl with
-                | AplParsedRaw.RspUdData data ->
-                    return!
-                        data.Value
-                        |> RspUdData.fromRaw
-                        |> map RspUdData
-
-                | AplParsedRaw.SndUdData data ->
-                    return!
-                        data.Value
-                        |> SndUdData.fromRaw
-                        |> map SndUdData
-
-                | AplParsedRaw.AlarmBits data ->
-                    return AlarmBits data.Value
-
-                | AplParsedRaw.ApplicationResetOrSelect data ->
-                    return!
-                        data
-                        |> ApplicationResetOrSelect.fromRaw
-                        |> map ApplicationResetOrSelect
+            | AplRaw.RspUdData data ->
+                return! data.Value |> RspUdData.fromRaw |> map RspUdData
+            | AplRaw.SndUdData data ->
+                return! data.Value |> SndUdData.fromRaw |> map SndUdData
+            | AplRaw.AlarmBits data ->
+                return AlarmBits data.Value
+            | AplRaw.ApplicationResetOrSelect data ->
+                return! data |> ApplicationResetOrSelect.fromRaw |> map ApplicationResetOrSelect
         }

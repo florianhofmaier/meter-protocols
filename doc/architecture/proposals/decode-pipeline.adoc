@@ -1,9 +1,9 @@
 = Proposal: Stufenweise Decode-Pipeline
 
-Status:: Prototype
+Status:: Historischer M-Bus-Versuch; DLMS-Pilot noch vorhanden
 Datum:: 2026-09-15
 
-Ein xref:layer-codecs-analysis-refactor.adoc[Umbauplan für Layer-Codecs und protokollspezifische Analyse] beschreibt die vorgeschlagene Weiterentwicklung dieses Prototyps. Er trennt normale Dekodierung mit Abbruch bei Fehlern von der Analyse mit Erhalt erreichbarer Teilergebnisse. Die folgenden Stufentypen dokumentieren weiterhin den aktuellen Prototyp.
+Ein xref:layer-codecs-analysis-refactor.adoc[Entwicklungsplan für Layer-Codecs und protokollspezifische Analyse] beschreibt die vorgeschlagene Weiterentwicklung dieses Prototyps. Er trennt normale Dekodierung mit Abbruch bei Fehlern von der Analyse mit Erhalt erreichbarer Teilergebnisse. Der bisherige Prototyp ist keine zu bewahrende Verhaltensbaseline; geprüft werden die benötigten Zielverträge und Protokollregeln. Der M-Bus-DecodePipeline-Versuch und seine Versuchstests sind auf ausdrücklichen Wunsch entfernt; die benötigten DLL-/TPL-Vertragstests stehen in `LayerCodecs.Tests`. Die folgenden M-Bus-Beschreibungen sind historisch. Der DLMS-Pilot besteht noch.
 
 == Problem
 
@@ -32,12 +32,12 @@ Ein Validierungsfehler allein blockiert die Fortsetzung nicht. Blockiert wird, w
 
 Strukturelle Ergebnisse müssen zwischen gelesen, nicht lesbar und nicht erreicht unterscheiden. Transformationen müssen Erfolg, Fehlschlag und nicht versucht unterscheiden. Die folgenden F#-Typen werden im Pilot erprobt; ihre endgültige Übernahme ist noch offen.
 
-Der M-Bus-Pilot verwendet dafür zwei gemeinsame Typen:
+Der verworfene M-Bus-Pilot verwendete dafür zwei gemeinsame Typen:
 
 * `Stage<'raw, 'valid, 'notReached> = Reached of 'raw * Validation<'valid> | Malformed of ParserError | NotReached of 'notReached`
 * `Transformation<'value, 'failure, 'notAttempted> = Succeeded of 'value | Failed of 'failure | NotAttempted of 'notAttempted`
 
-Der erste vertikale Schnitt ist ein wired FT-1.2-Frame mit `DLL -> Higher Layers -> Payload Exposure -> APL`. Die protokollspezifischen Typaliasnamen halten den Decode-Report lesbar. Validierungsfehler aller erreichten Stufen können in Decode-Reihenfolge gesammelt werden.
+Der M-Bus-Versuch verwendete als ersten vertikalen Schnitt einen wired FT-1.2-Frame mit `DLL -> Higher Layers -> Payload Exposure -> APL`. Die protokollspezifischen Typaliasnamen halten den Decode-Report lesbar. Validierungsfehler aller erreichten Stufen können in Decode-Reihenfolge gesammelt werden.
 
 Fehlender externer Security-Kontext wird als `NotAttempted` modelliert; ein ausgeführter, aber kryptografisch oder durch Verifikation fehlgeschlagener Versuch als `Failed`. Beide Zustände erhalten die geschützten Payload-Segmente.
 

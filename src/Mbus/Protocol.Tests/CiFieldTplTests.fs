@@ -36,7 +36,7 @@ let ``CI 0x52 remains typed as lower-layer device selection`` () =
 let ``CI 0x57 parses as application reset or select with short TPL header`` () =
     let raw =
         parseExactly
-            TplRaw.parse
+            TplCodec.parse
             [| 0x57uy; 0x08uy; 0x00uy; 0x00uy; 0x00uy |]
 
     match raw.Value with

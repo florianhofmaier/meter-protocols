@@ -4,12 +4,11 @@
         <TargetFramework>net10.0</TargetFramework>
         <IsPackable>false</IsPackable>
         <GenerateProgramFile>false</GenerateProgramFile>
-        <RootNamespace>Metering.Mbus.DecodePipeline.Tests</RootNamespace>
+        <RootNamespace>Metering.Mbus.LayerCodecs.Tests</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="TestSupport.fs" />
-        <Compile Include="WiredVariableFrameDecodeTests.fs" />
+        <Compile Include="LayerCodecTests.fs" />
     </ItemGroup>
 
     <ItemGroup>
@@ -24,7 +23,6 @@
         <ProjectReference Include="..\..\Common\ByteReaders\ByteReaders.csproj" />
         <ProjectReference Include="..\..\Common\Decoders\Decoders.fsproj" />
         <ProjectReference Include="..\..\Common\Parsers\Parsers.fsproj" />
-        <ProjectReference Include="..\..\Common\Security\Cryptography\Cryptography.fsproj" />
         <ProjectReference Include="..\..\Common\Validators\Validators.fsproj" />
         <ProjectReference Include="..\Protocol\Protocol.fsproj" />
     </ItemGroup>

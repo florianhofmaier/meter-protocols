@@ -3,6 +3,8 @@
 Status:: Accepted
 Datum:: 2026-09-14
 
+Ergänzung:: xref:0004-layer-codecs-and-protocol-analyzers.adoc[ADR 0004] ordnet Analysefortsetzung und Erhalt aller Teilergebnisse einem eigenen Analyzer zu; die ursprüngliche Entscheidung unten bleibt als Historie erhalten.
+
 == Kontext
 
 Ein Parser, der beim ersten semantisch ungültigen Wert abbricht, verliert analysierbare Struktur und verhindert das Sammeln unabhängiger Fehler. Mehrschichtige und geschützte Nachrichten benötigen zusätzlich Kontext, Transformationen und eine explizite Entscheidung über die nächste erreichbare Stufe.

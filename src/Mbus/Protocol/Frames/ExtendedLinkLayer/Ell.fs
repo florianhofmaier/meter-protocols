@@ -1,7 +1,9 @@
 namespace Metering.Mbus.Protocol.Frames.ExtendedLinkLayer
 
+open System
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
+open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
@@ -14,6 +16,7 @@ type EllNoEncryptionRaw =
         Ci: Field<CiField>
         Cc: Field<CcFieldRaw>
         Acc: Field<AccessNumberRaw>
+        Payload: Field<ReadOnlyMemory<byte>>
     }
 
 type EllRaw =
@@ -25,11 +28,13 @@ module EllNoEncryptionRaw =
         parser {
             let! cc = CcFieldRaw.parse
             let! acc = AccessNumberRaw.parse
+            let! payload = parseField "ELL payload" takeAll
             return
                 {
                     Ci = ci
                     Cc = cc
                     Acc = acc
+                    Payload = payload
                 }
         }
 
@@ -73,8 +78,10 @@ module EllRaw =
 
 type EllNoEncryption =
     {
+        Ci: Field<CiField>
         Cc: Field<CcField>
         Acc: Field<AccessNumber>
+        Payload: Field<ReadOnlyMemory<byte>>
     }
 
 type Ell =
@@ -96,7 +103,9 @@ module Ell =
                     |> validateField AccessNumber.fromRaw
 
                 return NoDllEncryption {
+                    Ci = ell.Ci
                     Cc = cc
                     Acc = acc
+                    Payload = ell.Payload
                 }
         }

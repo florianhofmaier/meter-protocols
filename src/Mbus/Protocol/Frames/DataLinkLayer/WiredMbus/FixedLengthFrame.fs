@@ -80,7 +80,7 @@ module FixedLengthUserData =
                 raw.Value.CField
                 |> validateField CField.fromRaw
 
-            let! aField =
+            and! aField =
                 raw.Value.AField
                 |> validateField AField.fromRaw
 

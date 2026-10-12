@@ -5,7 +5,6 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
 open Metering.Common.Decoding.Validators.Utility
-open Metering.Common.Security.Cryptography.AesCbc
 open Metering.Mbus.Protocol.Frames.DeviceIdentification
 
 type LongHeaderMode0Raw =
@@ -30,26 +29,11 @@ type LongHeaderMode5Raw =
         Cnf: Field<ConfigurationFieldBitsRaw>
     }
 
-module LongHeaderMode5Raw =
-
-    let numberOfEncryptedBytes header =
-        ConfigurationFieldBitsRaw.value header.Cnf.Value
-        |> NumberOfEncryptedBlocks.map
-        |> NumberOfEncryptedBlocks.value
-        |> (*) AesCbc.blockLength
-
 type LongHeaderRaw =
     | Mode0Raw of LongHeaderMode0Raw
     | Mode5Raw of LongHeaderMode5Raw
 
 module LongHeaderRaw =
-
-    let numOfEncryptedBytes header =
-        match header with
-        | Mode0Raw _ ->
-            0
-        | Mode5Raw mode5 ->
-            LongHeaderMode5Raw.numberOfEncryptedBytes mode5
 
     let parse : Parser<Field<LongHeaderRaw>> =
         parseField "Long TPL Header"

@@ -55,7 +55,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Parsers.Tests", "Common\Par
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Protocol.Tests", "Mbus\Protocol.Tests\Protocol.Tests.fsproj", "{AB683B36-9AAB-40C4-B738-E97B67CDD23C}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "DecodePipeline.Tests", "Mbus\DecodePipeline.Tests\DecodePipeline.Tests.fsproj", "{7C4EB23E-5E7E-4F77-8E9B-A4A2BC8F8E20}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "LayerCodecs.Tests", "Mbus\LayerCodecs.Tests\LayerCodecs.Tests.fsproj", "{7C4EB23E-5E7E-4F77-8E9B-A4A2BC8F8E20}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ByteReaders.Tests", "Common\ByteReaders.Tests\ByteReaders.Tests.csproj", "{56886508-9CCA-4449-9F05-9B726DD9B051}"
 EndProject

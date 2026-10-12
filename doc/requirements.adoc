@@ -11,10 +11,10 @@ Diese Anforderungen beschreiben das Ziel der Library. Der protokollspezifische I
 |ID |Fähigkeit
 
 |CAP-001
-|Eine Nachricht in typisierte Protokollstrukturen dekodieren und alle erreichbaren Teilergebnisse erhalten.
+|Eine Nachricht in typisierte gültige Protokollstrukturen dekodieren; normales Dekodieren bricht beim ersten fehlgeschlagenen Verarbeitungsschritt ab.
 
 |CAP-002
-|Erkannte Felder mit Bedeutung, Wert oder Diagnostics, Bytebereich und Source analysieren.
+|Alle erreichbaren Teilergebnisse einer Nachricht analysieren und erkannte Felder mit Bedeutung, Wert oder Diagnostics, Bytebereich und Source erhalten. Analysefortsetzung wird protokollspezifisch anhand der benötigten Voraussetzungen bestimmt.
 
 |CAP-003
 |Gültige Protokollmodelle als standardkonforme Nachrichten serialisieren.
@@ -45,13 +45,17 @@ Diese Anforderungen beschreiben das Ziel der Library. Der protokollspezifische I
 
 |QS-003
 |Eine untere Stufe ist semantisch ungültig, aber Grenze und Diskriminator des nächsten Payloads sind bekannt.
-|Der Decoder erhält die Diagnostics und dekodiert die erreichbare höhere Stufe weiter.
+|Der Analyzer erhält die Diagnostics und verarbeitet die höhere Stufe weiter, sofern auch deren weitere konkrete Voraussetzungen erfüllt sind. Der normale Decoder bricht nach der fehlgeschlagenen Validierungsstufe ab. Eine gemeinsame strukturelle Stufe darf mehrere Header vor ihrer anschließenden Gesamtvalidierung lesen.
 
 |QS-004
 |Ein geschützter Payload kann wegen fehlendem Kontext oder fehlgeschlagener Verifikation nicht freigelegt werden.
-|Geschützte Bytes und Envelope bleiben analysierbar; die unterlassene oder fehlgeschlagene Transformation ist explizit und es wird kein innerer Payload erfunden.
+|Der Analyzer erhält geschützte Bytes und Envelope; die unterlassene oder fehlgeschlagene Transformation ist explizit und es wird kein innerer Payload erfunden. Der normale Decoder liefert den Fehler der Operation.
 
 |QS-005
 |Eine C#-Anwendung führt einen üblichen Build-, Decode- oder Analysevorgang aus.
 |Ein kompilierendes C#-Beispiel nutzt die öffentliche API, ohne interne F#-Repräsentationstypen konstruieren oder pattern-matchen zu müssen.
+
+|QS-006
+|Ein Verarbeitungsschritt eines normalen Nachrichtendecoders schlägt fehl.
+|Nach dem erkannten Fehler wird keine abhängige Operation ausgeführt. Ein Headerblock darf zuerst vollständig strukturell gelesen und anschließend applikativ validiert werden; bei einem Parse-Fehler entfällt dessen Gesamtvalidierung, bei einem Validierungsfehler die folgende Protection- und APL-Verarbeitung. Der Fehler enthält die akkumulierten lokalen Diagnostics und die zuvor angefallenen Notices; ein Analysebericht wird nicht konstruiert.
 |===

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
@@ -41,6 +41,7 @@
         <Compile Include="Frames\ApplicationLayer\AlarmProtocol.fs" />
         <Compile Include="Frames\ApplicationLayer\ApplicationResetOrSelect.fs" />
         <Compile Include="Frames\ApplicationLayer\Apl.fs" />
+        <Compile Include="Frames\ApplicationLayer\AplCodec.fs" />
         <Compile Include="Frames\TransportLayer\AccessNumbers.fs" />
         <Compile Include="Frames\TransportLayer\StatusByte.fs" />
         <Compile Include="Frames\TransportLayer\ContentOfMessage.fs" />
@@ -51,37 +52,41 @@
         <Compile Include="Frames\TransportLayer\ShortHeader.fs" />
         <Compile Include="Frames\TransportLayer\LongHeader.fs" />
         <Compile Include="Frames\TransportLayer\TplHeader.fs" />
-        <Compile Include="Frames\TransportLayer\AplData.fs" />
         <Compile Include="Frames\TransportLayer\Security\SecurityContext.fs" />
         <Compile Include="Frames\TransportLayer\Security\Mode5.fs" />
         <Compile Include="Frames\TransportLayer\TplWithNoneHeader.fs" />
         <Compile Include="Frames\TransportLayer\TplWithShortHeader.fs" />
         <Compile Include="Frames\TransportLayer\TplWithLongHeader.fs" />
         <Compile Include="Frames\TransportLayer\Tpl.fs" />
-        <Compile Include="Frames\AuthenticationAndFragmentationLayer\Afl.fs"/>
-        <Compile Include="Frames\NetworkLayer\Nwl.fs"/>
+        <Compile Include="Frames\TransportLayer\TplCodec.fs" />
+        <Compile Include="Frames\TransportLayer\Security\MbusProtection.fs" />
         <Compile Include="Frames\ExtendedLinkLayer\CcField.fs"/>
         <Compile Include="Frames\ExtendedLinkLayer\Ell.fs" />
+        <Compile Include="Frames\ExtendedLinkLayer\EllCodec.fs" />
+        <Compile Include="Frames\NetworkLayer\NwlCodec.fs" />
+        <Compile Include="Frames\AuthenticationAndFragmentationLayer\AflCodec.fs" />
+        <Compile Include="Frames\HigherLayers.fs" />
         <Compile Include="Frames\DataLinkLayer\CField.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\UserData\SelectionOfDevice.fs" />
-        <Compile Include="Frames\DataLinkLayer\WiredMbus\UserData\MbusProtocolUserData.fs" />
-        <Compile Include="Frames\DataLinkLayer\WiredMbus\UserData\LinkUserData.fs" />
+        <Compile Include="Frames\MbusProtocolUserData.fs" />
+        <Compile Include="Frames\LinkUserData.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\StartField.fs" />
-        <Compile Include="Frames\DataLinkLayer\WiredMbus\LField.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\AField.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\Crc.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\EndField.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\SingleCharacterFrame.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\FixedLengthFrame.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\VariableLengthFrame.fs" />
-        <Compile Include="Frames\DataLinkLayer\WiredMbus\WiredMbusFrame.fs" />
-        <Compile Include="Frames\DecodePipeline.fs" />
+        <Compile Include="Frames\DataLinkLayer\WiredMbus\DllCodec.fs" />
+        <Compile Include="Frames\WiredMbusFrame.fs" />
+        <Compile Include="HigherLayersDecoder.fs" />
         <Compile Include="Messages\MessageTypes.fs" />
         <Compile Include="Messages\RequestUserData.fs" />
         <Compile Include="Messages\PrimaryStationMessage.fs" />
         <Compile Include="Messages\ResponseUserData.fs" />
         <Compile Include="Messages\SecondaryStationMessage.fs" />
         <Compile Include="Messages\Message.fs" />
+        <Compile Include="MbusDecoder.fs" />
     </ItemGroup>
 
     <ItemGroup>

@@ -7,22 +7,7 @@ open Metering.Mbus.Protocol.Frames.WiredMbus
 module PrimaryStationMessage =
 
     let private frameFailed frame message =
-        let fieldId =
-            match frame with
-            | WiredMbusFrame.SingleCharacter field ->
-                field.Id
-            | WiredMbusFrame.FixedLength field ->
-                field.Id
-            | WiredMbusFrame.VariableLength field ->
-                field.Id
-
-        Failed (
-            Failures.single {
-                FieldId = fieldId
-                Message = message
-            },
-            []
-        )
+        failed (WiredMbusFrame.asField frame) message
 
     let matchesFrame (frame: WiredMbusFrame) : bool =
         RequestUserData.matchesFrame frame

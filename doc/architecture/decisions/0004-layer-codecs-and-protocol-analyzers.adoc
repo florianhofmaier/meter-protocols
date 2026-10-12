@@ -1,0 +1,33 @@
+= ADR 0004: Layer-Codecs und protokollspezifische Analyzer
+
+Status:: Accepted
+Datum:: 2026-10-12
+Ergänzt:: xref:0002-separate-parser-validator-and-decoder.adoc[ADR 0002]
+
+== Kontext
+
+Die Pilotdecoder verbinden lokale Protokollverarbeitung mit Analysefortsetzung und Reports. Damit enthalten Ergebnisse einzelner Layer Ablaufzustände anderer Layer. Für normales Dekodieren ist diese Komplexität nicht erforderlich.
+
+== Entscheidung
+
+Ein struktureller Layer bzw. eigenständig verarbeitbarer Nachrichtenbestandteil besitzt seinen eigenen Codec. `parse` liefert Raw-Struktur, `fromRaw` liefert reine applikative `Validation`, und `decode` verbindet Parserausführung und Validierung. Der Codec führt weder den nächsten Layer noch Protection aus. Passende Ergebnisvarianten behalten benötigte nachfolgende Bytes und deren Field-Provenienz.
+
+Protection verarbeitet typisierte Nachrichtenfelder und getrenntes externes Schlüsselmaterial. Ein vorbereitetes Protection-Envelope hält verschlüsselte und klare Bereiche zusammen mit dem zugehörigen frame-derived Operationskontext; dieser enthält keine Schlüssel. Varianten unterscheiden Klartext von den unterstützten Schutzoperationen. Die normale Dekodierung und die Analyse verwenden dieselbe Schutzoperation.
+
+Ein eigener protokollspezifischer Orchestrator verbindet Codecs und Protection und bricht zwischen Operationen beim ersten Fehler ab. Die Orchestrierung darf in protokollspezifische Unterdecoder aufgeteilt sein; diese verbinden weiterhin die unabhängig verwendbaren Layer-Codecs und Schutzoperationen. Die abschließende fachliche Nachrichtenbildung kann selbst ein semantischer Codec sein; sie ruft keine anderen Codecs auf. Ein protokollspezifischer Analyzer verwaltet dagegen Raw-Ergebnisse, Diagnostics, Sources und Fortsetzung. Er darf Protokollregeln kennen und setzt nur bei belastbarer Eingabe und erfüllten konkreten Voraussetzungen fort. Er dupliziert weder Parser, normative Validatoren noch Kryptografie.
+
+Diese Entscheidung ersetzt die Zuordnung von Erhalt aller Teilergebnisse und Fortsetzung nach ungültigen Stufen zum allgemeinen Decoder in ADR 0002. Dessen Trennung von Parser und reinem Validator bleibt bestehen.
+
+Ein Unterdecoder darf mehrere Header zu einer strukturellen Stufe zusammenfassen, wenn deren Grenzen und Diskriminatoren strukturell bestimmbar sind und das Lesen keine vorherige Transformation benötigt. Zuerst werden die einzelnen Parser kombiniert, danach die vorhandenen Header rein und applikativ validiert. Benötigt das Lesen der nächsten Struktur eine zuvor validierte Voraussetzung, Entschlüsselung oder Reassembly, beginnt dort eine eigene Stufe. Die Layer-Codecs bleiben unabhängig verwendbar. Reader und begrenzte Eingabebereiche gehören in die Parser-CE; die Decoder-CE erhält keinen Reader-Zustand. Ein Parse-Fehler verhindert die Gesamtvalidierung des unvollständigen Blocks. Ein Validierungsfehler verhindert nachfolgende Schutzoperationen und Payload-Verarbeitung. Der normale Decoder sammelt dabei keine früheren semantischen Fehler aus einem strukturell unvollständigen Block; diese Beobachtung gehört zur Analyse.
+
+Optionalität wird durch die jeweilige Grammatik festgestellt. Ein vorhandener, fehlerhafter Bestandteil wird nicht durch Abfangen seines Parse-Fehlers zu `None`. Ein fehlender Layer ist kein fehlerhafter Layer und erzeugt keinen künstlichen blockierten Analyse-Schritt. Ein optionaler Layer-Codec kann mit `tryDecode` seine eigene Präsenz erkennen und den optionalen validierten Layer sowie die folgenden Bytes zurückgeben. Bei Abwesenheit sind diese Bytes das unveränderte Eingabe-Field. Der Orchestrator bestimmt die Reihenfolge, ohne die Präsenzprüfung des Codecs zu wiederholen.
+
+Die gemeinsame Infrastruktur bleibt protokollunabhängig. Es gibt weder eine gemeinsame Layer-Union noch ein verpflichtendes Codec-Interface oder eine universelle `next`-API. Ein Codec pro Layer bedeutet ein Modul, kein eigenes Projekt pro Layer.
+
+== Konsequenzen und Implementierungsstand
+
+* Unabhängige lokale Validierungsfehler werden weiterhin gemeinsam gemeldet; der Abbruch erfolgt zwischen Operationen.
+* Layer-Ergebnisse enthalten keine `NotReached`-Zustände anderer Layer.
+* Die benötigten Tests prüfen Zielverträge und Standardregeln. Characterization-Tests und Kompatibilitätsschichten für den Pilot sind nicht erforderlich.
+* Für M-Bus verbindet `MbusDecoder` DLL mit Selection oder `HigherLayersDecoder`. Der Unterdecoder kombiniert zuerst ELL-/NWL-/AFL-/TPL-Parser, validiert den Headerblock applikativ und bereitet anschließend Inhaltsbereiche mit frame-derived Protection-Kontext vor. `MbusDecoder` ruft danach Protection und APL auf; `Message.decode` ist die abschließende semantische Stufe. Der M-Bus-DecodePipeline-Versuch ist verworfen. Die gezielten Verträge stehen in `LayerCodecs.Tests`. Analyzer, Trace-Wertemeldung und detaillierte Protection-Fehler bleiben offen; der DLMS-Pilot ist noch nicht umgestellt.
+* Die weitere Reihenfolge und noch offene Detailmodelle stehen im xref:../proposals/layer-codecs-analysis-refactor.adoc[Entwicklungsplan] und der xref:../proposals/layer-codecs-contracts.adoc[Vertragsbestandsaufnahme]. Diese Dokumente bleiben offene Umsetzungsvorschläge; diese ADR erklärt ihre gesamte Umsetzung nicht für abgeschlossen.

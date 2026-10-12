@@ -1,12 +1,10 @@
 namespace Metering.Mbus.Protocol.Messages
 
 open Metering.Common.Decoding.Validators.Core
-open Metering.Common.Security.Cryptography
 open Metering.Mbus.Protocol.Frames
 open Metering.Mbus.Protocol.Frames.ApplicationLayer
 open Metering.Mbus.Protocol.Frames.DataLinkLayer
 open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
-open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus.UserData
 open Metering.Mbus.Protocol.Frames.TransportLayer
 open Metering.Mbus.Protocol.Frames.WiredMbus
 
@@ -14,19 +12,7 @@ open Metering.Mbus.Protocol.Frames.WiredMbus
 module ResponseUserData =
 
     let private frameFailed frame message =
-        let fieldId =
-            match frame with
-            | WiredMbusFrame.SingleCharacter field -> field.Id
-            | WiredMbusFrame.FixedLength field -> field.Id
-            | WiredMbusFrame.VariableLength field -> field.Id
-
-        Failed (
-            Failures.single {
-                FieldId = fieldId
-                Message = message
-            },
-            []
-        )
+        failed (WiredMbusFrame.asField frame) message
 
     let private longHeader =
         function
@@ -42,8 +28,8 @@ module ResponseUserData =
 
     let private completeMessage =
         function
-        | WiredMbusFrame.VariableLength field ->
-            match field.Value.LinkUserData with
+        | WiredMbusFrame.VariableLength (field, linkUserData) ->
+            match linkUserData with
             | LinkUserData.MbusProtocol (MbusProtocolUserData.Complete message) ->
                 Some (field.Value, message.Value)
             | _ ->
@@ -67,15 +53,6 @@ module ResponseUserData =
             Some secondary
         | _ ->
             None
-
-    let private unprotectionFailed (protectedApl: AplProtectedRaw) =
-        match protectedApl.Error with
-        | UnprotectionError.Encryption error ->
-            failed
-                protectedApl.Bytes
-                $"RSP_UD application payload could not be unprotected: {EncryptionError.value error}"
-        | UnprotectionError.Validation failures ->
-            Failed (failures, [])
 
     let matchesFrame frame =
         match completeMessage frame with
@@ -106,10 +83,7 @@ module ResponseUserData =
                                 frame
                                 "frame does not use an RSP_UD response CI field."
                     else
-                        match message.Apl with
-                        | Apl.Protected protectedApl ->
-                            return! unprotectionFailed protectedApl
-
+                        match message.Apl.Value with
                         | Apl.RspUdData response ->
                             match longHeader message.Tpl.Value with
                             | Some (device, accessNumber, status) ->

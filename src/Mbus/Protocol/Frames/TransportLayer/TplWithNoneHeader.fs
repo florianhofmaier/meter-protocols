@@ -1,5 +1,6 @@
 namespace Metering.Mbus.Protocol.Frames.TransportLayer
 
+open System
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
@@ -10,7 +11,7 @@ open Metering.Mbus.Protocol.Frames
 type TplWithNoneHeaderRaw =
     {
         Ci: Field<CiFieldTplNoneHeader>
-        AplData: Field<AplDataRaw>
+        AplData: Field<ReadOnlyMemory<byte>>
     }
 
 module TplWithNoneHeaderRaw =
@@ -21,7 +22,7 @@ module TplWithNoneHeaderRaw =
 
         parser {
             let! aplData =
-                parseField "APL Data" (takeAll |>> AplDataRaw.create)
+                parseField "APL Data" takeAll
 
             return { Ci = ci; AplData = aplData }
         }
@@ -29,9 +30,15 @@ module TplWithNoneHeaderRaw =
 type TplWithNoneHeader =
     {
         Ci: Field<CiFieldTplNoneHeader>
+        AplData: Field<ReadOnlyMemory<byte>>
     }
 
 module TplWithNoneHeader =
 
-    let fromRaw (raw: TplWithNoneHeaderRaw) =
-        passed { Ci = raw.Ci }
+    let fromRaw
+        (raw: Field<TplWithNoneHeaderRaw>)
+        : Validation<Field<TplWithNoneHeader>> =
+
+        raw
+        |> Field.withValue { Ci = raw.Value.Ci; AplData = raw.Value.AplData }
+        |> passed

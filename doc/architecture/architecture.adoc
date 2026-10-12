@@ -28,9 +28,9 @@
 * Jedes Protokoll besitzt seinen eigenen Decode-Graphen und verwendet gemeinsame Core-Primitiven.
 * Protokollalternativen werden durch Discriminated Unions modelliert, wenn sie reale Varianten ausdrücken.
 
-Das noch offene Stufen- und Ergebnismodell beschreibt das xref:proposals/decode-pipeline.adoc[Proposal zur Decode-Pipeline].
+Das xref:proposals/decode-pipeline.adoc[historische Pipeline-Proposal] dokumentiert den verworfenen M-Bus-Versuch und den noch vorhandenen DLMS-Piloten; es ist keine Vorgabe für die neuen Layer-Codecs.
 
-Der xref:proposals/layer-codecs-analysis-refactor.adoc[offene Umbauplan für Layer-Codecs und protokollspezifische Analyse] schlägt eine getrennte normale Decode-API und Analyse-API vor. Er beschreibt ein Umbauziel; die folgenden Abschnitte bleiben die derzeit akzeptierte Architektur.
+Die xref:decisions/0004-layer-codecs-and-protocol-analyzers.adoc[ADR 0004] legt Layer-Codecs sowie getrennte normale Decoder und protokollspezifische Analyzer fest. Der xref:proposals/layer-codecs-analysis-refactor.adoc[offene Entwicklungsplan] beschreibt die weitere Umsetzung und Detailmodelle. Der erste DLL-/TPL-Schnitt ist implementiert; der M-Bus-Pipeline-Versuch ist entfernt. Die Higher-Layers-Orchestrierung ist implementiert; AFL-/Reassembly-Verarbeitung und die neuen Analyzer stehen noch aus.
 
 == 4. Bausteine
 
@@ -59,6 +59,20 @@ M-Bus-Nachrichten können DLL, ELL, NWL, AFL, TPL und APL enthalten. Vorhandense
 
 Implementierungsstand: xref:../protocols/mbus/conformance.adoc[M-Bus Conformance].
 
+`DllCodec`, `EllCodec`, `TplCodec`, `SelectionCodec` und `AplCodec` verarbeiten jeweils ihre eigene Struktur. DLL liefert rohe Link User Data, ELL die abgegrenzten folgenden Bytes und TPL die Anwendungsbytes. Keiner dieser Codecs ruft einen anderen Layer oder Protection auf. Die bestehenden Variable-Length-Typen sind die einzige DLL-Darstellung. Die zusammengesetzten Modelle `WiredMbusFrame`, `LinkUserData` und `MbusProtocolUserData` liegen unter `Frames/` und enthalten keine Parser oder Codec-Aufrufe.
+
+`MbusDecoder` orchestriert DLL sowie Geräteauswahl oder `HigherLayersDecoder`. Der Unterdecoder verbindet ausschließlich die unabhängigen ELL-/NWL-/AFL-/TPL-Einstiege. Sein schlüsselfreies `decode` nimmt abgegrenzte Link User Data entgegen und liefert `Field<HigherLayers>` mit ELL, NWL, AFL, TPL und vorbereitetem `MbusProtectionInput`. `MbusDecoder` ruft danach `MbusProtection.decode` und `AplCodec.decode` auf und setzt erst anschließend `CompleteLinkUserData` zusammen. `decodeFrame` liefert `Field<WiredMbusFrame>` aus den separat dekodierten Layern; `decode` führt anschließend `Messages.Message.decode` aus und liefert `Field<Message>`. `Message` ist der abschließende semantische Codec: `fromRaw` und `decode` bilden den bereits zusammengesetzten Frame auf die vorhandenen RequestUserData-/ResponseUserData-Nachrichten ab, ohne Parsing oder Protection. Beide Ergebnisstufen erhalten Frame-ID und Span. Weitere deklarierte Message-Varianten erhalten dadurch keinen Parserpfad.
+
+`HigherLayersDecoder.parse` liest den aktuell unterstützten Headerblock mit `EllCodec.tryParse`, `NwlCodec.tryParse`, `AflCodec.tryParse` und `TplCodec.parse` als `HigherLayersRaw`. Eine vorhandene ELL erhält ihre folgenden Bytes; die weiteren Parser laufen mit `parseExactly` innerhalb dieses begrenzten Payload-Bereichs. `fromRaw` validiert anschließend alle vorhandenen Header applikativ zu `HigherLayersHeaders` und erhält Field-Identitäten und Spans. Erst danach bereitet `decode` die Protection-Eingabe vor. Reader-Zustand bleibt in der Parser-CE. Bei einem Parse-Fehler wird der unvollständige Block nicht insgesamt validiert; bei einem Validierungsfehler entfallen Protection-Vorbereitung, Entschlüsselung und APL. DLL bleibt eine vorgelagerte eigene Parse-/Validierungsstufe.
+
+`MbusProtectionInput` unterscheidet Klartextbytes von Mode-5-Eingaben. `Mode5ProtectionInput` wird nach Layoutprüfung erzeugt und enthält getrennte Fields für verschlüsselte Bytes und klaren Rest sowie das ursprüngliche Payload-Field. Sein `Mode5ProtectionContext` enthält ausschließlich validierte frame-derived Geräteidentität und Access Number; externe Schlüssel bleiben im getrennten Resolver. Die Bereiche besitzen eigene Field-IDs und Source-Spans. `MbusProtection` verbindet Klartextdurchgabe und die gemeinsame Mode-5-Operation unter `TransportLayer/Security/Mode5.fs`: `unprotect` verarbeitet die vorbereitete Eingabe, `decode` bildet Fehler ab und registriert tatsächliche Entschlüsselung als sensible Derived Source. Ein Fehler verhindert abhängige Verarbeitung.
+
+Die optionalen `tryParse`-Einstiege erkennen ihre eigene Präsenz anhand der CI. Bei Abwesenheit liefern sie `None` ohne Reader-Verbrauch; vorhandene fehlerhafte oder nicht unterstützte Layer führen zum Parse-Fehler. `HigherLayersDecoder` bestimmt ihre Reihenfolge und enthält dafür keine CI-Matches. Die unabhängig verwendbaren `tryDecode`-Einstiege verbinden diese Entscheidung mit Validierung und liefern den optionalen Layer zusammen mit den folgenden Bytes; bei Abwesenheit bleibt das Eingabe-Field unverändert. NWL und AFL unterstützen ausschließlich Erkennung und ausdrückliche Ablehnung einer vorhandenen Schicht. Die allgemeine Prüfung zulässiger Layerkombinationen je Kommunikationsprofil ist noch offen; die ELL-Strukturunterstützung ist keine Wireless- oder wired-Profil-Konformitätserklärung.
+
+Die Unterstützung fragmentierter AFL-Nachrichten bleibt offen. AFL ist eine Authentifizierungs-/Fragmentierungs-Teilschicht mit einer Nachricht über einem oder mehreren DLL-Datagrammen (EN 13757-7 §§6.1–6.2, S. 20–21). Der aktuelle Higher-Layers-Vertrag liefert Header und unverarbeitete Inhalte im vorhandenen Umfang und weist AFL ausdrücklich ab. Künftige AFL-Strukturverarbeitung, Reassembly und Fragment-/Nachrichtenauthentifizierung benötigen eigene Operationen und eine ausdrückliche Behandlung noch unvollständiger Nachrichten. Details stehen im offenen Umbauplan.
+
+Der M-Bus-DecodePipeline-Versuch ist entfernt. Die gezielten Layer- und Orchestrierungsverträge stehen in `LayerCodecs.Tests`. Analyzer, Trace-Wertemeldung und die geplanten detaillierten Protection-Fehlerkategorien sind noch offen.
+
 === 4.2 DLMS/COSEM
 
 DLMS/COSEM trennt Kommunikationsprofile von der Application Layer mit ACSE und xDLMS. Normative Grundlage: DLMS UA 1000-2 Green Book Ed. 12, 4.8, S. 53–56 und 9.1.2, S. 195–196.
@@ -77,8 +91,11 @@ Implementierungsstand: xref:../protocols/dlms/conformance.adoc[DLMS/COSEM Confor
 |Validator
 |Prüft ein Raw-Modell rein, sammelt unabhängige semantische Fehler und erzeugt bei Erfolg ein Modell mit stärkeren Invarianten.
 
-|Decoder
-|Orchestriert strukturelle Stufen, Erreichbarkeit, externen Kontext und Transformationen und erhält bereits erzeugte Ergebnisse und Diagnostics.
+|Protokoll-Orchestrator
+|Verbindet Layer-Codecs und Protection für normales Dekodieren. Bricht zwischen Operationen beim ersten Fehler ab und liefert gültiges Ergebnis oder lokale Fehler mit Notices.
+
+|Analyzer
+|Erhält erreichbare Raw-Ergebnisse, geprüfte Werte, Diagnostics und Sources. Bestimmt protokollspezifisch die nächste Verarbeitung und Fortsetzung nach Fehlern; verwendet dieselben Parser, Validatoren und Schutzoperationen.
 |===
 
 == 6. Querschnittliche Konzepte
@@ -96,10 +113,11 @@ Implementierungsstand: xref:../protocols/dlms/conformance.adoc[DLMS/COSEM Confor
 * xref:decisions/0001-field-provenance-is-part-of-analysis.adoc[ADR 0001: Field-Provenienz ist Teil des Analysemodells]
 * xref:decisions/0002-separate-parser-validator-and-decoder.adoc[ADR 0002: Parser, Validator und Decoder sind getrennt]
 * xref:decisions/0003-separate-external-security-context.adoc[ADR 0003: Externen Security-Kontext von Frame-Daten trennen]
+* xref:decisions/0004-layer-codecs-and-protocol-analyzers.adoc[ADR 0004: Layer-Codecs und protokollspezifische Analyzer]
 
 == 8. Risiken und offene Punkte
 
-* konkretes Ergebnis- und Stufenmodell der Decode-Pipeline;
+* konkrete Analyzer-Ergebnisse und Trace-Wertemeldung mit Field- und Source-Zuordnung;
 * Vereinheitlichung der `Field`-Modellierung und Reduktion unnötiger Hüllen und Mapping-Schritte;
 * Grenze zwischen F#-Implementierung und öffentlicher C#-API;
 * Migration von Serializer und Tests auf den neuen Core;

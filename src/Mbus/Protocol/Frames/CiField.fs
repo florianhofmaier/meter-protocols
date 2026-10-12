@@ -200,6 +200,17 @@ module CiField =
 
 module CiFieldTpl =
 
+    let (|NoneHeaderField|ShortHeaderField|LongHeaderField|)
+        (field: Field<CiFieldTpl>) =
+
+        match field.Value with
+        | CiFieldTpl.NoneHeader ci ->
+            NoneHeaderField (field |> Field.withValue ci)
+        | CiFieldTpl.ShortHeader ci ->
+            ShortHeaderField (field |> Field.withValue ci)
+        | CiFieldTpl.LongHeader ci ->
+            LongHeaderField (field |> Field.withValue ci)
+
     let value ci =
         CiField.code (CiField.Tpl ci)
 

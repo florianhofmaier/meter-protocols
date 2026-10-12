@@ -1,6 +1,7 @@
 namespace Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus.UserData
 
 open System
+open Metering.Common.Decoding.Decoders.Core
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
@@ -8,6 +9,7 @@ open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Validators.Core
+open Metering.Common.Decoding.Validators.Utility
 open Metering.Mbus.Protocol.Frames
 open Metering.Mbus.Protocol.Frames.DeviceIdentification
 open Metering.Mbus.Protocol.Utility
@@ -275,3 +277,16 @@ module SelectionOfDevice =
         && ManufacturerSelection.matches selection.Mfr device.Mfr.Value
         && VersionSelection.matches selection.Version device.Version.Value
         && DeviceTypeSelection.matches selection.DevType device.DevType.Value
+
+module SelectionCodec =
+
+    let parse = SelectionOfDeviceRaw.parse
+
+    let fromRaw (raw: Field<SelectionOfDeviceRaw>) : Validation<Field<SelectionOfDevice>> =
+        validateField SelectionOfDevice.fromRaw raw
+
+    let decode (source: Field<ReadOnlyMemory<byte>>) : Decoder<Field<SelectionOfDevice>> =
+        decoder {
+            let! raw = Core.parse parse source
+            return! Core.validate fromRaw raw
+        }

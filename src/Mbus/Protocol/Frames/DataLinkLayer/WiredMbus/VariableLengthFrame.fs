@@ -1,32 +1,30 @@
 namespace Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
 
+open System
 open Metering.Common.Decoding.Parsers
+open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Parsers.Utility
 open Metering.Common.Decoding.Validators.Core
 open Metering.Common.Decoding.Validators.Utility
 open Metering.Mbus.Protocol.Frames.DataLinkLayer
-open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus.UserData
-open Metering.Mbus.Protocol.Frames.TransportLayer.Security
 
 type VariableLengthUserDataRaw =
     {
         CField: Field<CFieldRaw>
         AField: Field<AFieldRaw>
-        LinkUserData: LinkUserDataRaw
+        LinkUserData: Field<ReadOnlyMemory<byte>>
     }
 
 module VariableLengthUserDataRaw =
 
-    let parse
-        (securityContextResolver: IExternalSecurityContextResolver)
-        : Parser<Field<VariableLengthUserDataRaw>> =
+    let parse : Parser<Field<VariableLengthUserDataRaw>> =
         parseField "User Data"
         <| parser {
             let! cField = CFieldRaw.parse
             let! aField = AFieldRaw.parse
-            let! linkUserData = LinkUserDataRaw.parse securityContextResolver
+            let! linkUserData = parseField "Link User Data" takeAll
 
             return {
                 CField = cField
@@ -37,6 +35,10 @@ module VariableLengthUserDataRaw =
 
 type VariableLengthFrameRaw =
     {
+        Start: Field<unit>
+        Length1: Field<uint8>
+        Length2: Field<uint8>
+        RepeatedStart: Field<unit>
         UserData: Field<VariableLengthUserDataRaw>
         CrcBytes: CrcBytes
         Crc: Field<Crc>
@@ -45,37 +47,27 @@ type VariableLengthFrameRaw =
 
 module VariableLengthFrameRaw =
 
-    let parse
-        (securityContextResolver: IExternalSecurityContextResolver)
-        : Parser<Field<VariableLengthFrameRaw>> =
+    /// IEC 60870-5-2, 3.2; EN 13757-2, Annex F.2.
+    /// Only the DLL is parsed. Link User Data remains opaque.
+    let parse : Parser<Field<VariableLengthFrameRaw>> =
         parseField "Format FT 1.2 Frame With Variable Length"
         <| parser {
-            let! _ = StartVariableLength.parse
-
-            let! lField = LField.parse
-
-            let! _ = StartVariableLength.parse
-
-            let len =
-                LField.value lField.Value
-                |> int
-
+            let! start = StartVariableLength.parse
+            let! length1 = parseField "Length 1" parseU8
+            let! length2 = parseField "Length 2" parseU8
+            let! repeatedStart = StartVariableLength.parse
+            let length = int length1.Value
             let! userDataStart = position
-
-            let! userData =
-                runOnSubSlice
-                    len
-                    (VariableLengthUserDataRaw.parse securityContextResolver)
-
-            let! crcBytes =
-                bufferSliceAt userDataStart len
-                |>> CrcBytes.create
-
+            let! userData = runOnSubSlice length VariableLengthUserDataRaw.parse
+            let! crcBytes = bufferSliceAt userDataStart length |>> CrcBytes.create
             let! crc = Crc.parse
-
             let! endField = EndFieldRaw.parse
 
             return {
+                Start = start
+                Length1 = length1
+                Length2 = length2
+                RepeatedStart = repeatedStart
                 UserData = userData
                 CrcBytes = crcBytes
                 Crc = crc
@@ -87,32 +79,39 @@ type VariableLengthFrame =
     {
         CField: Field<CField>
         AField: Field<AField>
-        LinkUserData: LinkUserData
+        LinkUserData: Field<ReadOnlyMemory<byte>>
     }
 
 module VariableLengthFrame =
 
     let fromRaw
-        (raw: Field<VariableLengthUserDataRaw>)
+        (raw: Field<VariableLengthFrameRaw>)
         : Validation<Field<VariableLengthFrame>> =
 
         validator {
             let! cField =
-                raw.Value.CField
+                raw.Value.UserData.Value.CField
                 |> validateField CField.fromRaw
 
             and! aField =
-                raw.Value.AField
+                raw.Value.UserData.Value.AField
                 |> validateField AField.fromRaw
 
-            and! linkUserData =
-                LinkUserData.fromRaw raw.Value.LinkUserData
+            and! () =
+                ensure
+                    raw.Value.Length2
+                    $"Length 2 must equal Length 1. Expected 0x{raw.Value.Length1.Value:X2}, but got 0x{raw.Value.Length2.Value:X2}."
+                    (raw.Value.Length2.Value = raw.Value.Length1.Value)
 
-            let frame = {
-                CField = cField
-                AField = aField
-                LinkUserData = linkUserData
-            }
+            and! () = Crc.validate raw.Value.Crc raw.Value.CrcBytes
 
-            return Field.withValue frame raw
+            and! () = EndField.validate raw.Value.End
+
+            return
+                raw
+                |> Field.withValue {
+                    CField = cField
+                    AField = aField
+                    LinkUserData = raw.Value.UserData.Value.LinkUserData
+                }
         }
