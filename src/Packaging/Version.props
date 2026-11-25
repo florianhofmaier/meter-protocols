@@ -1,0 +1,5 @@
+<Project>
+  <PropertyGroup>
+    <BetaPackageVersion Condition="'$(BetaPackageVersion)' == ''">0.1.0-beta.1</BetaPackageVersion>
+  </PropertyGroup>
+</Project>

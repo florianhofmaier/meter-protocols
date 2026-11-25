@@ -1,0 +1,18 @@
+<Project>
+  <Import Project="Version.props" />
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Version>$(BetaPackageVersion)</Version>
+    <IsPackable>true</IsPackable>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Authors>MeterProtocols contributors</Authors>
+    <RepositoryUrl>https://github.com/florianhofmaier/meter-protocols</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>metering;mbus;protocols</PackageTags>
+    <Deterministic>true</Deterministic>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);IncludeOwnedAssemblies</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+</Project>

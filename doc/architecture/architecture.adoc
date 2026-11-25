@@ -9,7 +9,7 @@
 
 * M-Bus wird auf dem neuen Core entwickelt; Serializer und Tests sind noch nicht vollständig angepasst.
 * DLMS/COSEM verwendet noch den älteren Core und wird später migriert.
-* Die Grenze zwischen internem F#-Modell und öffentlicher C#-API ist noch offen.
+* Für die M-Bus-Device-Beta ist der öffentliche Vertrag der exakte Namespace `Metering.Mbus`; übrige Namespaces sind Implementierungsdetails. Die weitere C#-Codec-API bleibt offen.
 
 == 2. Randbedingungen
 
@@ -174,7 +174,7 @@ Abgeleitete Bytes erhalten bei `Core.createDerivedSource` und `ParserSource.crea
 
 * Übertragung der Analyzer-Verantwortungstrennung auf DLMS/COSEM;
 * Vereinheitlichung der `Field`-Modellierung und Reduktion unnötiger Hüllen und Mapping-Schritte;
-* Grenze zwischen F#-Implementierung und öffentlicher C#-API;
+* weitere C#-Codec-Fassade neben der festgelegten Device-API;
 * Migration von Serializer und Tests auf den neuen Core;
 * spätere Migration von DLMS/COSEM;
 * unvollständige Protokoll- und Security-Abdeckung.
@@ -205,3 +205,36 @@ Der Encoder ergänzt AES-Check und Alignment-Filler, verschlüsselt mit dem aus 
 Die gemeinsame Schlüsselauflösung erhält `MeterAddress` als wertbasierte Identität unter `Frames/DeviceIdentification`. Sie enthält keine Field-IDs oder Source-Spans. Messages bleiben frei von Schlüsselmaterial. Beim Mode-5-Encoding bestimmt ausschließlich `Mode5EncodingContext.SecondaryAddress` die Schlüsselauflösung, den IV und die Identität im ausgegebenen langen TPL-Header; eine abweichende Message-Identität wird dabei nicht verwendet. Plain verwendet weiterhin die Message-Identität. Die Access Number kommt für die Ausgabe aus `EncodingContext`. Der externe Schlüsselkontext enthält weiterhin nur den Schlüssel. Beim Decoding bleiben Identität und Access Number aus dem empfangenen Frame maßgeblich; die Encoding-Kontexte werden dafür nicht verwendet.
 
 Die Konfigurationsvarianten Mode 0 und Mode 5 enthalten kein veränderbares `Mode`-Feld. H/R/S sind eigene DUs. `Accessibility` fasst B/A in vier semantische Zugriffsarten zusammen, entsprechend EN 13757-7:2018 §7.7.1, Tabelle 23. Raw-Parsing erkennt den Mode weiterhin aus den Bits; variantenbezogene Validierung weist widersprechende Raw-Bits zurück.
+
+
+=== Beta-Pakete und öffentlicher Vertrag
+
+Die erste M-Bus-Device-Beta wird als `Metering.Mbus.Devices` für .NET 10 ausgeliefert.
+Das Paket hängt von `Metering.Mbus.Codec` ab. Codec bündelt `MbusCodec.dll`,
+`Protocol.dll`, `PublicTypes.dll` und die benötigten Common-Assemblies; Devices
+enthält `Devices.dll` und `MbusDevices.dll`. `FSharp.Core` bleibt eine externe
+NuGet-Abhängigkeit. Ein separates Foundation-NuGet wird nicht erzeugt.
+Interne Projektgrenzen müssen nicht den Paketgrenzen entsprechen. Jede eigene
+Assembly gehört genau einem der beiden Pakete.
+
+Der unterstützte API-Vertrag dieser Beta ist der exakte Namespace `Metering.Mbus`.
+Andere Namespaces einschließlich `Metering.Common.*`, `Metering.Mbus.Codec`,
+`Metering.Mbus.Devices` und `Metering.Mbus.Protocol.*` gelten als Implementierung,
+auch bei technisch öffentlichen Typen. Die C#-Device-Signaturen verlangen keine
+Common- oder internen F#-Modelltypen. Die Beta verspricht noch keine stabile C#-Codec-Fassade.
+
+Normale Datenupdates erfolgen über `MbusDevice.UpdateUserData(Action<MbusUserDataBuilder>)`.
+Eine eigene Implementierung von `IMbusUserDataBuilder` mit `byte[] Build()` ist der
+optionale Erweiterungspunkt. Das Device übernimmt Bytes kopiert, decodiert und geprüft;
+der Builder wird nach dem Update nicht behalten. Fehler lassen die vorherigen Daten
+aktiv. Eine laufende Auslesung behält ihren festen Datenbestand.
+
+`src/Packaging` enthält die Paketdefinitionen, eine zentrale Beta-Version und den
+lokalen Release-Ablauf. Die xref:../../src/Packaging/README.md[Paketdokumentation]
+beschreibt Paketgraph, API-Vertrag, Verwendung und Prüfungen. Ein unabhängiger
+C#-Consumer mit frischem Paketcache prüft die Pakete ohne Source-Projektreferenzen.
+Die Pakete und Testberichte werden lokal unter `artifacts` erzeugt. Der Workflow
+lädt Build-Artefakte hoch; er veröffentlicht keine Pakete auf einem NuGet-Server.
+DLMS, Analyzer und Protocol Inspector sind nicht Bestandteil dieser Beta-Pakete.
+Die spätere gemeinsame Verwendung von M-Bus und DLMS muss die Eigentümerschaft
+und Versionierung gemeinsamer Assemblies erneut berücksichtigen.

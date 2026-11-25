@@ -1,0 +1,20 @@
+<Project>
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+  <!-- Each source assembly has exactly one owning package. Private project references
+       build those assemblies without publishing their original project names as packages. -->
+  <Target Name="IncludeOwnedAssemblies">
+    <MSBuild Projects="@(ProjectReference)" Targets="GetTargetPath"
+             Properties="Configuration=$(Configuration)" RemoveProperties="TargetFramework"
+             BuildInParallel="false">
+      <Output TaskParameter="TargetOutputs" ItemName="_OwnedAssembly" />
+    </MSBuild>
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="@(_OwnedAssembly)" PackagePath="lib/$(TargetFramework)/" />
+      <_OwnedDocumentation Include="@(_OwnedAssembly->'%(RootDir)%(Directory)%(Filename).xml')" />
+      <TfmSpecificPackageFile Include="@(_OwnedDocumentation)" PackagePath="lib/$(TargetFramework)/"
+                            Condition="Exists('%(_OwnedDocumentation.Identity)')" />
+    </ItemGroup>
+  </Target>
+</Project>

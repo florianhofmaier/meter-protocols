@@ -1,0 +1,20 @@
+{
+  "solution": {
+    "path": "../Metering.sln",
+    "projects": [
+      "Common/BaseWriters.Tests/BaseWriters.Tests.fsproj",
+      "Common/ByteReaders.Tests/ByteReaders.Tests.csproj",
+      "Common/Decoders.Tests/Decoders.Tests.fsproj",
+      "Common/Io.Tests/Io.Tests.fsproj",
+      "Common/Parsers.Tests/Parsers.Tests.fsproj",
+      "Common/Security/Cryptography.Tests/Cryptography.Tests.fsproj",
+      "Common/Utility.Tests/Utility.Tests.fsproj",
+      "Common/Validators.Tests/Validators.Tests.fsproj",
+      "Mbus/Analyzer.Tests/Analyzer.Tests.fsproj",
+      "Mbus/Codec.Tests/Codec.Tests.fsproj",
+      "Mbus/Devices.Tests/Devices.Tests.fsproj",
+      "Mbus/MbusDevices.Tests/MbusDevices.Tests.csproj",
+      "Mbus/Protocol.Tests/Protocol.Tests.fsproj"
+    ]
+  }
+}

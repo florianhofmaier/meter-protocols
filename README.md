@@ -9,6 +9,7 @@ In Entwicklung: .NET-Libraries für M-Bus und DLMS/COSEM.
 - [M-Bus Conformance](doc/protocols/mbus/conformance.adoc)
 - [DLMS/COSEM Conformance](doc/protocols/dlms/conformance.adoc)
 - [M-Bus-Gerät für C#](src/Mbus/MbusDevices/README.md)
+- [M-Bus Beta: NuGet-Pakete bauen und verwenden](src/Packaging/README.md)
 - [Protocol Inspector: React-/TypeScript-App starten](src/Apps/ProtocolInspector/README.md)
 
 Die gemeinsame F#-API für M-Bus liegt in `MbusCodec.dll`

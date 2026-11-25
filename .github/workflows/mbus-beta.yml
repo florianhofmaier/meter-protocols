@@ -1,0 +1,45 @@
+name: M-Bus beta packages
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/Common/**'
+      - 'src/Mbus/**'
+      - 'src/Packaging/**'
+      - 'src/Examples/MbusDevice.PackageSmoke/**'
+      - 'global.json'
+      - '.github/workflows/mbus-beta.yml'
+  pull_request:
+    paths:
+      - 'src/Common/**'
+      - 'src/Mbus/**'
+      - 'src/Packaging/**'
+      - 'src/Examples/MbusDevice.PackageSmoke/**'
+      - 'global.json'
+      - '.github/workflows/mbus-beta.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          dotnet-version: '9.0.x'
+      - run: bash src/Packaging/release.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mbus-beta-packages
+          path: artifacts/nuget/*.nupkg
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mbus-beta-test-results
+          path: artifacts/test-results/mbus-beta/*.trx
+          if-no-files-found: warn

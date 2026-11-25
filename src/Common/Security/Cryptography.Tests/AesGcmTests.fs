@@ -76,7 +76,7 @@ let ``modified ciphertext returns authentication failure`` () =
             (bytes "0388dace60b6a392f328c2b971b2fe79")
             (bytes gcmTag96)
     with
-    | Error AuthenticationFailed -> ()
+    | Error error -> EncryptionError.value error |> should equal "AuthenticationFailed"
 
     | actual -> failwith $"Expected authentication failure, got %A{actual}"
 
@@ -90,7 +90,7 @@ let ``modified tag returns authentication failure`` () =
             (bytes gcmCipherText)
             (bytes "ab6e47d42cec13bdf53a67b3")
     with
-    | Error AuthenticationFailed -> ()
+    | Error error -> EncryptionError.value error |> should equal "AuthenticationFailed"
 
     | actual -> failwith $"Expected authentication failure, got %A{actual}"
 
@@ -104,7 +104,7 @@ let ``modified associated data returns authentication failure`` () =
             (bytes aadCipher)
             (bytes aadTag96)
     with
-    | Error AuthenticationFailed -> ()
+    | Error error -> EncryptionError.value error |> should equal "AuthenticationFailed"
 
     | actual -> failwith $"Expected authentication failure, got %A{actual}"
 
@@ -118,7 +118,7 @@ let ``invalid GCM key nonce and tag lengths return validation errors`` () =
             (bytes gcmCipherText)
             (bytes gcmTag96)
     with
-    | Error(InvalidKeyLength length) -> length |> should equal 1
+    | Error error -> EncryptionError.value error |> should equal "Invalid key length: 1"
 
     | actual -> failwith $"Expected invalid key length, got %A{actual}"
 
@@ -130,7 +130,7 @@ let ``invalid GCM key nonce and tag lengths return validation errors`` () =
             (bytes gcmCipherText)
             (bytes gcmTag96)
     with
-    | Error(InvalidNonceLength length) -> length |> should equal 1
+    | Error error -> EncryptionError.value error |> should equal "Invalid nonce length: 1"
 
     | actual -> failwith $"Expected invalid nonce length, got %A{actual}"
 
@@ -142,7 +142,7 @@ let ``invalid GCM key nonce and tag lengths return validation errors`` () =
             (bytes gcmCipherText)
             (bytes "00")
     with
-    | Error(InvalidTagLength length) -> length |> should equal 1
+    | Error error -> EncryptionError.value error |> should equal "Invalid tag length: 1"
 
     | actual -> failwith $"Expected invalid tag length, got %A{actual}"
 
@@ -163,6 +163,6 @@ let ``GCM cryptographic failures are returned rather than thrown`` () =
             (bytes "ab6e47d42cec13bdf53a67b3")
 
     match result with
-    | Error AuthenticationFailed -> ()
+    | Error error -> EncryptionError.value error |> should equal "AuthenticationFailed"
 
     | actual -> failwith $"Expected authentication failure, got %A{actual}"

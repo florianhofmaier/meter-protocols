@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Metering.Mbus.Devices</PackageId>
+    <Description>C# M-Bus device emulation with user-data builders and streamed multi-telegram readout.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Mbus/MbusDevices/MbusDevices.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../Mbus/Devices/Devices.fsproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
+    <PackageReference Include="Metering.Mbus.Codec" Version="$(BetaPackageVersion)" />
+  </ItemGroup>
+</Project>

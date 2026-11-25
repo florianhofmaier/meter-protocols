@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Metering.Mbus.Codec</PackageId>
+    <Description>M-Bus protocol models and stateless encoding and decoding for MeterProtocols.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Mbus/Codec/Codec.fsproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../Mbus/Protocol/Protocol.fsproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../Mbus/PublicTypes/PublicTypes.fsproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../Common/BaseWriters/BaseWriters.fsproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../Common/ByteReaders/ByteReaders.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../Common/Decoders/Decoders.fsproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../Common/Io/Io.fsproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../Common/Parsers/Parsers.fsproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../Common/Security/Cryptography/Cryptography.fsproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../Common/Utility/Utility.fsproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../Common/Validators/Validators.fsproj" PrivateAssets="all" ReferenceOutputAssembly="false" />
+    <PackageReference Include="FSharp.Core" Version="10.1.201" />
+  </ItemGroup>
+</Project>

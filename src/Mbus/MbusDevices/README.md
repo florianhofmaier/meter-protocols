@@ -1,5 +1,10 @@
 # M-Bus-Gerät für C#
 
+Die Beta wird über `Metering.Mbus.Devices` installiert. Paketaufteilung, lokaler
+Feed und Release-Prüfung stehen in der [Paketdokumentation](../../Packaging/README.md).
+Der unterstützte öffentliche API-Vertrag ist der exakte Namespace `Metering.Mbus`.
+Andere Namespaces sind Implementierungsdetails, auch bei technisch öffentlichen Typen.
+
 Die Fassade verwendet die aktuelle F#-Gerätelaufzeit und `MbusCodec`. Ein Aufrufer
 benötigt keine F#-Protokolltypen:
 

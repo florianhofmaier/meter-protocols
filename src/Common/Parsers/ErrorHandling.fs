@@ -14,6 +14,8 @@ let execute (parse: Parser<'a>) (ctx: ParserContext) : Result<'a, ParserError> =
         Error error
 
 /// <summary>Creates a parser that raises an explicit parser failure with the supplied error.</summary>
+// Keep the private exception constructor in this assembly when consumers optimize Release builds.
+[<NoCompilerInlining>]
 let failWith<'a> (error: ParserError) : Parser<'a> = fun _ -> raise (ParserFailure error)
 
 /// <summary>Creates a parser that fails with the supplied message at the current source and reader position.</summary>
