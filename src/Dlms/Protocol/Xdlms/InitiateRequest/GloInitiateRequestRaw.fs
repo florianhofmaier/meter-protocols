@@ -7,23 +7,18 @@ open Metering.Dlms.Protocol
 open Metering.Dlms.Protocol.Security.ProtectedApdus
 open Metering.Dlms.Protocol.Xdlms
 
-type GloInitiateRequestRaw =
-    private ProtectedApduRaw of Field<ProtectedApduRaw>
+type GloInitiateRequestRaw = private ProtectedApduRaw of Field<ProtectedApduRaw>
 
 module GloInitiateRequestRaw =
 
-    let value (ProtectedApduRaw protectedApdu) =
-        protectedApdu
+    let value (ProtectedApduRaw protectedApdu) = protectedApdu
 
-    let parse : Parser<Field<GloInitiateRequestRaw>> =
+    let parse: Parser<Field<GloInitiateRequestRaw>> =
         parseField "glo-initiate-request"
         <| parser {
-            do!
-                Tag.expect XdlmsTag.GloInitiateRequest
+            do! Tag.expect XdlmsTag.GloInitiateRequest
 
-            let! protectedApdu =
-                Axdr.OctetString.parseContent ProtectedApduRaw.parse
+            let! protectedApdu = Axdr.OctetString.parseContent ProtectedApduRaw.parse
 
-            return
-                ProtectedApduRaw protectedApdu
+            return ProtectedApduRaw protectedApdu
         }

@@ -9,8 +9,7 @@ module Mode =
     let mask = 0x1F00us
     let shift = 8
 
-    let rawValue configurationField =
-        (configurationField &&& mask) >>> shift
+    let rawValue configurationField = (configurationField &&& mask) >>> shift
 
     let tryMap cnf =
         match rawValue cnf with

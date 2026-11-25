@@ -6,17 +6,14 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
 
-type CFieldRaw =
-    private CField of uint8
+type CFieldRaw = private CField of uint8
 
 module CFieldRaw =
 
-    let value (CField v) =
-        v
+    let value (CField v) = v
 
-    let parse : Parser<Field<CFieldRaw>> =
-        parseField "CField" parseU8
-        |>> Field.map CField
+    let parse: Parser<Field<CFieldRaw>> =
+        parseField "CField" parseU8 |>> Field.map CField
 
 type PrimaryFunction =
     | LinkReset
@@ -38,15 +35,13 @@ module PrimaryFunction =
         | 0x0Buy -> raw |> Field.withValue RequestUserDataClass2 |> passed
         | _ -> failed raw $"Invalid function code in CField with PRM=1: {b:X2}"
 
-type PrimaryCField =
-    {
-        Fcb: bool
-        Fcv: bool
-        Func: Field<PrimaryFunction>
-    }
+type PrimaryCField = {
+    Fcb: bool
+    Fcv: bool
+    Func: Field<PrimaryFunction>
+}
 
-type SecondaryFunction =
-    | ResponseUserData
+type SecondaryFunction = | ResponseUserData
 
 module SecondaryFunction =
 
@@ -57,12 +52,11 @@ module SecondaryFunction =
         | 0x08uy -> raw |> Field.withValue ResponseUserData |> passed
         | _ -> failed raw $"Invalid function code in CField with PRM=0: {b:X2}"
 
-type SecondaryCField =
-    {
-        Acd: bool
-        Dfc: bool
-        Func: Field<SecondaryFunction>
-    }
+type SecondaryCField = {
+    Acd: bool
+    Dfc: bool
+    Func: Field<SecondaryFunction>
+}
 
 type CField =
     | Primary of PrimaryCField
@@ -84,11 +78,9 @@ module CField =
         | true -> PrimaryStation
         | false -> SecondaryStation
 
-    let private mapFcbAcd b =
-        b &&& maskFcbAcd = maskFcbAcd
+    let private mapFcbAcd b = b &&& maskFcbAcd = maskFcbAcd
 
-    let private mapFcvDfc b =
-        b &&& maskFcvDfc = maskFcvDfc
+    let private mapFcvDfc b = b &&& maskFcvDfc = maskFcvDfc
 
     let private validateReservedBit raw =
         validator {
@@ -99,6 +91,7 @@ module CField =
             else
                 return! passed ()
         }
+
     let private validatePrimary raw fcbAcd fcvDfc =
         validator {
             let! () = validateReservedBit raw
@@ -108,9 +101,9 @@ module CField =
                 raw
                 |> Field.withValue (
                     Primary {
-                    Fcb = fcbAcd
-                    Fcv = fcvDfc
-                    Func = func
+                        Fcb = fcbAcd
+                        Fcv = fcvDfc
+                        Func = func
                     }
                 )
         }
@@ -124,16 +117,14 @@ module CField =
                 raw
                 |> Field.withValue (
                     Secondary {
-                    Acd = fcbAcd
-                    Dfc = fcvDfc
-                    Func = func
+                        Acd = fcbAcd
+                        Dfc = fcvDfc
+                        Func = func
                     }
                 )
         }
 
-    let fromRaw
-        (raw: Field<CFieldRaw>)
-        : Validation<Field<CField>> =
+    let validate (raw: Field<CFieldRaw>) : Validation<Field<CField>> =
 
         validator {
             let b = CFieldRaw.value raw.Value
@@ -142,9 +133,7 @@ module CField =
             let fcvDfc = mapFcvDfc b
 
             match mapOriginator b with
-            | PrimaryStation ->
-                return! validatePrimary raw fcbAcd fcvDfc
+            | PrimaryStation -> return! validatePrimary raw fcbAcd fcvDfc
 
-            | SecondaryStation ->
-                return! validateSecondary raw fcbAcd fcvDfc
+            | SecondaryStation -> return! validateSecondary raw fcbAcd fcvDfc
         }

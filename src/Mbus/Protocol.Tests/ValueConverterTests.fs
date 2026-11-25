@@ -60,4 +60,3 @@ let ``Integer48Bit decodes boundary adjacent negative value`` () =
     |> Integer48Bit.fromBytes
     |> validationValue
     |> should equal -140_737_488_355_327L
-

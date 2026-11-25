@@ -4,17 +4,12 @@ open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 
-type ImplementationInformation =
-    private
-        ImplementationInformation of Ber.GraphicString
+type ImplementationInformation = private ImplementationInformation of Ber.GraphicString
 
 module ImplementationInformation =
 
-    let create value =
-        ImplementationInformation value
+    let create value = ImplementationInformation value
 
-    let value (ImplementationInformation value) =
-        value
+    let value (ImplementationInformation value) = value
 
-    let validate (raw: Field<Ber.GraphicString>) =
-        raw.Value |> create |> passed
+    let validate (raw: Field<Ber.GraphicString>) = raw.Value |> create |> passed

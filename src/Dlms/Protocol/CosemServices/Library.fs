@@ -1,4 +1,4 @@
-﻿namespace DlmsMessages
+namespace DlmsMessages
 //
 // open System
 // open DlmsMessages.Xdlms

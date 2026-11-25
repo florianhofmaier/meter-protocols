@@ -5,7 +5,8 @@ open System
 let foldBytes
     (folder: 'State -> byte -> int -> 'State)
     (state: 'State)
-    (dibBytes: ReadOnlyMemory<byte>) =
+    (dibBytes: ReadOnlyMemory<byte>)
+    =
 
     let span = dibBytes.Span
     let mutable acc = state

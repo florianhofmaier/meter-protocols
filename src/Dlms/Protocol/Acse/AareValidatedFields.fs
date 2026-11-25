@@ -3,81 +3,69 @@ namespace DlmsMessages.Acse
 open Validators
 open DlmsMessages.Utility
 
-type AareValidatedFields =
-    {
-        ApplicationContextName : ApplicationContextName
+type AareValidatedFields = {
+    ApplicationContextName: ApplicationContextName
 
-        Result : AssociationResult
-        ResultSourceDiagnostic : AssociateSourceDiagnostic
+    Result: AssociationResult
+    ResultSourceDiagnostic: AssociateSourceDiagnostic
 
-        RespondingApTitle : ApTitle option
-        RespondingAeQualifier : AeQualifier option
-        RespondingApInvocationId : InvocationIdentifier option
-        RespondingAeInvocationId : InvocationIdentifier option
+    RespondingApTitle: ApTitle option
+    RespondingAeQualifier: AeQualifier option
+    RespondingApInvocationId: InvocationIdentifier option
+    RespondingAeInvocationId: InvocationIdentifier option
 
-        Authentication : RespondingAuthentication
-        ImplementationInformation : ImplementationInformation option
-        UserInformation : BufferSlice
-    }
+    Authentication: RespondingAuthentication
+    ImplementationInformation: ImplementationInformation option
+    UserInformation: BufferSlice
+}
 
 module AareValidatedFields =
     let validate (raw: AareRawFields) : Validation<AareValidatedFields> =
         validator {
-            let! _ =
-                ProtocolVersion.validate raw.ProtocolVersion
+            let! _ = ProtocolVersion.validate raw.ProtocolVersion
 
             and! applicationContextName =
                 raw.ApplicationContextName
                 |> Validation.requireSome
-                    ["AARE"; "application-context-name"]
+                    [ "AARE"; "application-context-name" ]
                     "missing application-context-name"
                 |> Validation.bind ApplicationContextName.validate
 
             and! result =
                 raw.Result
-                |> Validation.requireSome
-                    ["AARE"; "result"]
-                    "missing result"
-                |> Validation.bind AssociationResult.fromRaw
+                |> Validation.requireSome [ "AARE"; "result" ] "missing result"
+                |> Validation.bind AssociationResult.validate
 
             and! resultSourceDiagnostic =
                 raw.ResultSourceDiagnostic
                 |> Validation.requireSome
-                    ["AARE"; "result-source-diagnostic"]
+                    [ "AARE"; "result-source-diagnostic" ]
                     "missing result-source-diagnostic"
-                |> Validation.bind AssociateSourceDiagnostic.fromRaw
+                |> Validation.bind AssociateSourceDiagnostic.validate
 
             and! authentication =
-                RespondingAuthentication.fromRaw
+                RespondingAuthentication.validate
                     raw.ResponderAcseRequirements
                     raw.MechanismName
                     raw.RespondingAuthenticationValue
 
             and! userInformation =
                 raw.UserInformation
-                |> Validation.requireSome
-                    ["AARE"; "user-information"]
-                    "missing user-information"
+                |> Validation.requireSome [ "AARE"; "user-information" ] "missing user-information"
 
-            let respondingApTitle =
-                raw.RespondingApTitle
-                |> Option.map ApTitle.create
+            let respondingApTitle = raw.RespondingApTitle |> Option.map ApTitle.create
 
             let respondingAeQualifier =
-                raw.RespondingAeQualifier
-                |> Option.map AeQualifier.create
+                raw.RespondingAeQualifier |> Option.map AeQualifier.create
 
             let respondingApInvocationId =
-                raw.RespondingApInvocationId
-                |> Option.map InvocationIdentifier.create
+                raw.RespondingApInvocationId |> Option.map InvocationIdentifier.create
 
             let respondingAeInvocationId =
-                raw.RespondingAeInvocationId
-                |> Option.map InvocationIdentifier.create
+                raw.RespondingAeInvocationId |> Option.map InvocationIdentifier.create
 
             let implementationInformation =
-                raw.ImplementationInformation
-                |> Option.map ImplementationInformation.create
+                raw.ImplementationInformation |> Option.map ImplementationInformation.create
 
             return {
                 ApplicationContextName = applicationContextName

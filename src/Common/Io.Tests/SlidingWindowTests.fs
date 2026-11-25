@@ -1,4 +1,4 @@
-module Mbus.Io.Tests.SlidingWindowTests
+module Metering.Common.Io.Tests.SlidingWindowTests
 
 open Xunit
 open FsUnit.Xunit
@@ -6,7 +6,7 @@ open Shouldly
 open System.IO
 open System.Threading
 open System.Threading.Tasks
-open Mbus.Io
+open Metering.Common.Io
 
 [<Fact>]
 let ``Constructor WhenCalled ShouldInitializeEmptyWindow`` () =
@@ -55,7 +55,10 @@ let ``FillAsync WhenBufferIsFull ShouldThrowMbusIoException`` () =
 
         let! n = window.FillAsync(CancellationToken.None)
         n.ShouldBe(10)
-        let! _ = Assert.ThrowsAsync<MbusIoException>(fun () -> window.FillAsync(CancellationToken.None))
+
+        let! _ =
+            Assert.ThrowsAsync<MbusIoException>(fun () -> window.FillAsync(CancellationToken.None))
+
         ()
     }
 
@@ -141,4 +144,3 @@ let ``FillAsync WhenBufferExactFullAfterCompact ShouldThrow`` () =
     window.Data.ToArray().ShouldBe([| 3uy; 4uy; 5uy |])
 
     Assert.ThrowsAsync<MbusIoException>(fun () -> window.FillAsync(CancellationToken.None))
-

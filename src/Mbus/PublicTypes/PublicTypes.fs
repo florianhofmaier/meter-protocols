@@ -39,19 +39,30 @@ type MbusDeviceType =
     | UnidirectionalRepeater = 0x32
     | BidirectionalRepeater = 0x33
 
-type MbusAddress = { IdNumber: int; Mfr: string; Version: int; DeviceType: MbusDeviceType}
+type MbusAddress = {
+    IdNumber: int
+    Mfr: string
+    Version: int
+    DeviceType: MbusDeviceType
+}
 
 module MbusAddress =
     let create id mfr version deviceType : Result<MbusAddress, string> =
         if id < 0 || id > 99999999 then
             Error $"Invalid ID number: {id}, must be between 0 and 99999999"
-        elif String.length mfr<> 3 then
+        elif String.length mfr <> 3 then
             Error $"Invalid manufacturer code length: {mfr.Length}, expected 3"
         elif not (mfr |> Seq.forall (fun c -> c >= 'A' && c <= 'Z')) then
             Error $"Invalid manufacturer code: {mfr}, must contain only uppercase letters A-Z"
         elif version < 0 || version > 255 then
             Error $"Invalid version: {version}, must be between 0 and 255"
-        else Ok { IdNumber = id; Mfr = mfr; Version = version; DeviceType = deviceType }
+        else
+            Ok {
+                IdNumber = id
+                Mfr = mfr
+                Version = version
+                DeviceType = deviceType
+            }
 
 type MbusApplicationError =
     | NoError = 0uy
@@ -59,17 +70,19 @@ type MbusApplicationError =
     | AnyApplicationError = 2uy
     | AbnormalCondition = 3uy
 
-type MbusStatusField =
-    { ApplicationError : MbusApplicationError
-      PowerLow : bool
-      PermanentError : bool
-      TemporaryError : bool }
+type MbusStatusField = {
+    ApplicationError: MbusApplicationError
+    PowerLow: bool
+    PermanentError: bool
+    TemporaryError: bool
+} with
 
-    static member CreateEmpty=
-        { ApplicationError = MbusApplicationError.NoError
-          PowerLow = false
-          PermanentError = false
-          TemporaryError = false }
+    static member CreateEmpty = {
+        ApplicationError = MbusApplicationError.NoError
+        PowerLow = false
+        PermanentError = false
+        TemporaryError = false
+    }
 
 type MbusDataType =
     | NoData
@@ -400,19 +413,38 @@ type MbusUnit =
 //         | Bar -> "bar"
 
 [<AbstractClass>]
-type MbusRecordBase(unit: MbusUnit, fn: MbusFunctionField, storageNum: int, tariff: int, subUnit: int) =
+type MbusRecordBase
+    (unit: MbusUnit, fn: MbusFunctionField, storageNum: int, tariff: int, subUnit: int) =
     member _.Unit = unit
     member _.Function = fn
     member _.StorageNumber = storageNum
     member _.Tariff = tariff
     member _.SubUnit = subUnit
 
-type MbusNumericalRecord(unit: MbusUnit, fn: MbusFunctionField, storageNum: int, tariff: int, subUnit: int, value: double, valueType: MbusValueType) =
+type MbusNumericalRecord
+    (
+        unit: MbusUnit,
+        fn: MbusFunctionField,
+        storageNum: int,
+        tariff: int,
+        subUnit: int,
+        value: double,
+        valueType: MbusValueType
+    ) =
     inherit MbusRecordBase(unit, fn, storageNum, tariff, subUnit)
     member _.Value = value
     member _.ValueType = valueType
 
-type MbusTextRecord(unit: MbusUnit, fn: MbusFunctionField, storageNum: int, tariff: int, subUnit: int, value: string, valueType: string) =
+type MbusTextRecord
+    (
+        unit: MbusUnit,
+        fn: MbusFunctionField,
+        storageNum: int,
+        tariff: int,
+        subUnit: int,
+        value: string,
+        valueType: string
+    ) =
     inherit MbusRecordBase(unit, fn, storageNum, tariff, subUnit)
     member _.Value = value
     member _.ValueType = valueType

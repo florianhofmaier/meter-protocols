@@ -11,11 +11,11 @@ module AplCodec =
 
     let parse (ci: CiFieldTpl) = AplRaw.parse ci
 
-    let fromRaw (raw: Field<AplRaw>) : Validation<Field<Apl>> =
-        validateField (Field.value >> Apl.fromRaw) raw
+    let validate (raw: Field<AplRaw>) : Validation<Field<Apl>> =
+        validateField (Field.value >> Apl.validate) raw
 
     let decode (ci: CiFieldTpl) (source: Field<ReadOnlyMemory<byte>>) : Decoder<Field<Apl>> =
         decoder {
-            let! raw = Core.parse (parse ci) source
-            return! Core.validate fromRaw raw
+            let! raw = Decoder.parse (parse ci) source
+            return! Decoder.validate validate raw
         }

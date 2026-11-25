@@ -11,16 +11,11 @@ type ResponseAllowed =
 module ResponseAllowed =
 
     let private fromBool value =
-        if value then
-            ResponseAllowed
-        else
-            ResponseNotAllowed
+        if value then ResponseAllowed else ResponseNotAllowed
 
     let defaultValue = ResponseAllowed
 
-    let validate
-        (raw: Field<Axdr.Boolean>)
-        : Validation<Field<ResponseAllowed>> =
+    let validate (raw: Field<Axdr.Boolean>) : Validation<Field<ResponseAllowed>> =
 
         raw.Value
         |> Axdr.Boolean.value

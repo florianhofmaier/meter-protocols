@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#111820" />
+    <title>Protocol Inspector</title>
+  </head>
+  <body>
+    <div id="root">
+      <main
+        style="
+          max-width: 640px;
+          margin: 60px auto;
+          padding: 24px;
+          font:
+            16px/1.6 system-ui,
+            sans-serif;
+        "
+      >
+        <h1>Protocol Inspector</h1>
+        <p>
+          Die Weboberfläche benötigt einen laufenden Webserver. Diese Quelldatei kann nicht direkt
+          per <code>file://</code> geöffnet werden.
+        </p>
+        <p><a href="http://127.0.0.1:5080/">Lokale Anwendung öffnen: http://127.0.0.1:5080/</a></p>
+        <p>
+          Falls die Oberfläche über HTTP nicht lädt, bitte prüfen, ob der React-Client gebaut wurde
+          und JavaScript aktiviert ist.
+        </p>
+      </main>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -13,7 +13,7 @@ Ein Parser, der beim ersten semantisch ungültigen Wert abbricht, verliert analy
 
 *Parser* lesen eine Source und erzeugen Fields und Raw-Modelle. Sie erkennen Byte-Struktur, Feldgrenzen und Protokollvarianten und schlagen fehl, wenn die verlangte Struktur nicht gelesen werden kann. Parser dürfen innerhalb derselben strukturellen Stufe weitere Parser kombinieren, führen aber keine semantische Validierung oder kontextabhängige Transformation aus.
 
-*Validatoren* prüfen anschließend semantische Regeln. `fromRaw` ist rein, liefert `Validation<_>` und kombiniert unabhängige Prüfungen applikativ. Das Raw-Modell bleibt unabhängig vom Validierungsergebnis verfügbar.
+*Validatoren* prüfen anschließend semantische Regeln. `validate` ist rein, liefert `Validation<_>` und kombiniert unabhängige Prüfungen applikativ. Das Raw-Modell bleibt unabhängig vom Validierungsergebnis verfügbar.
 
 *Decoder* orchestrieren Parser und Validatoren über strukturelle Stufen hinweg. Sie bestimmen die nächste erreichbare Stufe, verwenden externen Kontext, führen Transformationen aus, erzeugen Derived Sources und dekodieren freigelegte Payloads. Bereits erzeugte Strukturen und Diagnostics bleiben dabei erhalten.
 

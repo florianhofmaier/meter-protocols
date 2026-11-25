@@ -15,17 +15,17 @@ type Afl private () = class end
 
 module AflCodec =
 
-    let tryParse : Parser<Field<Afl> option> =
+    let tryParse: Parser<Field<Afl> option> =
         parser {
             let! ci = CiField.peek
+
             match ci with
             | CiField.Afl ->
                 return! fail $"Layer introduced by CI 0x{CiField.code ci:X2} is not implemented."
             | _ -> return None
         }
 
-    let fromRaw (raw: Field<Afl>) : Validation<Field<Afl>> =
-        failed raw "AFL is not implemented."
+    let validate (raw: Field<Afl>) : Validation<Field<Afl>> = failed raw "AFL is not implemented."
 
     let tryDecode
         (source: Field<ReadOnlyMemory<byte>>)
@@ -33,16 +33,17 @@ module AflCodec =
 
         decoder {
             let! raw =
-                Core.parseValue
+                Decoder.parseValue
                     (parser {
                         let! raw = tryParse
                         let! _ = takeAll
                         return raw
                     })
                     source
+
             match raw with
             | None -> return None, source
             | Some raw ->
-                let! valid = Core.validate fromRaw raw
+                let! valid = Decoder.validate validate raw
                 return Some valid, source
         }

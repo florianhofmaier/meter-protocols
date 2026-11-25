@@ -7,8 +7,7 @@ open Metering.Common.Security.Cryptography
 
 [<Fact>]
 let ``operation sees original buffer contents and return value is preserved`` () =
-    let buffer =
-        [| 0x01uy; 0x02uy |]
+    let buffer = [| 0x01uy; 0x02uy |]
 
     let result =
         SensitiveBuffer.useZeroed buffer (fun memory ->
@@ -19,8 +18,7 @@ let ``operation sees original buffer contents and return value is preserved`` ()
 
 [<Fact>]
 let ``buffer is zeroed after successful operation`` () =
-    let buffer =
-        [| 0x01uy; 0x02uy |]
+    let buffer = [| 0x01uy; 0x02uy |]
 
     SensitiveBuffer.useZeroed buffer (fun _ -> ()) |> ignore
 
@@ -28,8 +26,7 @@ let ``buffer is zeroed after successful operation`` () =
 
 [<Fact>]
 let ``buffer is zeroed and original exception is propagated when operation throws`` () =
-    let buffer =
-        [| 0x01uy; 0x02uy |]
+    let buffer = [| 0x01uy; 0x02uy |]
 
     let ex =
         Assert.Throws<InvalidOperationException>(fun () ->
@@ -42,8 +39,7 @@ let ``buffer is zeroed and original exception is propagated when operation throw
 
 [<Fact>]
 let ``empty buffers are supported`` () =
-    let buffer =
-        [||]
+    let buffer = [||]
 
     let result =
         SensitiveBuffer.useZeroed buffer (fun memory ->

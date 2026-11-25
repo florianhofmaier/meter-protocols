@@ -2,7 +2,7 @@ namespace Metering.Dlms.Protocol.CosemApdus
 
 open System
 open Metering.Common.Decoding.Decoders.Core
-open Metering.Common.Decoding.Decoders.Core.Core
+open Metering.Common.Decoding.Decoders.Core.Decoder
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
@@ -13,11 +13,10 @@ open Metering.Dlms.Protocol.Xdlms
 open Metering.Dlms.Protocol.Xdlms.InitiateRequest
 open Metering.Dlms.Protocol.Xdlms.Security
 
-type AarqApdu =
-    {
-        Aarq : AarqValidatedFields
-        InitiateRequest : InitiateRequestValidatedFields
-    }
+type AarqApdu = {
+    Aarq: AarqValidatedFields
+    InitiateRequest: InitiateRequestValidatedFields
+}
 
 module AarqApdu =
 
@@ -27,34 +26,26 @@ module AarqApdu =
         : Decoder<Field<ReadOnlyMemory<byte>>> =
 
         decoder {
-            let bytes =
-                userInformation
-                |> Field.map UserInformation.value
+            let bytes = userInformation |> Field.map UserInformation.value
 
-            let! tag =
-                parseValue Tag.peek<XdlmsTag> bytes
+            let! tag = parseValue Tag.peek<XdlmsTag> bytes
 
             match tag with
-            | XdlmsTag.InitiateRequest ->
-                return bytes
+            | XdlmsTag.InitiateRequest -> return bytes
 
             | XdlmsTag.GloInitiateRequest ->
-                let! raw =
-                    parse GloInitiateRequestRaw.parse bytes
+                let! raw = parse GloInitiateRequestRaw.parse bytes
 
-                let! validated =
-                    validate GloInitiateRequestValidatedFields.fromRaw raw
+                let! validated = validate GloInitiateRequestValidatedFields.validate raw
 
-                let payload =
-                    GloInitiateRequestValidatedFields.protectedApdu validated
+                let payload = GloInitiateRequestValidatedFields.protectedApdu validated
 
                 match cipherContext with
                 | Global globaleCipherContext ->
 
                     return! GloCiphering.unprotect globaleCipherContext payload
 
-            | XdlmsTag.DedInitiateRequest ->
-                return bytes
+            | XdlmsTag.DedInitiateRequest -> return bytes
 
             | XdlmsTag.GeneralGloCiphering
             | XdlmsTag.GeneralDedCiphering
@@ -64,32 +55,22 @@ module AarqApdu =
                     |> EncryptionFailed
                     |> decodeError
 
-            | _ ->
-                return!
-                    validate
-                        failed bytes "unknown user information tag"
+            | _ -> return! validate failed bytes "unknown user information tag"
         }
 
-    let decode
-        (bytes : Field<ReadOnlyMemory<byte>>)
-        : Decoder<AarqApdu> =
+    let decode (bytes: Field<ReadOnlyMemory<byte>>) : Decoder<AarqApdu> =
 
         decoder {
-            let! aarqRaw =
-                parse AarqRaw.parse bytes
+            let! aarqRaw = parse AarqRaw.parse bytes
 
-            let! aarqFields =
-                validate AarqValidatedFields.fromParsed aarqRaw
+            let! aarqFields = validate AarqValidatedFields.validate aarqRaw
 
-            let! initiateRequestRaw =
-                aarqFields.UserInformation
-                |> unprotectUserInformation
+            let! initiateRequestRaw = aarqFields.UserInformation |> unprotectUserInformation
 
-            let! initiateRequest =
-                parse InitiateRequestRaw.parse initiateRequestRaw
+            let! initiateRequest = parse InitiateRequestRaw.parse initiateRequestRaw
 
             let! initiateRequestFields =
-                validate InitiateRequestValidatedFields.fromParsed initiateRequest
+                validate InitiateRequestValidatedFields.validate initiateRequest
 
             return {
                 Aarq = aarqFields

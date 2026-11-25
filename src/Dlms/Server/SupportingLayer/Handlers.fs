@@ -1,4 +1,4 @@
-﻿module Metering.Dlms.Server.SupportingLayer.Handlers
+module Metering.Dlms.Server.SupportingLayer.Handlers
 
 open System
 open Metering.Dlms.Protocol.ApplicationLayer
@@ -12,33 +12,30 @@ let private handleXxDataIndication
     (diagnostics: Diagnostic list)
     : ServerResponse =
 
-    let openResult =
-        ServerCf.xxDataIndication
-            state.CfState
-            indication
+    let openResult = ServerCf.xxDataIndication state.CfState indication
 
-    let diagnostics =
-        diagnostics @ openResult.Diagnostics
+    let diagnostics = diagnostics @ openResult.Diagnostics
 
     match openResult.Result with
-    | Error error ->
-        {
-            State = { state with CfState = openResult.State }
-            Diagnostics = diagnostics
-            Result = Error error
+    | Error error -> {
+        State = {
+            state with
+                CfState = openResult.State
         }
+        Diagnostics = diagnostics
+        Result = Error error
+      }
 
     | Ok openIndication ->
-        let openResponse =
-            policy.DecideOpen openIndication
+        let openResponse = policy.DecideOpen openIndication
 
-        let responseResult =
-            ServerCf.cosemOpenResponse
-                openResult.State
-                openResponse
+        let responseResult = ServerCf.cosemOpenResponse openResult.State openResponse
 
         {
-            State = { state with CfState = responseResult.State }
+            State = {
+                state with
+                    CfState = responseResult.State
+            }
             Diagnostics = diagnostics @ responseResult.Diagnostics
             Result = responseResult.Result
         }
@@ -50,29 +47,22 @@ let onBytes
     : ServerResponse =
 
     match ParserRunner.runOnBytes WrapperPduRaw.parse bytes with
-    | Error parseError ->
-        {
-            State = state
-            Diagnostics = [ Diagnostic.fromParseError parseError ]
-            Result = Error InvalidInput
-        }
+    | Error parseError -> {
+        State = state
+        Diagnostics = [ Diagnostic.fromParseError parseError ]
+        Result = Error InvalidInput
+      }
 
     | Ok wrapperRaw ->
         let indicationReport =
-            ServerWrapperProfile.toXxDataIndication wrapperRaw
-            |> Validation.run
+            ServerWrapperProfile.toXxDataIndication wrapperRaw |> Validation.run
 
         match indicationReport.Result with
-        | Error () ->
-            {
-                State = state
-                Diagnostics = indicationReport.Diagnostics
-                Result = Error InvalidInput
-            }
+        | Error() -> {
+            State = state
+            Diagnostics = indicationReport.Diagnostics
+            Result = Error InvalidInput
+          }
 
         | Ok xxDataIndication ->
-            handleXxDataIndication
-                policy
-                state
-                xxDataIndication
-                indicationReport.Diagnostics
+            handleXxDataIndication policy state xxDataIndication indicationReport.Diagnostics

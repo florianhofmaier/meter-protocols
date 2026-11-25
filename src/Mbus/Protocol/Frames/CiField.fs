@@ -11,22 +11,26 @@ type CiDirection =
     | FromDevice
     | Bidirectional
 
-type CiFieldEll =
-    | NoDllEncryption
+type CiFieldEll = | NoDllEncryption
 
-type CiLowerLayerManagement =
-    | SelectionOfDevice
+type CiLowerLayerManagement = | SelectionOfDevice
 
 type CiFieldTplNoneHeader =
+    | SelectedApplicationResponse
+    | RequestSelectedApplication
     | ApplicationResetOrSelect
     | Command
 
 type CiFieldTplShortHeader =
+    | RequestSelectedApplication
     | ApplicationResetOrSelect
     | Response
 
 type CiFieldTplLongHeader =
+    | SelectedApplicationResponse
+    | RequestSelectedApplication
     | ApplicationResetOrSelect
+    | Command
     | Response
     | Alarm
 
@@ -51,25 +55,33 @@ type internal CiClassification =
 
 module private CiClassification =
 
-    let private inRange lower upper value =
-        value >= lower && value <= upper
+    let private inRange lower upper value = value >= lower && value <= upper
 
     let private trySupported =
         function
+        | 0x54uy ->
+            Some(CiField.Tpl(CiFieldTpl.NoneHeader CiFieldTplNoneHeader.RequestSelectedApplication))
+        | 0x55uy ->
+            Some(CiField.Tpl(CiFieldTpl.LongHeader CiFieldTplLongHeader.RequestSelectedApplication))
+        | 0x56uy ->
+            Some(
+                CiField.Tpl(CiFieldTpl.ShortHeader CiFieldTplShortHeader.RequestSelectedApplication)
+            )
+        | 0x66uy ->
+            Some(
+                CiField.Tpl(CiFieldTpl.NoneHeader CiFieldTplNoneHeader.SelectedApplicationResponse)
+            )
+        | 0x68uy ->
+            Some(
+                CiField.Tpl(CiFieldTpl.LongHeader CiFieldTplLongHeader.SelectedApplicationResponse)
+            )
         | 0x50uy ->
             CiFieldTplNoneHeader.ApplicationResetOrSelect
             |> CiFieldTpl.NoneHeader
             |> CiField.Tpl
             |> Some
-        | 0x51uy ->
-            CiFieldTplNoneHeader.Command
-            |> CiFieldTpl.NoneHeader
-            |> CiField.Tpl
-            |> Some
-        | 0x52uy ->
-            CiLowerLayerManagement.SelectionOfDevice
-            |> CiField.LowerLayerManagement
-            |> Some
+        | 0x51uy -> CiFieldTplNoneHeader.Command |> CiFieldTpl.NoneHeader |> CiField.Tpl |> Some
+        | 0x52uy -> CiLowerLayerManagement.SelectionOfDevice |> CiField.LowerLayerManagement |> Some
         | 0x53uy ->
             CiFieldTplLongHeader.ApplicationResetOrSelect
             |> CiFieldTpl.LongHeader
@@ -80,23 +92,12 @@ module private CiClassification =
             |> CiFieldTpl.ShortHeader
             |> CiField.Tpl
             |> Some
-        | 0x72uy ->
-            CiFieldTplLongHeader.Response
-            |> CiFieldTpl.LongHeader
-            |> CiField.Tpl
-            |> Some
-        | 0x75uy ->
-            CiFieldTplLongHeader.Alarm
-            |> CiFieldTpl.LongHeader
-            |> CiField.Tpl
-            |> Some
-        | 0x7Auy ->
-            CiFieldTplShortHeader.Response
-            |> CiFieldTpl.ShortHeader
-            |> CiField.Tpl
-            |> Some
+        | 0x72uy -> CiFieldTplLongHeader.Response |> CiFieldTpl.LongHeader |> CiField.Tpl |> Some
+        | 0x5Buy -> CiFieldTplLongHeader.Command |> CiFieldTpl.LongHeader |> CiField.Tpl |> Some
+        | 0x75uy -> CiFieldTplLongHeader.Alarm |> CiFieldTpl.LongHeader |> CiField.Tpl |> Some
+        | 0x7Auy -> CiFieldTplShortHeader.Response |> CiFieldTpl.ShortHeader |> CiField.Tpl |> Some
         | 0x81uy -> Some CiField.Nwl
-        | 0x8Cuy -> Some (CiField.Ell CiFieldEll.NoDllEncryption)
+        | 0x8Cuy -> Some(CiField.Ell CiFieldEll.NoDllEncryption)
         | 0x90uy -> Some CiField.Afl
         | _ -> None
 
@@ -110,26 +111,27 @@ module private CiClassification =
         || inRange 0xC6uy 0xFFuy value
 
     let private isNotApplicableToWired value =
-        value = 0x67uy
-        || inRange 0x80uy 0x83uy value
-        || inRange 0x86uy 0x8Fuy value
+        value = 0x67uy || inRange 0x80uy 0x83uy value || inRange 0x86uy 0x8Fuy value
 
     let classify value =
         match trySupported value with
         | Some ci -> CiClassification.Supported ci
         | None when isNotApplicableToWired value ->
             CiClassification.StandardDefinedNotApplicableToWired value
-        | None when isReserved value ->
-            CiClassification.Reserved value
-        | None ->
-            CiClassification.StandardDefinedUnsupportedForWired value
+        | None when isReserved value -> CiClassification.Reserved value
+        | None -> CiClassification.StandardDefinedUnsupportedForWired value
 
     let private supportedValues =
-        "Supported TPL CI values are 0x50, 0x51, 0x53, 0x57, 0x72, 0x75, and 0x7A."
+        "Supported TPL CI values are 0x50, 0x51, 0x53–0x57, 0x5B, 0x66, 0x68, 0x72, 0x75, and 0x7A."
 
     let private isCurrentApplicationCi value =
         match value with
-        | 0x54uy | 0x55uy | 0x56uy | 0x66uy | 0x67uy | 0x68uy -> true
+        | 0x54uy
+        | 0x55uy
+        | 0x56uy
+        | 0x66uy
+        | 0x67uy
+        | 0x68uy -> true
         | _ -> false
 
     let private reference value =
@@ -143,13 +145,19 @@ module private CiClassification =
         | CiClassification.StandardDefinedUnsupportedForWired value ->
             $"Unsupported, but standard-conformant wired TPL CI value 0x{value:X2}. "
             + "The value is applicable to wired M-Bus. Field: CI-Field TPL. "
-            + supportedValues + " " + reference value
+            + supportedValues
+            + " "
+            + reference value
         | CiClassification.StandardDefinedNotApplicableToWired value ->
             $"TPL CI value 0x{value:X2} is standard-defined but not applicable to wired M-Bus. "
-            + "Field: CI-Field TPL. " + supportedValues + " " + reference value
+            + "Field: CI-Field TPL. "
+            + supportedValues
+            + " "
+            + reference value
         | CiClassification.Reserved value ->
             $"Reserved TPL CI value 0x{value:X2}. Field: CI-Field TPL. "
-            + supportedValues + " EN 13757-7:2018, 5.2, Table 2."
+            + supportedValues
+            + " EN 13757-7:2018, 5.2, Table 2."
         | CiClassification.Supported _ ->
             invalidArg "classification" "A supported CI has no failure message."
 
@@ -157,14 +165,20 @@ module CiField =
 
     let code =
         function
-        | Tpl (NoneHeader CiFieldTplNoneHeader.ApplicationResetOrSelect) -> 0x50uy
-        | Tpl (NoneHeader CiFieldTplNoneHeader.Command) -> 0x51uy
+        | Tpl(NoneHeader CiFieldTplNoneHeader.RequestSelectedApplication) -> 0x54uy
+        | Tpl(LongHeader CiFieldTplLongHeader.RequestSelectedApplication) -> 0x55uy
+        | Tpl(ShortHeader CiFieldTplShortHeader.RequestSelectedApplication) -> 0x56uy
+        | Tpl(NoneHeader CiFieldTplNoneHeader.SelectedApplicationResponse) -> 0x66uy
+        | Tpl(LongHeader CiFieldTplLongHeader.SelectedApplicationResponse) -> 0x68uy
+        | Tpl(NoneHeader CiFieldTplNoneHeader.ApplicationResetOrSelect) -> 0x50uy
+        | Tpl(NoneHeader CiFieldTplNoneHeader.Command) -> 0x51uy
         | LowerLayerManagement CiLowerLayerManagement.SelectionOfDevice -> 0x52uy
-        | Tpl (LongHeader CiFieldTplLongHeader.ApplicationResetOrSelect) -> 0x53uy
-        | Tpl (ShortHeader CiFieldTplShortHeader.ApplicationResetOrSelect) -> 0x57uy
-        | Tpl (LongHeader CiFieldTplLongHeader.Response) -> 0x72uy
-        | Tpl (LongHeader CiFieldTplLongHeader.Alarm) -> 0x75uy
-        | Tpl (ShortHeader CiFieldTplShortHeader.Response) -> 0x7Auy
+        | Tpl(LongHeader CiFieldTplLongHeader.ApplicationResetOrSelect) -> 0x53uy
+        | Tpl(ShortHeader CiFieldTplShortHeader.ApplicationResetOrSelect) -> 0x57uy
+        | Tpl(LongHeader CiFieldTplLongHeader.Command) -> 0x5Buy
+        | Tpl(LongHeader CiFieldTplLongHeader.Response) -> 0x72uy
+        | Tpl(LongHeader CiFieldTplLongHeader.Alarm) -> 0x75uy
+        | Tpl(ShortHeader CiFieldTplShortHeader.Response) -> 0x7Auy
         | Nwl -> 0x81uy
         | Ell CiFieldEll.NoDllEncryption -> 0x8Cuy
         | Afl -> 0x90uy
@@ -173,77 +187,81 @@ module CiField =
         parser {
             match CiClassification.classify value with
             | CiClassification.Supported ci -> return ci
-            | classification ->
-                return! failBefore 1 (CiClassification.message classification)
+            | classification -> return! failBefore 1 (CiClassification.message classification)
         }
 
     let private peekFromByte value =
         parser {
             match CiClassification.classify value with
             | CiClassification.Supported ci -> return ci
-            | classification ->
-                return! fail (CiClassification.message classification)
+            | classification -> return! fail (CiClassification.message classification)
         }
 
-    let peek : Parser<CiField> =
+    let peek: Parser<CiField> =
         parser {
             let! value = peekU8
             return! peekFromByte value
         }
 
-    let parse : Parser<Field<CiField>> =
+    let parse: Parser<Field<CiField>> =
         parseField "CI-Field"
         <| parser {
             let! value = parseU8
             return! fromByte value
         }
 
+    /// Writes the classified CI byte.
+    let write ci =
+        Metering.Common.BaseWriters.BinaryWriters.writeU8 (code ci)
+
 module CiFieldTpl =
 
-    let (|NoneHeaderField|ShortHeaderField|LongHeaderField|)
-        (field: Field<CiFieldTpl>) =
+    let (|NoneHeaderField|ShortHeaderField|LongHeaderField|) (field: Field<CiFieldTpl>) =
 
         match field.Value with
-        | CiFieldTpl.NoneHeader ci ->
-            NoneHeaderField (field |> Field.withValue ci)
-        | CiFieldTpl.ShortHeader ci ->
-            ShortHeaderField (field |> Field.withValue ci)
-        | CiFieldTpl.LongHeader ci ->
-            LongHeaderField (field |> Field.withValue ci)
+        | CiFieldTpl.NoneHeader ci -> NoneHeaderField(field |> Field.withValue ci)
+        | CiFieldTpl.ShortHeader ci -> ShortHeaderField(field |> Field.withValue ci)
+        | CiFieldTpl.LongHeader ci -> LongHeaderField(field |> Field.withValue ci)
 
-    let value ci =
-        CiField.code (CiField.Tpl ci)
+    let value ci = CiField.code (CiField.Tpl ci)
 
     /// EN 13757-7:2018, 5.2, Table 2; EN 13757-3:2025, 7.3, Table 27.
     let direction =
         function
+        | NoneHeader CiFieldTplNoneHeader.SelectedApplicationResponse -> CiDirection.FromDevice
         | NoneHeader _
+        | ShortHeader CiFieldTplShortHeader.RequestSelectedApplication
+        | LongHeader CiFieldTplLongHeader.RequestSelectedApplication
         | ShortHeader CiFieldTplShortHeader.ApplicationResetOrSelect
-        | LongHeader CiFieldTplLongHeader.ApplicationResetOrSelect ->
-            CiDirection.ToDevice
+        | LongHeader CiFieldTplLongHeader.Command
+        | LongHeader CiFieldTplLongHeader.ApplicationResetOrSelect -> CiDirection.ToDevice
+        | LongHeader CiFieldTplLongHeader.SelectedApplicationResponse
         | ShortHeader CiFieldTplShortHeader.Response
         | LongHeader CiFieldTplLongHeader.Response
-        | LongHeader CiFieldTplLongHeader.Alarm ->
-            CiDirection.FromDevice
+        | LongHeader CiFieldTplLongHeader.Alarm -> CiDirection.FromDevice
 
     let internal isAfl value =
         CiClassification.classify value = CiClassification.Supported CiField.Afl
 
-    let parse : Parser<Field<CiFieldTpl>> =
+    let parse: Parser<Field<CiFieldTpl>> =
         parseField "CI-Field TPL"
         <| parser {
             let! raw = parseU8
 
             match CiClassification.classify raw with
-            | CiClassification.Supported (CiField.Tpl ci) -> return ci
+            | CiClassification.Supported(CiField.Tpl ci) -> return ci
             | CiClassification.Supported CiField.Afl ->
                 return!
-                    failBefore 1
+                    failBefore
+                        1
                         "AFL CI value 0x90 is not a TPL CI value. Field: CI-Field TPL. EN 13757-7:2018, 5.2, Table 2."
             | CiClassification.Supported other ->
                 return!
-                    failBefore 1
+                    failBefore
+                        1
                         $"CI value 0x{CiField.code other:X2} does not select the transport layer."
-            | classification ->
-                return! failBefore 1 (CiClassification.message classification)
+            | classification -> return! failBefore 1 (CiClassification.message classification)
         }
+
+    /// Writes the transport-layer CI byte.
+    let write ci = CiField.write (CiField.Tpl ci)

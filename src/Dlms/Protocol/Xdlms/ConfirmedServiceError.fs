@@ -26,42 +26,32 @@ module ServiceErrorRaw =
         | LoadDataSet = 0x07uy
         | Task = 0x09uy
 
-    let parse : Parser<ServiceErrorRaw> =
-        withCtx "ServiceError" <|
-        parser {
+    let parse: Parser<ServiceErrorRaw> =
+        withCtx "ServiceError"
+        <| parser {
             let! tag = Tag.parse<Tag>
             let! value = parseU8
 
             match tag with
-            | Tag.ApplicationReference ->
-                return ApplicationReference value
+            | Tag.ApplicationReference -> return ApplicationReference value
 
-            | Tag.HardwareResource ->
-                return HardwareResource value
+            | Tag.HardwareResource -> return HardwareResource value
 
-            | Tag.VdeStateError ->
-                return VdeStateError value
+            | Tag.VdeStateError -> return VdeStateError value
 
-            | Tag.Service ->
-                return Service value
+            | Tag.Service -> return Service value
 
-            | Tag.Definition ->
-                return Definition value
+            | Tag.Definition -> return Definition value
 
-            | Tag.Access ->
-                return Access value
+            | Tag.Access -> return Access value
 
-            | Tag.Initiate ->
-                return Initiate value
+            | Tag.Initiate -> return Initiate value
 
-            | Tag.LoadDataSet ->
-                return LoadDataSet value
+            | Tag.LoadDataSet -> return LoadDataSet value
 
-            | Tag.Task ->
-                return Task value
+            | Tag.Task -> return Task value
 
-            | _ ->
-                return! fail $"unsupported ServiceError tag {tag}"
+            | _ -> return! fail $"unsupported ServiceError tag {tag}"
         }
 
 type ConfirmedServiceErrorRaw =
@@ -75,22 +65,18 @@ module ConfirmedServiceErrorRaw =
         | Read = 0x05uy
         | Write = 0x06uy
 
-    let parseBody : Parser<ConfirmedServiceErrorRaw> =
+    let parseBody: Parser<ConfirmedServiceErrorRaw> =
         parser {
             let! tag = Tag.parse<ChoiceTag>
 
             match tag with
-            | ChoiceTag.InitiateError ->
-                return! ServiceErrorRaw.parse |>> InitiateError
+            | ChoiceTag.InitiateError -> return! ServiceErrorRaw.parse |>> InitiateError
 
-            | ChoiceTag.Read ->
-                return! ServiceErrorRaw.parse |>> Read
+            | ChoiceTag.Read -> return! ServiceErrorRaw.parse |>> Read
 
-            | ChoiceTag.Write ->
-                return! ServiceErrorRaw.parse |>> Write
+            | ChoiceTag.Write -> return! ServiceErrorRaw.parse |>> Write
 
-            | _ ->
-                return! fail $"unsupported ConfirmedServiceError choice {tag}"
+            | _ -> return! fail $"unsupported ConfirmedServiceError choice {tag}"
         }
 
 type ApplicationReferenceError =
@@ -103,18 +89,16 @@ type ApplicationReferenceError =
     | DecipheringError
 
 module ApplicationReferenceError =
-    let fromRaw value =
+    let validate value =
         match value with
-        | 0uy ->validationOk Other
-        | 1uy ->validationOk TimeElapsed
-        | 2uy ->validationOk ApplicationUnreachable
-        | 3uy ->validationOk ApplicationReferenceInvalid
-        | 4uy ->validationOk ApplicationContextUnsupported
-        | 5uy ->validationOk ProviderCommunicationError
-        | 6uy ->validationOk DecipheringError
-        | other ->
-            validationError
-                $"unsupported application-reference error {other}"
+        | 0uy -> validationOk Other
+        | 1uy -> validationOk TimeElapsed
+        | 2uy -> validationOk ApplicationUnreachable
+        | 3uy -> validationOk ApplicationReferenceInvalid
+        | 4uy -> validationOk ApplicationContextUnsupported
+        | 5uy -> validationOk ProviderCommunicationError
+        | 6uy -> validationOk DecipheringError
+        | other -> validationError $"unsupported application-reference error {other}"
 
 type HardwareResourceError =
     | Other
@@ -124,16 +108,14 @@ type HardwareResourceError =
     | OtherResourceUnavailable
 
 module HardwareResourceError =
-    let fromRaw value =
+    let validate value =
         match value with
-        | 0uy ->validationOk Other
-        | 1uy ->validationOk MemoryUnavailable
-        | 2uy ->validationOk ProcessorResourceUnavailable
-        | 3uy ->validationOk MassStorageUnavailable
-        | 4uy ->validationOk OtherResourceUnavailable
-        | other ->
-            validationError
-                $"unsupported hardware-resource error {other}"
+        | 0uy -> validationOk Other
+        | 1uy -> validationOk MemoryUnavailable
+        | 2uy -> validationOk ProcessorResourceUnavailable
+        | 3uy -> validationOk MassStorageUnavailable
+        | 4uy -> validationOk OtherResourceUnavailable
+        | other -> validationError $"unsupported hardware-resource error {other}"
 
 type VdeStateError =
     | Other
@@ -143,16 +125,14 @@ type VdeStateError =
     | StatusInoperable
 
 module VdeStateError =
-    let fromRaw value =
+    let validate value =
         match value with
-        | 0uy ->validationOk Other
-        | 1uy ->validationOk NoDlmsContext
-        | 2uy ->validationOk LoadingDataSet
-        | 3uy ->validationOk StatusNoChange
-        | 4uy ->validationOk StatusInoperable
-        | other ->
-            validationError
-                $"unsupported vde-state-error {other}"
+        | 0uy -> validationOk Other
+        | 1uy -> validationOk NoDlmsContext
+        | 2uy -> validationOk LoadingDataSet
+        | 3uy -> validationOk StatusNoChange
+        | 4uy -> validationOk StatusInoperable
+        | other -> validationError $"unsupported vde-state-error {other}"
 
 type ServiceError =
     | Other
@@ -160,14 +140,12 @@ type ServiceError =
     | ServiceUnsupported
 
 module ServiceError =
-    let fromRaw value =
+    let validate value =
         match value with
-        | 0uy ->validationOk Other
-        | 1uy ->validationOk PduSize
-        | 2uy ->validationOk ServiceUnsupported
-        | other ->
-            validationError
-                $"unsupported service error {other}"
+        | 0uy -> validationOk Other
+        | 1uy -> validationOk PduSize
+        | 2uy -> validationOk ServiceUnsupported
+        | other -> validationError $"unsupported service error {other}"
 
 type DefinitionError =
     | Other
@@ -176,15 +154,13 @@ type DefinitionError =
     | ObjectAttributeInconsistent
 
 module DefinitionError =
-    let fromRaw value =
+    let validate value =
         match value with
-        | 0uy ->validationOk Other
-        | 1uy ->validationOk ObjectUndefined
-        | 2uy ->validationOk ObjectClassInconsistent
-        | 3uy ->validationOk ObjectAttributeInconsistent
-        | other ->
-            validationError
-                $"unsupported definition error {other}"
+        | 0uy -> validationOk Other
+        | 1uy -> validationOk ObjectUndefined
+        | 2uy -> validationOk ObjectClassInconsistent
+        | 3uy -> validationOk ObjectAttributeInconsistent
+        | other -> validationError $"unsupported definition error {other}"
 
 type AccessError =
     | Other
@@ -194,16 +170,14 @@ type AccessError =
     | ObjectUnavailable
 
 module AccessError =
-    let fromRaw value =
+    let validate value =
         match value with
-        | 0uy ->validationOk Other
-        | 1uy ->validationOk ScopeOfAccessViolated
-        | 2uy ->validationOk ObjectAccessViolated
-        | 3uy ->validationOk HardwareFault
-        | 4uy ->validationOk ObjectUnavailable
-        | other ->
-            validationError
-                $"unsupported access error {other}"
+        | 0uy -> validationOk Other
+        | 1uy -> validationOk ScopeOfAccessViolated
+        | 2uy -> validationOk ObjectAccessViolated
+        | 3uy -> validationOk HardwareFault
+        | 4uy -> validationOk ObjectUnavailable
+        | other -> validationError $"unsupported access error {other}"
 
 type InitiateError =
     | Other
@@ -213,16 +187,14 @@ type InitiateError =
     | RefusedByTheVdeHandler
 
 module InitiateError =
-    let fromRaw value =
+    let validate value =
         match value with
-        | 0uy ->validationOk Other
-        | 1uy ->validationOk DlmsVersionTooLow
-        | 2uy ->validationOk IncompatibleConformance
-        | 3uy ->validationOk PduSizeTooShort
-        | 4uy ->validationOk RefusedByTheVdeHandler
-        | other ->
-            validationError
-                $"unsupported initiate error {other}"
+        | 0uy -> validationOk Other
+        | 1uy -> validationOk DlmsVersionTooLow
+        | 2uy -> validationOk IncompatibleConformance
+        | 3uy -> validationOk PduSizeTooShort
+        | 4uy -> validationOk RefusedByTheVdeHandler
+        | other -> validationError $"unsupported initiate error {other}"
 
 type LoadDataSetError =
     | Other
@@ -235,19 +207,17 @@ type LoadDataSetError =
     | DataSetNotReady
 
 module LoadDataSetError =
-    let fromRaw value =
+    let validate value =
         match value with
-        | 0uy ->validationOk Other
-        | 1uy ->validationOk PrimitiveOutOfSequence
-        | 2uy ->validationOk NotLoadable
-        | 3uy ->validationOk DatasetSizeTooLarge
-        | 4uy ->validationOk NotAwaitedSegment
-        | 5uy ->validationOk InterpretationFailure
-        | 6uy ->validationOk StorageFailure
-        | 7uy ->validationOk DataSetNotReady
-        | other ->
-            validationError
-                $"unsupported load-data-set error {other}"
+        | 0uy -> validationOk Other
+        | 1uy -> validationOk PrimitiveOutOfSequence
+        | 2uy -> validationOk NotLoadable
+        | 3uy -> validationOk DatasetSizeTooLarge
+        | 4uy -> validationOk NotAwaitedSegment
+        | 5uy -> validationOk InterpretationFailure
+        | 6uy -> validationOk StorageFailure
+        | 7uy -> validationOk DataSetNotReady
+        | other -> validationError $"unsupported load-data-set error {other}"
 
 type TaskError =
     | Other
@@ -257,16 +227,14 @@ type TaskError =
     | TiUnusable
 
 module TaskError =
-    let fromRaw value =
+    let validate value =
         match value with
-        | 0uy ->validationOk Other
-        | 1uy ->validationOk NoRemoteControl
-        | 2uy ->validationOk TiStopped
-        | 3uy ->validationOk TiRunning
-        | 4uy ->validationOk TiUnusable
-        | other ->
-            validationError
-                $"unsupported task error {other}"
+        | 0uy -> validationOk Other
+        | 1uy -> validationOk NoRemoteControl
+        | 2uy -> validationOk TiStopped
+        | 3uy -> validationOk TiRunning
+        | 4uy -> validationOk TiUnusable
+        | other -> validationError $"unsupported task error {other}"
 
 type ServiceErrorChoice =
     | ApplicationReference of ApplicationReferenceError
@@ -280,52 +248,44 @@ type ServiceErrorChoice =
     | Task of TaskError
 
 module ServiceErrorChoice =
-    let fromRaw raw : Validation<ServiceErrorChoice> =
+    let validate raw : Validation<ServiceErrorChoice> =
         match raw with
         | ServiceErrorRaw.ApplicationReference value ->
             value
-            |> ApplicationReferenceError.fromRaw
+            |> ApplicationReferenceError.validate
             |> Validation.map ServiceErrorChoice.ApplicationReference
 
         | ServiceErrorRaw.HardwareResource value ->
             value
-            |> HardwareResourceError.fromRaw
+            |> HardwareResourceError.validate
             |> Validation.map ServiceErrorChoice.HardwareResource
 
         | ServiceErrorRaw.VdeStateError value ->
             value
-            |> VdeStateError.fromRaw
+            |> VdeStateError.validate
             |> Validation.map ServiceErrorChoice.VdeStateError
 
         | ServiceErrorRaw.Service value ->
-            value
-            |> ServiceError.fromRaw
-            |> Validation.map ServiceErrorChoice.Service
+            value |> ServiceError.validate |> Validation.map ServiceErrorChoice.Service
 
         | ServiceErrorRaw.Definition value ->
             value
-            |> DefinitionError.fromRaw
+            |> DefinitionError.validate
             |> Validation.map ServiceErrorChoice.Definition
 
         | ServiceErrorRaw.Access value ->
-            value
-            |> AccessError.fromRaw
-            |> Validation.map ServiceErrorChoice.Access
+            value |> AccessError.validate |> Validation.map ServiceErrorChoice.Access
 
         | ServiceErrorRaw.Initiate value ->
-            value
-            |> InitiateError.fromRaw
-            |> Validation.map ServiceErrorChoice.Initiate
+            value |> InitiateError.validate |> Validation.map ServiceErrorChoice.Initiate
 
         | ServiceErrorRaw.LoadDataSet value ->
             value
-            |> LoadDataSetError.fromRaw
+            |> LoadDataSetError.validate
             |> Validation.map ServiceErrorChoice.LoadDataSet
 
         | ServiceErrorRaw.Task value ->
-            value
-            |> TaskError.fromRaw
-            |> Validation.map ServiceErrorChoice.Task
+            value |> TaskError.validate |> Validation.map ServiceErrorChoice.Task
 
 type ConfirmedServiceError =
     | InitiateError of ServiceErrorChoice
@@ -333,19 +293,19 @@ type ConfirmedServiceError =
     | Write of ServiceErrorChoice
 
 module ConfirmedServiceError =
-    let fromRaw raw : Validation<ConfirmedServiceError> =
+    let validate raw : Validation<ConfirmedServiceError> =
         match raw with
         | ConfirmedServiceErrorRaw.InitiateError error ->
             error
-            |> ServiceErrorChoice.fromRaw
+            |> ServiceErrorChoice.validate
             |> Validation.map ConfirmedServiceError.InitiateError
 
         | ConfirmedServiceErrorRaw.Read error ->
             error
-            |> ServiceErrorChoice.fromRaw
+            |> ServiceErrorChoice.validate
             |> Validation.map ConfirmedServiceError.Read
 
         | ConfirmedServiceErrorRaw.Write error ->
             error
-            |> ServiceErrorChoice.fromRaw
+            |> ServiceErrorChoice.validate
             |> Validation.map ConfirmedServiceError.Write

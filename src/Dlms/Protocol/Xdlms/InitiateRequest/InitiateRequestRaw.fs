@@ -6,42 +6,35 @@ open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Dlms.Protocol
 open Metering.Dlms.Protocol.Xdlms
 
-type InitiateRequestRaw =
-    {
-        DedicatedKey : Field<Axdr.Optional<Axdr.OctetString>>
-        ResponseAllowed : Field<Axdr.Default<Axdr.Boolean>>
-        ProposedQualityOfService : Field<Axdr.Optional<Axdr.Integer8>>
-        ProposedDlmsVersionNumber : Field<Axdr.Unsigned8>
-        ProposedConformance : Field<ConformanceRaw>
-        ClientMaxReceivePduSize : Field<Axdr.Unsigned16>
-    }
+type InitiateRequestRaw = {
+    DedicatedKey: Field<Axdr.Optional<Axdr.OctetString>>
+    ResponseAllowed: Field<Axdr.Default<Axdr.Boolean>>
+    ProposedQualityOfService: Field<Axdr.Optional<Axdr.Integer8>>
+    ProposedDlmsVersionNumber: Field<Axdr.Unsigned8>
+    ProposedConformance: Field<ConformanceRaw>
+    ClientMaxReceivePduSize: Field<Axdr.Unsigned16>
+}
 
 module InitiateRequestRaw =
-    let parseBody : Parser<InitiateRequestRaw> =
+    let parseBody: Parser<InitiateRequestRaw> =
         parser {
             let! dedicatedKey =
-                parseField "dedicated-key" <|
-                Axdr.Optional.parse Axdr.OctetString.parse
+                parseField "dedicated-key" <| Axdr.Optional.parse Axdr.OctetString.parse
 
             let! responseAllowed =
-                parseField "response-allowed" <|
-                Axdr.Default.parse Axdr.Boolean.parse
+                parseField "response-allowed" <| Axdr.Default.parse Axdr.Boolean.parse
 
             let! proposedQualityOfService =
-                parseField "proposed-quality-of-service" <|
-                Axdr.Optional.parse Axdr.Integer8.parse
+                parseField "proposed-quality-of-service"
+                <| Axdr.Optional.parse Axdr.Integer8.parse
 
             let! proposedDlmsVersionNumber =
-                parseField "proposed-dlms-version-number" <|
-                Axdr.Unsigned8.parse
+                parseField "proposed-dlms-version-number" <| Axdr.Unsigned8.parse
 
-            let! proposedConformance =
-                parseField "proposed-conformance" <|
-                ConformanceRaw.parse
+            let! proposedConformance = parseField "proposed-conformance" <| ConformanceRaw.parse
 
             let! clientMaxReceivePduSize =
-                parseField "client-max-receive-pdu-size" <|
-                Axdr.Unsigned16.parse
+                parseField "client-max-receive-pdu-size" <| Axdr.Unsigned16.parse
 
             return {
                 DedicatedKey = dedicatedKey
@@ -53,9 +46,9 @@ module InitiateRequestRaw =
             }
         }
 
-    let parse : Parser<Field<InitiateRequestRaw>> =
-        parseField "initiate-request" <|
-            parser {
-                do! Tag.expect XdlmsTag.InitiateRequest
-                return! parseBody
-            }
+    let parse: Parser<Field<InitiateRequestRaw>> =
+        parseField "initiate-request"
+        <| parser {
+            do! Tag.expect XdlmsTag.InitiateRequest
+            return! parseBody
+        }

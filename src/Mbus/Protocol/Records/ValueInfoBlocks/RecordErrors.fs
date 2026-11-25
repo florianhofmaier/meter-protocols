@@ -1,5 +1,8 @@
 namespace Metering.Mbus.Protocol.Records.ValueInfoBlocks
 
+open Metering.Common.BaseWriters.Core
+open Metering.Common.BaseWriters.BinaryWriters
+
 open System
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
@@ -49,17 +52,11 @@ module RecordError =
             0x1Cuy, PrematureEndOfRecord
         ]
 
-    let tryMap
-        (bytes: ReadOnlyMemory<byte>)
-        (pos: int)
-        : RecordError option * int =
+    let tryMap (bytes: ReadOnlyMemory<byte>) (pos: int) : RecordError option * int =
 
         Utility.tryMap table bytes pos
 
-    let map
-        (infoBlock: Field<InfoBlockRaw>)
-        (pos: int)
-        : Validation<RecordError> * int =
+    let map (infoBlock: Field<InfoBlockRaw>) (pos: int) : Validation<RecordError> * int =
 
         let bytes = InfoBlockRaw.bytes infoBlock.Value
         let error, nextPos = tryMap bytes pos
@@ -68,6 +65,13 @@ module RecordError =
         | Some value -> passed value, nextPos
         | _ ->
             if pos < bytes.Length then
-                failed infoBlock $"Unknown record error code 0x{bytes.Span[pos]:X2} at index {pos}", pos
+                failed infoBlock $"Unknown record error code 0x{bytes.Span[pos]:X2} at index {pos}",
+                pos
             else
                 failed infoBlock $"Missing record error code at index {pos}", pos
+
+    /// Writes the code without the enclosing VIB's extension bit.
+    let write (value: RecordError) : Writer<unit> =
+        match table |> Map.toList |> List.tryFind (fun (_, v) -> v = value) with
+        | Some(code, _) -> writeU8 code
+        | None -> writerError "Unsupported RecordError"

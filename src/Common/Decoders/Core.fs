@@ -1,4 +1,4 @@
-﻿module Metering.Common.Decoding.Decoders.Core
+module Metering.Common.Decoding.Decoders.Core
 
 open System
 open Metering.Common.Decoding.Parsers
@@ -15,63 +15,42 @@ type DecodeResult<'a> =
     | Decoded of 'a * Notice list
     | DecodeFailed of DecodeFailure * Notice list
 
-type DecodeContext =
-    {
-        CreateReader : ReaderFactory
-        Sources : ISourceStore
-        Trace : IFieldTracer
-    }
+type DecodeContext = {
+    CreateReader: ReaderFactory
+    Sources: ISourceStore
+    Trace: IFieldTracer
+}
 
-type Decoder<'a> =
-    DecodeContext -> DecodeResult<'a>
+type Decoder<'a> = DecodeContext -> DecodeResult<'a>
 
-type Peek<'a> =
-    Field<ReadOnlyMemory<byte>> -> Result<'a, ParserError>
+type Peek<'a> = Field<ReadOnlyMemory<byte>> -> Result<'a, ParserError>
 
-/// A blocker type for stages which are always attempted.
-type Never =
-    private Never of unit
+module Decoder =
 
-/// The complete observable outcome of one structural decode stage.
-[<RequireQualifiedAccess>]
-type Stage<'raw, 'valid, 'notReached> =
-    | Reached of raw: 'raw * validation: Validation<'valid>
-    | Malformed of ParserError
-    | NotReached of 'notReached
+    /// <summary>Creates a decoder that succeeds with the supplied value and no notices.</summary>
+    let decodePassed value : Decoder<'a> = fun _ -> Decoded(value, [])
 
-/// The observable outcome of a context-dependent transformation.
-[<RequireQualifiedAccess>]
-type Transformation<'value, 'failure, 'notAttempted> =
-    | Succeeded of 'value
-    | Failed of 'failure
-    | NotAttempted of 'notAttempted
+    /// <summary>Creates a decoder that fails with the supplied failure and no notices.</summary>
+    let decodeError failure : Decoder<'a> = fun _ -> DecodeFailed(failure, [])
 
-module Core =
-
-    let decodePassed value : Decoder<'a> =
-        fun _ ->
-            Decoded (value, [])
-
-    let decodeError failure : Decoder<'a> =
-        fun _ ->
-            DecodeFailed (failure, [])
-
-    let private runParser
-        (parser: Parser<'a>)
-        (source: Field<ReadOnlyMemory<byte>>)
-        : Decoder<'a> =
+    let private runParser (parser: Parser<'a>) (source: Field<ReadOnlyMemory<byte>>) : Decoder<'a> =
 
         fun context ->
-            let reader =
-                context.CreateReader source.Value source.Span.Offset
+            let reader = context.CreateReader source.Value source.Span.Offset
 
-            match ParserRunner.runExactlyWithSource source.Span.Source reader context.Sources context.Trace parser with
-            | Ok value ->
-                Decoded (value, [])
+            match
+                ParserRunner.runExactlyWithSource
+                    source.Span.Source
+                    reader
+                    context.Sources
+                    context.Trace
+                    parser
+            with
+            | Ok value -> Decoded(value, [])
 
-            | Error error ->
-                DecodeFailed (ParseFailed error, [])
+            | Error error -> DecodeFailed(ParseFailed error, [])
 
+    /// <summary>Parses a field from the complete source using the decoder's reader, source store and tracer; trailing input is a parse failure.</summary>
     let parse
         (parser: Parser<Field<'raw>>)
         (source: Field<ReadOnlyMemory<byte>>)
@@ -79,6 +58,7 @@ module Core =
 
         runParser parser source
 
+    /// <summary>Parses a value from the complete source using the decoder context; parsing errors and trailing input become parse failures.</summary>
     let parseValue
         (parser: Parser<'value>)
         (source: Field<ReadOnlyMemory<byte>>)
@@ -86,26 +66,7 @@ module Core =
 
         runParser parser source
 
-    /// Decodes a stage by parsing and validating it without turning its
-    /// structural or semantic diagnostics into a failure of the surrounding
-    /// decode pipeline.
-    let decodeStage
-        (parser: Parser<'raw>)
-        (validator: 'raw -> Validation<'valid>)
-        (source: Field<ReadOnlyMemory<byte>>)
-        : Decoder<Stage<'raw, 'valid, 'notReached>> =
-
-        fun context ->
-            match runParser parser source context with
-            | Decoded (raw, notices) ->
-                Decoded (Stage.Reached (raw, validator raw), notices)
-
-            | DecodeFailed (ParseFailed error, notices) ->
-                Decoded (Stage.Malformed error, notices)
-
-            | DecodeFailed (failure, notices) ->
-                DecodeFailed (failure, notices)
-
+    /// <summary>Runs a pure field validator, preserving notices and converting validation failures into decoder failures.</summary>
     let validate
         (validator: Field<'raw> -> Validation<'valid>)
         (raw: Field<'raw>)
@@ -113,12 +74,11 @@ module Core =
 
         fun _ ->
             match validator raw with
-            | Passed (valid, notices) ->
-                Decoded (valid, notices)
+            | Passed(valid, notices) -> Decoded(valid, notices)
 
-            | Failed (failures, notices) ->
-                DecodeFailed (ValidationFailed failures, notices)
+            | Failed(failures, notices) -> DecodeFailed(ValidationFailed failures, notices)
 
+    /// <summary>Registers derived bytes with their origin, transformation and sensitivity, traces the new source and field, and returns the field spanning those bytes.</summary>
     let createDerivedSource
         (name: string)
         (transform: SourceTransform)
@@ -128,58 +88,45 @@ module Core =
         : Decoder<Field<ReadOnlyMemory<byte>>> =
 
         fun context ->
-            let source =
-                context.Sources.AddDerived
-                    name
-                    origin.Span
-                    transform
-                    bytes
-                    sensitive
+            let source = context.Sources.AddDerived name origin.Span transform bytes sensitive
 
             context.Trace.SourceCreated source
 
-            Decoded (
-                {
-                    Id = origin.Id
-                    Span = {
-                        Source = source.Id
-                        Offset = 0
-                        Length = bytes.Length
-                    }
-                    Value = bytes
-                },
-                []
-            )
+            let start = {
+                Source = source.Id
+                Offset = 0
+                Length = 0
+            }
+
+            let span = { start with Length = bytes.Length }
+            let id = context.Trace.BeginField(name, start)
+            context.Trace.EndField(id, span)
+
+            Decoded({ Id = id; Span = span; Value = bytes }, [])
 
 type DecoderBuilder() =
 
-    member _.Return(value: 'a) : Decoder<'a> =
-        Core.decodePassed value
+    /// <summary>Returns a successful decoder result without notices.</summary>
+    member _.Return(value: 'a) : Decoder<'a> = Decoder.decodePassed value
 
-    member _.ReturnFrom(decoder: Decoder<'a>) : Decoder<'a> =
-        decoder
+    /// <summary>Uses an existing decoder as the result of the computation expression.</summary>
+    member _.ReturnFrom(decoder: Decoder<'a>) : Decoder<'a> = decoder
 
-    member _.Bind
-        (
-            decoder: Decoder<'a>,
-            next: 'a -> Decoder<'b>
-        ) : Decoder<'b> =
+    /// <summary>Continues decoding after success in the same context, preserving notices in execution order and stopping on failure.</summary>
+    member _.Bind(decoder: Decoder<'a>, next: 'a -> Decoder<'b>) : Decoder<'b> =
 
         fun context ->
             match decoder context with
-            | Decoded (value, notices1) ->
+            | Decoded(value, notices1) ->
                 match next value context with
-                | Decoded (nextValue, notices2) ->
-                    Decoded (nextValue, notices1 @ notices2)
+                | Decoded(nextValue, notices2) -> Decoded(nextValue, notices1 @ notices2)
 
-                | DecodeFailed (failure, notices2) ->
-                    DecodeFailed (failure, notices1 @ notices2)
+                | DecodeFailed(failure, notices2) -> DecodeFailed(failure, notices1 @ notices2)
 
-            | DecodeFailed (failure, notices) ->
-                DecodeFailed (failure, notices)
+            | DecodeFailed(failure, notices) -> DecodeFailed(failure, notices)
 
-    member _.Delay(factory: unit -> Decoder<'a>) : Decoder<'a> =
-        fun context -> factory () context
+    /// <summary>Defers construction of a decoder until it is executed with a decode context.</summary>
+    member _.Delay(factory: unit -> Decoder<'a>) : Decoder<'a> = fun context -> factory () context
 
-let decoder =
-    DecoderBuilder()
+/// <summary>Builds decoder computation expressions that share a decode context and accumulate notices.</summary>
+let decoder = DecoderBuilder()

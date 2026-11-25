@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net9.0</TargetFramework>
@@ -6,8 +6,9 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="CoreWriterTests.fs" />
         <Compile Include="BinaryWritersTests.fs" />
-        <Compile Include="BcdWritersTests.fs" />
+        <Compile Include="OutputWriterTests.fs" />
     </ItemGroup>
 
     <ItemGroup>

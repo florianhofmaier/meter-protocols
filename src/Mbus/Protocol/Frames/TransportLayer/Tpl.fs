@@ -1,5 +1,6 @@
 namespace Metering.Mbus.Protocol.Frames.TransportLayer
 
+open Metering.Common.BaseWriters.Core
 open Metering.Common.Decoding.Parsers
 open Metering.Mbus.Protocol.Frames
 
@@ -10,16 +11,12 @@ type TplRaw =
 
 module TplRaw =
 
-    let (|NoneHeaderField|ShortHeaderField|LongHeaderField|)
-        (field: Field<TplRaw>) =
+    let (|NoneHeaderField|ShortHeaderField|LongHeaderField|) (field: Field<TplRaw>) =
 
         match field.Value with
-        | TplRaw.NoneHeader tpl ->
-            NoneHeaderField (field |> Field.withValue tpl)
-        | TplRaw.ShortHeader tpl ->
-            ShortHeaderField (field |> Field.withValue tpl)
-        | TplRaw.LongHeader tpl ->
-            LongHeaderField (field |> Field.withValue tpl)
+        | TplRaw.NoneHeader tpl -> NoneHeaderField(field |> Field.withValue tpl)
+        | TplRaw.ShortHeader tpl -> ShortHeaderField(field |> Field.withValue tpl)
+        | TplRaw.LongHeader tpl -> LongHeaderField(field |> Field.withValue tpl)
 
     let ci =
         function
@@ -51,3 +48,10 @@ module Tpl =
         | NoneHeader tpl -> tpl.AplData
         | ShortHeader tpl -> tpl.AplData
         | LongHeader tpl -> tpl.AplData
+
+    /// Dispatches the represented TPL variant without applying protection.
+    let write (tpl: Tpl) : Writer<unit> =
+        match tpl with
+        | Tpl.NoneHeader value -> TplWithNoneHeader.write value
+        | Tpl.ShortHeader value -> TplWithShortHeader.write value
+        | Tpl.LongHeader value -> TplWithLongHeader.write value

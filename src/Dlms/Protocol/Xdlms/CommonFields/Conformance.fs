@@ -6,45 +6,38 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 
-type ConformanceRaw =
-    private
-        ConformanceRaw of Ber.BitString
+type ConformanceRaw = private ConformanceRaw of Ber.BitString
 
 module ConformanceRaw =
     let value (ConformanceRaw bits) = bits
 
-    let parse : Parser<ConformanceRaw> =
+    let parse: Parser<ConformanceRaw> =
         parser {
             do! expectU16BigEndian 0x5F1Fus
             return! Ber.BitString.parseImplicit |>> ConformanceRaw
         }
 
-type Conformance =
-    private Conformance of Ber.BitString
+type Conformance = private Conformance of Ber.BitString
 
 module Conformance =
-    let validate
-        (raw: Field<ConformanceRaw>)
-        : Validation<Field<Conformance>> =
+    let validate (raw: Field<ConformanceRaw>) : Validation<Field<Conformance>> =
 
         validator {
             let bits = raw.Value |> ConformanceRaw.value
 
             do!
                 ensure
-                    <| raw
-                    <| "conformance unused bit count must be 0"
-                    <| (bits.UnusedBitCount = 0uy)
+                <| raw
+                <| "conformance unused bit count must be 0"
+                <| (bits.UnusedBitCount = 0uy)
 
             do!
                 ensure
-                    <| raw
-                    <| "conformance must contain exactly 24 bits / 3 octets"
-                    <| (bits.Payload.Length = 3)
+                <| raw
+                <| "conformance must contain exactly 24 bits / 3 octets"
+                <| (bits.Payload.Length = 3)
 
-            return
-                raw
-                |> Field.withValue (Conformance bits)
+            return raw |> Field.withValue (Conformance bits)
         }
 
     let private isSet bit (Conformance bits) =

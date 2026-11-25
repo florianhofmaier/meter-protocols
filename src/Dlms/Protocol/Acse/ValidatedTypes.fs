@@ -15,7 +15,7 @@ module Authentication =
         : Validation<AuthenticationMechanism> =
         raw
         |> Validation.requireSome
-            ["AARQ"; "mechanism-name"]
+            [ "AARQ"; "mechanism-name" ]
             "missing mechanism-name although authentication is selected"
         |> Validation.bind AuthenticationMechanism.validate
 
@@ -24,7 +24,7 @@ module Authentication =
         : Validation<AuthenticationValue> =
         raw
         |> Validation.requireSome
-            ["AARQ"; "calling-authentication-value"]
+            [ "AARQ"; "calling-authentication-value" ]
             "missing calling-authentication-value although authentication is selected"
         |> Validation.bind AuthenticationValue.validate
 
@@ -32,28 +32,25 @@ module Authentication =
         match mechanism with
         | AuthenticationMechanism.LowestLevelSecurity ->
             validationError
-                ["AARQ"; "mechanism-name"]
+                [ "AARQ"; "mechanism-name" ]
                 "lowest-level-security is invalid when sender-acse-requirements selects authentication"
 
         | AuthenticationMechanism.LowLevelSecurity ->
-            validationOk(Authentication.LowLevelSecurity value)
+            validationOk (Authentication.LowLevelSecurity value)
 
         | AuthenticationMechanism.HighLevelSecurity hls ->
-            validationOk(Authentication.HighLevelSecurity (hls, value))
+            validationOk (Authentication.HighLevelSecurity(hls, value))
 
     let private validateSelected
         (mechanismName: Ber.ObjectIdentifier option)
         (callingAuthenticationValue: AuthenticationValueRaw option)
         : Validation<Authentication> =
         validator {
-            let! mechanism =
-                validateMechanism mechanismName
+            let! mechanism = validateMechanism mechanismName
 
-            and! value =
-                validateValue callingAuthenticationValue
+            and! value = validateValue callingAuthenticationValue
 
-            return!
-                buildSelectedAuthentication mechanism value
+            return! buildSelectedAuthentication mechanism value
         }
 
     let validate
@@ -63,18 +60,13 @@ module Authentication =
         : Validation<Authentication> =
 
         validator {
-            let! selection =
-                SenderAcseRequirements.validate senderAcseRequirements
+            let! selection = SenderAcseRequirements.validate senderAcseRequirements
 
             match selection with
-            | AuthenticationNotSelected ->
-                return Authentication.NoSecurity
+            | AuthenticationNotSelected -> return Authentication.NoSecurity
 
             | AuthenticationSelected ->
-                return!
-                    validateSelected
-                        mechanismName
-                        callingAuthenticationValue
+                return! validateSelected mechanismName callingAuthenticationValue
         }
 
 
@@ -85,15 +77,13 @@ type AssociationResult =
     | RejectedTransient
 
 module AssociationResult =
-    let fromRaw (raw: uint32) : Validation<AssociationResult> =
+    let validate (raw: uint32) : Validation<AssociationResult> =
         match raw with
-        | 0u ->validationOk Accepted
-        | 1u ->validationOk RejectedPermanent
-        | 2u ->validationOk RejectedTransient
+        | 0u -> validationOk Accepted
+        | 1u -> validationOk RejectedPermanent
+        | 2u -> validationOk RejectedTransient
         | value ->
-            validationError
-                ["AARE"; "result"]
-                $"unsupported association-result value {value}"
+            validationError [ "AARE"; "result" ] $"unsupported association-result value {value}"
 
 type AcseServiceUserDiagnostic =
     | Null
@@ -113,26 +103,26 @@ type AcseServiceUserDiagnostic =
     | AuthenticationRequired
 
 module AcseServiceUserDiagnostic =
-    let fromRaw (raw: uint32) : Validation<AcseServiceUserDiagnostic> =
+    let validate (raw: uint32) : Validation<AcseServiceUserDiagnostic> =
         match raw with
-        | 0u ->validationOk Null
-        | 1u ->validationOk NoReasonGiven
-        | 2u ->validationOk ApplicationContextNameNotSupported
-        | 3u ->validationOk CallingApTitleNotRecognized
-        | 4u ->validationOk CallingApInvocationIdentifierNotRecognized
-        | 5u ->validationOk CallingAeQualifierNotRecognized
-        | 6u ->validationOk CallingAeInvocationIdentifierNotRecognized
-        | 7u ->validationOk CalledApTitleNotRecognized
-        | 8u ->validationOk CalledApInvocationIdentifierNotRecognized
-        | 9u ->validationOk CalledAeQualifierNotRecognized
-        | 10u ->validationOk CalledAeInvocationIdentifierNotRecognized
-        | 11u ->validationOk AuthenticationMechanismNameNotRecognized
-        | 12u ->validationOk AuthenticationMechanismNameRequired
-        | 13u ->validationOk AuthenticationFailure
-        | 14u ->validationOk AuthenticationRequired
+        | 0u -> validationOk Null
+        | 1u -> validationOk NoReasonGiven
+        | 2u -> validationOk ApplicationContextNameNotSupported
+        | 3u -> validationOk CallingApTitleNotRecognized
+        | 4u -> validationOk CallingApInvocationIdentifierNotRecognized
+        | 5u -> validationOk CallingAeQualifierNotRecognized
+        | 6u -> validationOk CallingAeInvocationIdentifierNotRecognized
+        | 7u -> validationOk CalledApTitleNotRecognized
+        | 8u -> validationOk CalledApInvocationIdentifierNotRecognized
+        | 9u -> validationOk CalledAeQualifierNotRecognized
+        | 10u -> validationOk CalledAeInvocationIdentifierNotRecognized
+        | 11u -> validationOk AuthenticationMechanismNameNotRecognized
+        | 12u -> validationOk AuthenticationMechanismNameRequired
+        | 13u -> validationOk AuthenticationFailure
+        | 14u -> validationOk AuthenticationRequired
         | value ->
             validationError
-                ["AARE"; "result-source-diagnostic"; "acse-service-user"]
+                [ "AARE"; "result-source-diagnostic"; "acse-service-user" ]
                 $"unsupported acse-service-user diagnostic value {value}"
 
 type AcseServiceProviderDiagnostic =
@@ -141,14 +131,14 @@ type AcseServiceProviderDiagnostic =
     | NoCommonAcseVersion
 
 module AcseServiceProviderDiagnostic =
-    let fromRaw (raw: uint32) : Validation<AcseServiceProviderDiagnostic> =
+    let validate (raw: uint32) : Validation<AcseServiceProviderDiagnostic> =
         match raw with
-        | 0u ->validationOk Null
-        | 1u ->validationOk NoReasonGiven
-        | 2u ->validationOk NoCommonAcseVersion
+        | 0u -> validationOk Null
+        | 1u -> validationOk NoReasonGiven
+        | 2u -> validationOk NoCommonAcseVersion
         | value ->
             validationError
-                ["AARE"; "result-source-diagnostic"; "acse-service-provider"]
+                [ "AARE"; "result-source-diagnostic"; "acse-service-provider" ]
                 $"unsupported acse-service-provider diagnostic value {value}"
 
 type AssociateSourceDiagnostic =
@@ -156,16 +146,16 @@ type AssociateSourceDiagnostic =
     | AcseServiceProvider of AcseServiceProviderDiagnostic
 
 module AssociateSourceDiagnostic =
-    let fromRaw raw : Validation<AssociateSourceDiagnostic> =
+    let validate raw : Validation<AssociateSourceDiagnostic> =
         match raw with
         | AssociateSourceDiagnosticRaw.AcseServiceUser value ->
             value
-            |> AcseServiceUserDiagnostic.fromRaw
+            |> AcseServiceUserDiagnostic.validate
             |> Validation.map AssociateSourceDiagnostic.AcseServiceUser
 
         | AssociateSourceDiagnosticRaw.AcseServiceProvider value ->
             value
-            |> AcseServiceProviderDiagnostic.fromRaw
+            |> AcseServiceProviderDiagnostic.validate
             |> Validation.map AssociateSourceDiagnostic.AcseServiceProvider
 
 type ResponderAcseRequirements =
@@ -174,59 +164,48 @@ type ResponderAcseRequirements =
 
 module ResponderAcseRequirements =
     let private isAuthenticationBitSet (bits: Ber.BitString) =
-        bits.Payload.Length > 0
-        && (bits.Payload.Span[0] &&& 0x80uy) <> 0uy
+        bits.Payload.Length > 0 && (bits.Payload.Span[0] &&& 0x80uy) <> 0uy
 
-    let fromRaw raw : Validation<ResponderAcseRequirements> =
+    let validate raw : Validation<ResponderAcseRequirements> =
         match raw with
-        | Some bits when isAuthenticationBitSet bits ->
-            validationOkAuthenticationSelected
+        | Some bits when isAuthenticationBitSet bits -> validationOkAuthenticationSelected
 
         | None
-        | Some _ ->
-            validationOkAuthenticationNotSelected
+        | Some _ -> validationOkAuthenticationNotSelected
 
 type RespondingAuthentication =
     | NoAuthenticationFunctionalUnit
     | AuthenticationFunctionalUnitSelected of
-        mechanism : AuthenticationMechanism option *
-        value : AuthenticationValue option
+        mechanism: AuthenticationMechanism option *
+        value: AuthenticationValue option
 
 module RespondingAuthentication =
-    let private mechanismFromRaw raw : Validation<AuthenticationMechanism option> =
-        raw
-        |> Validation.traverseOption AuthenticationMechanism.validate
+    let private validateMechanism raw : Validation<AuthenticationMechanism option> =
+        raw |> Validation.traverseOption AuthenticationMechanism.validate
 
-    let private valueFromRaw
+    let private validateValue
         (raw: AuthenticationValueRaw option)
         : Validation<AuthenticationValue option> =
 
-        raw
-        |> Validation.traverseOption AuthenticationValue.validate
+        raw |> Validation.traverseOption AuthenticationValue.validate
 
-    let fromRaw
+    let validate
         (responderAcseRequirements: Ber.BitString option)
         (mechanismName: Ber.ObjectIdentifier option)
         (respondingAuthenticationValue: AuthenticationValueRaw option)
         : Validation<RespondingAuthentication> =
 
         validator {
-            let! requirements =
-                ResponderAcseRequirements.fromRaw responderAcseRequirements
+            let! requirements = ResponderAcseRequirements.validate responderAcseRequirements
 
             match requirements with
             | ResponderAcseRequirements.AuthenticationNotSelected ->
                 return NoAuthenticationFunctionalUnit
 
             | ResponderAcseRequirements.AuthenticationSelected ->
-                let! mechanism =
-                    mechanismFromRaw mechanismName
+                let! mechanism = validateMechanism mechanismName
 
-                and! value =
-                    valueFromRaw respondingAuthenticationValue
+                and! value = validateValue respondingAuthenticationValue
 
-                return
-                    AuthenticationFunctionalUnitSelected(
-                        mechanism = mechanism,
-                        value = value)
+                return AuthenticationFunctionalUnitSelected(mechanism = mechanism, value = value)
         }

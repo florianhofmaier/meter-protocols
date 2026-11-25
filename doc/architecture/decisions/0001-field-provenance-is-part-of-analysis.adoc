@@ -13,6 +13,10 @@ Die Library soll auch gültige Nachrichten auf Byte-Ebene erklären und Diagnost
 
 `Field` wird nicht nur im Fehlerfall verwendet und nicht automatisch um jeden Union Case oder Zwischenwert gelegt. Mehrere Hüllen für dasselbe logische Feld und denselben Span sind zu vermeiden.
 
+Die Raw-Bytes eines Feldes bleiben über seine Source und seinen Span verfügbar. Der Trace zeichnet Feldgrenzen und Parse-Fehler auf; er benötigt keine zusätzliche Sammlung gelesener Werte. Der Analyzer verwendet die referenzierten Bytes und die vorhandenen protokollspezifischen Parser und Validatoren für die Interpretation. `Field<'T>.Value` bleibt das typisierte Ergebnis innerhalb der Protokollverarbeitung.
+
+Abgeleitete Bytes sind ein neues Leseobjekt mit eigener Field-ID und eigenem Span. Ihre Source referenziert den ursprünglichen Bereich über `SourceInfo.Origin`. Die Herkunftsbeziehung ersetzt keine Field-Identität und keine strukturelle Elternbeziehung.
+
 == Konsequenzen
 
 * Erfolgreiche und fehlerhafte Analysen verwenden dasselbe Provenienzmodell.

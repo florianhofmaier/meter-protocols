@@ -8,11 +8,8 @@ type PresenceDiagnostic =
 
 module PresenceDiagnostic =
 
-    let emit
-        field diagnostic =
+    let emit field diagnostic =
         match diagnostic with
-        | NoPresenceDiagnostic ->
-            passed ()
+        | NoPresenceDiagnostic -> passed ()
 
-        | InfoWhenPresent message ->
-            info field message
+        | InfoWhenPresent message -> info field message

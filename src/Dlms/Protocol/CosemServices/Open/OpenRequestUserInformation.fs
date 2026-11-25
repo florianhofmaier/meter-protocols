@@ -11,16 +11,14 @@ type OpenRequestUserInformation =
 
 module OpenRequestUserInformation =
     let parse len : Parser<OpenRequestUserInformation> =
-        withCtx "user-information" <|
-        parser {
+        withCtx "user-information"
+        <| parser {
             let! tag = Tag.parse<XdlmsTag>
 
             match tag with
             | XdlmsTag.InitiateRequest
             | XdlmsTag.GloInitiateRequest
-            | XdlmsTag.DedInitiateRequest ->
-                return! BufferSlice.parse len |>> InitiateRequest
+            | XdlmsTag.DedInitiateRequest -> return! BufferSlice.parse len |>> InitiateRequest
 
-            | other ->
-                return! fail $"unexpected tag 0x{other:X2} in OPEN.request user-information"
+            | other -> return! fail $"unexpected tag 0x{other:X2} in OPEN.request user-information"
         }

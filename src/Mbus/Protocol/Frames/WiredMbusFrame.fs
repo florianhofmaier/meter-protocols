@@ -16,4 +16,4 @@ module WiredMbusFrame =
         match frame with
         | SingleCharacter field -> field |> Field.withValue frame
         | FixedLength field -> field |> Field.withValue frame
-        | VariableLength (field, _) -> field |> Field.withValue frame
+        | VariableLength(field, _) -> field |> Field.withValue frame

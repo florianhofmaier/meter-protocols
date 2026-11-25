@@ -6,17 +6,14 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
 
-type EndFieldRaw =
-    private EndField of uint8
+type EndFieldRaw = private EndField of uint8
 
 module EndFieldRaw =
 
-    let value (EndField v) =
-        v
+    let value (EndField v) = v
 
-    let parse : Parser<Field<EndFieldRaw>> =
-        parseField "End Field" parseU8
-        |>> Field.map EndField
+    let parse: Parser<Field<EndFieldRaw>> =
+        parseField "End Field" parseU8 |>> Field.map EndField
 
 module EndField =
 

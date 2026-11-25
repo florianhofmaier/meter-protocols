@@ -5,13 +5,11 @@ open Xunit
 open FsUnit.Xunit
 open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
-open Metering.Common.Decoding.Parsers.ParserRunner
 open Metering.Common.Decoding.Parsers.Tests.TestSupport
 open Metering.Common.Decoding.Parsers.Types
 
 let private parseExactly parser bytes =
-    let r =
-        reader bytes
+    let r = reader bytes
 
     match runExactly r trace parser with
     | Ok value ->
@@ -19,8 +17,7 @@ let private parseExactly parser bytes =
         r.Remaining |> should equal 0
         value
 
-    | Error error ->
-        failwith $"Unexpected parser error: {error.Msg}"
+    | Error error -> failwith $"Unexpected parser error: {error.Msg}"
 
 let private expectTruncated name parser bytes =
     match runExactly (reader bytes) trace parser with
@@ -28,8 +25,7 @@ let private expectTruncated name parser bytes =
         error.Source |> should equal SourceId.root
         error.Msg.Contains("Unexpected end of buffer") |> should equal true
 
-    | Ok value ->
-        failwith $"Expected truncation from {name}, got %A{value}"
+    | Ok value -> failwith $"Expected truncation from {name}, got %A{value}"
 
 [<Fact>]
 let ``parseU8 reads one byte including zero and max`` () =
@@ -38,8 +34,7 @@ let ``parseU8 reads one byte including zero and max`` () =
 
 [<Fact>]
 let ``peekU8 returns byte without consuming it`` () =
-    let r =
-        reader [| 0xAAuy |]
+    let r = reader [| 0xAAuy |]
 
     match run r trace peekU8 with
     | Ok value ->
@@ -47,8 +42,7 @@ let ``peekU8 returns byte without consuming it`` () =
         r.Position |> should equal 0
         r.Remaining |> should equal 1
 
-    | Error error ->
-        failwith $"Unexpected parser error: {error.Msg}"
+    | Error error -> failwith $"Unexpected parser error: {error.Msg}"
 
 [<Fact>]
 let ``parseI8 reads signed two complement values`` () =
@@ -59,16 +53,13 @@ let ``parseI8 reads signed two complement values`` () =
 
 [<Fact>]
 let ``parseU16LittleEndian reads asymmetric bytes`` () =
-    parseExactly parseU16LittleEndian [| 0x01uy; 0x02uy |]
-    |> should equal 0x0201us
+    parseExactly parseU16LittleEndian [| 0x01uy; 0x02uy |] |> should equal 0x0201us
 
-    parseExactly parseU16LittleEndian [| 0x00uy; 0x00uy |]
-    |> should equal 0x0000us
+    parseExactly parseU16LittleEndian [| 0x00uy; 0x00uy |] |> should equal 0x0000us
 
 [<Fact>]
 let ``parseU16BigEndian reads asymmetric bytes`` () =
-    parseExactly parseU16BigEndian [| 0x01uy; 0x02uy |]
-    |> should equal 0x0102us
+    parseExactly parseU16BigEndian [| 0x01uy; 0x02uy |] |> should equal 0x0102us
 
 [<Fact>]
 let ``parseI16LittleEndian reads signed values`` () =
@@ -153,30 +144,73 @@ let ``parseI48LittleEndian sign-extends two complement values`` () =
 
 [<Fact>]
 let ``parseU64LittleEndian reads full unsigned width`` () =
-    parseExactly parseU64LittleEndian [| 0x11uy; 0x22uy; 0x33uy; 0x44uy; 0x55uy; 0x66uy; 0x77uy; 0x88uy |]
+    parseExactly parseU64LittleEndian [|
+        0x11uy
+        0x22uy
+        0x33uy
+        0x44uy
+        0x55uy
+        0x66uy
+        0x77uy
+        0x88uy
+    |]
     |> should equal 0x8877665544332211UL
 
-    parseExactly parseU64LittleEndian [| 0x00uy; 0x00uy; 0x00uy; 0x00uy; 0x00uy; 0x00uy; 0x00uy; 0x00uy |]
+    parseExactly parseU64LittleEndian [|
+        0x00uy
+        0x00uy
+        0x00uy
+        0x00uy
+        0x00uy
+        0x00uy
+        0x00uy
+        0x00uy
+    |]
     |> should equal 0UL
 
 [<Fact>]
 let ``parseI64LittleEndian reads signed values`` () =
-    parseExactly parseI64LittleEndian [| 0xFFuy; 0xFFuy; 0xFFuy; 0xFFuy; 0xFFuy; 0xFFuy; 0xFFuy; 0x7Fuy |]
+    parseExactly parseI64LittleEndian [|
+        0xFFuy
+        0xFFuy
+        0xFFuy
+        0xFFuy
+        0xFFuy
+        0xFFuy
+        0xFFuy
+        0x7Fuy
+    |]
     |> should equal Int64.MaxValue
 
-    parseExactly parseI64LittleEndian [| 0xFFuy; 0xFFuy; 0xFFuy; 0xFFuy; 0xFFuy; 0xFFuy; 0xFFuy; 0xFFuy |]
+    parseExactly parseI64LittleEndian [|
+        0xFFuy
+        0xFFuy
+        0xFFuy
+        0xFFuy
+        0xFFuy
+        0xFFuy
+        0xFFuy
+        0xFFuy
+    |]
     |> should equal -1L
 
-    parseExactly parseI64LittleEndian [| 0x00uy; 0x00uy; 0x00uy; 0x00uy; 0x00uy; 0x00uy; 0x00uy; 0x80uy |]
+    parseExactly parseI64LittleEndian [|
+        0x00uy
+        0x00uy
+        0x00uy
+        0x00uy
+        0x00uy
+        0x00uy
+        0x00uy
+        0x80uy
+    |]
     |> should equal Int64.MinValue
 
 [<Fact>]
 let ``expectU8 succeeds and reports mismatch after consumption`` () =
-    parseExactly (expectU8 0xAAuy) [| 0xAAuy |]
-    |> should equal ()
+    parseExactly (expectU8 0xAAuy) [| 0xAAuy |] |> should equal ()
 
-    let r =
-        reader [| 0xBBuy |]
+    let r = reader [| 0xBBuy |]
 
     match run r trace (expectU8 0xAAuy) with
     | Error error ->
@@ -184,16 +218,14 @@ let ``expectU8 succeeds and reports mismatch after consumption`` () =
         error.Msg |> should equal "expected 170, but got 187"
         r.Position |> should equal 1
 
-    | Ok () ->
-        failwith "Expected parser error"
+    | Ok() -> failwith "Expected parser error"
 
 [<Fact>]
 let ``expectU16BigEndian succeeds and reports mismatch after consumption`` () =
     parseExactly (expectU16BigEndian 0xAABBus) [| 0xAAuy; 0xBBuy |]
     |> should equal ()
 
-    let r =
-        reader [| 0xAAuy; 0xBCuy |]
+    let r = reader [| 0xAAuy; 0xBCuy |]
 
     match run r trace (expectU16BigEndian 0xAABBus) with
     | Error error ->
@@ -201,8 +233,7 @@ let ``expectU16BigEndian succeeds and reports mismatch after consumption`` () =
         error.Msg |> should equal "expected 43707, but got 43708"
         r.Position |> should equal 2
 
-    | Ok () ->
-        failwith "Expected parser error"
+    | Ok() -> failwith "Expected parser error"
 
 [<Fact>]
 let ``all binary parsers return structured truncation errors`` () =
@@ -220,9 +251,17 @@ let ``all binary parsers return structured truncation errors`` () =
         "parseU32BigEndian", parseU32BigEndian |>> box, [| 0x01uy; 0x02uy; 0x03uy |]
         "parseI32LittleEndian", parseI32LittleEndian |>> box, [| 0x01uy; 0x02uy; 0x03uy |]
         "parseI32BigEndian", parseI32BigEndian |>> box, [| 0x01uy; 0x02uy; 0x03uy |]
-        "parseU48LittleEndian", parseU48LittleEndian |>> box, [| 0x01uy; 0x02uy; 0x03uy; 0x04uy; 0x05uy |]
-        "parseI48LittleEndian", parseI48LittleEndian |>> box, [| 0x01uy; 0x02uy; 0x03uy; 0x04uy; 0x05uy |]
-        "parseU64LittleEndian", parseU64LittleEndian |>> box, [| 0x01uy; 0x02uy; 0x03uy; 0x04uy; 0x05uy; 0x06uy; 0x07uy |]
-        "parseI64LittleEndian", parseI64LittleEndian |>> box, [| 0x01uy; 0x02uy; 0x03uy; 0x04uy; 0x05uy; 0x06uy; 0x07uy |]
+        "parseU48LittleEndian",
+        parseU48LittleEndian |>> box,
+        [| 0x01uy; 0x02uy; 0x03uy; 0x04uy; 0x05uy |]
+        "parseI48LittleEndian",
+        parseI48LittleEndian |>> box,
+        [| 0x01uy; 0x02uy; 0x03uy; 0x04uy; 0x05uy |]
+        "parseU64LittleEndian",
+        parseU64LittleEndian |>> box,
+        [| 0x01uy; 0x02uy; 0x03uy; 0x04uy; 0x05uy; 0x06uy; 0x07uy |]
+        "parseI64LittleEndian",
+        parseI64LittleEndian |>> box,
+        [| 0x01uy; 0x02uy; 0x03uy; 0x04uy; 0x05uy; 0x06uy; 0x07uy |]
     ]
     |> List.iter (fun (name, parser, bytes) -> expectTruncated name parser bytes)

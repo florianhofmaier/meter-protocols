@@ -1,22 +1,22 @@
 namespace Metering.Mbus.Protocol.Frames.TransportLayer
 
+open Metering.Common.BaseWriters.Core
+open Metering.Common.BaseWriters.BinaryWriters
+
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
 
-type StatusByteRaw =
-    private Status of uint8
+type StatusByteRaw = private Status of uint8
 
 module StatusByteRaw =
 
-    let value (Status v) =
-        v
+    let value (Status v) = v
 
-    let parse : Parser<Field<StatusByteRaw>> =
-        parseField "Status" parseU8
-        |>> Field.map Status
+    let parse: Parser<Field<StatusByteRaw>> =
+        parseField "Status" parseU8 |>> Field.map Status
 
 type ApplicationError =
     | NoError
@@ -26,8 +26,9 @@ type ApplicationError =
 
 module ApplicationError =
 
-    let fromByte b=
+    let fromByte b =
         let mask b = b &&& 0x03uy
+
         match mask b with
         | 0x00uy -> NoError
         | 0x01uy -> Busy
@@ -35,22 +36,19 @@ module ApplicationError =
         | 0x03uy -> AbnormalCondition
         | _ -> failwith "Unreachable"
 
-type StatusByte =
-    {
-        ApplicationError : ApplicationError
-        PowerLow : bool
-        PermanentError : bool
-        TemporaryError : bool
-        Bit5 : bool
-        Bit6 : bool
-        Bit7 : bool
-    }
+type StatusByte = {
+    ApplicationError: ApplicationError
+    PowerLow: bool
+    PermanentError: bool
+    TemporaryError: bool
+    Bit5: bool
+    Bit6: bool
+    Bit7: bool
+}
 
 module StatusByte =
 
-    let fromRaw
-        (raw: Field<StatusByteRaw>)
-        : Validation<StatusByte> =
+    let validate (raw: Field<StatusByteRaw>) : Validation<StatusByte> =
 
         let value = StatusByteRaw.value raw.Value
 
@@ -71,3 +69,23 @@ module StatusByte =
             Bit7 = bit7
         }
         |> passed
+
+    /// Writes application error and all six status flags.
+    let write (status: StatusByte) : Writer<unit> =
+        let error =
+            match status.ApplicationError with
+            | NoError -> 0uy
+            | Busy -> 1uy
+            | AnyError -> 2uy
+            | AbnormalCondition -> 3uy
+
+        let bits =
+            error
+            ||| (if status.PowerLow then 4uy else 0uy)
+            ||| (if status.PermanentError then 8uy else 0uy)
+            ||| (if status.TemporaryError then 16uy else 0uy)
+            ||| (if status.Bit5 then 32uy else 0uy)
+            ||| (if status.Bit6 then 64uy else 0uy)
+            ||| (if status.Bit7 then 128uy else 0uy)
+
+        writeU8 bits

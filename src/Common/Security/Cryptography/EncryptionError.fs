@@ -1,12 +1,11 @@
 namespace Metering.Common.Security.Cryptography
 
-type EncryptionError =
-    private EncryptionError of string
+type EncryptionError = private EncryptionError of string
 
 module EncryptionError =
 
-    let create message =
-        EncryptionError message
+    /// <summary>Wraps a message as an encryption error.</summary>
+    let create message = EncryptionError message
 
-    let value (EncryptionError message) =
-        message
+    /// <summary>Returns the message stored in an encryption error.</summary>
+    let value (EncryptionError message) = message

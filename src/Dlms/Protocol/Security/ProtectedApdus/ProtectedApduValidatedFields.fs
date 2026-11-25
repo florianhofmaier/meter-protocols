@@ -4,12 +4,11 @@ open System
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
 
-type ProtectedApduValidatedFields =
-    {
-        SecurityControl : Field<SecurityControl>
-        InvocationCounter : Field<InvocationCounter>
-        Payload : Field<ReadOnlyMemory<byte>>
-    }
+type ProtectedApduValidatedFields = {
+    SecurityControl: Field<SecurityControl>
+    InvocationCounter: Field<InvocationCounter>
+    Payload: Field<ReadOnlyMemory<byte>>
+}
 
 module ProtectedApduValidatedFields =
 
@@ -24,17 +23,15 @@ module ProtectedApduValidatedFields =
                 return payload
         }
 
-    let fromRaw
+    let validate
         (apduKind: ProtectedApduKind)
         (raw: Field<ProtectedApduRaw>)
         : Validation<Field<ProtectedApduValidatedFields>> =
 
         validator {
-            let! securityControl =
-                SecurityControl.fromParsed apduKind raw.Value.SecurityControl
+            let! securityControl = SecurityControl.validate apduKind raw.Value.SecurityControl
 
-            let! payload =
-                validatePayload raw.Value.protectedPayload
+            let! payload = validatePayload raw.Value.protectedPayload
 
             return
                 raw

@@ -1,0 +1,23 @@
+= ADR 0006: Typgebundene Protokoll-Writer und Message-Encoding
+
+Status:: Accepted
+Datum:: 2026-10-18
+Ergänzt:: xref:0002-separate-parser-validator-and-decoder.adoc[ADR 0002], xref:0004-layer-codecs-and-protocol-analyzers.adoc[ADR 0004]
+
+== Entscheidung
+
+Jeder implementierte, serialisierbare Protokolltyp besitzt die Ausgabe seiner eigenen Darstellung im zugehörigen Typmodul als `write : ... -> Writer<unit>`. Diese Funktion ergänzt die reine Raw-Validierung, die im aktuellen Code `validate` heißt (früher `fromRaw`). `parse`, `validate` und `decode` behalten ihre bestehenden Aufgaben und Namen.
+
+Zusammengesetzte Writer rufen die Writer ihrer Bestandteile auf. Die DLL-Frame-Writer `FixedLengthFrame.write` und `VariableLengthFrame.write` nehmen komponierbare Control-Writer und die Adresse entgegen; der variable Frame erhält zusätzlich einen Payload-Writer. Messages und der DLL-Encoder verwenden denselben Schreibpfad. Die validierten Modelle behalten ihre `Field`-Provenienz; beim Schreiben dieser Modelle werden die Werte an die jeweiligen Writer übergeben. Bitfeldbestandteile ohne eigenständige Bytefolge stellen ihre Bitdarstellung dem umschließenden Feld-Writer bereit. Raw-Typen, Provenienz, Analysezustände und externe Security-Kontexte sind keine auszugebenden Protokollwerte. Die Regel verlangt für diese Typen keine künstlichen Writer. Unimplementierte Schichten erhalten keine vorgetäuschte positive Serialisierung.
+
+Ein `encode`-Einstieg dispatcht zu typgebundenen Writern und führt die gemeinsame Writer-Infrastruktur aus. Die FT-1.2-spezifische Kapazitätsentscheidung liegt in `Utility.Writer.runFt12Writer`. Writers bleiben in bestehende Ausgabepuffer komponierbar. Es werden keine Field-IDs oder Source-Spans für ausgehende Nachrichten erfunden; nötige wertbasierte Schreibpfade liegen bei den betreffenden Feld-/Frame-Typen.
+
+Die reine Nachricht besitzt die fachlichen Protokollfelder; TPL-Access-Numbers liefert gemäss xref:0007-contextual-encoder-and-configuration-types.adoc[ADR 0007] der Encoding-Kontext pro Ausgabe. Für Mode 5 bestimmt gemäß xref:0007-contextual-encoder-and-configuration-types.adoc[ADR 0007] die ausdrücklich übergebene Secondary Address im Encoding-Kontext die Zähleridentität von TPL-Header und IV. Insbesondere gehört die DLL-Adresse einer Antwort in das Response-Modell, nicht in einen externen Encoding- oder Security-Kontext. Parser-Provenienz wird nicht ausgegeben. Mehrere zulässige Drahtdarstellungen dürfen auf eine kanonische Darstellung desselben Wertes reduziert werden.
+
+Schutzoperationen bleiben explizit und von der Serialisierung getrennt. Ein Writer für einen vorhandenen Mode-5-TPL-Wert schreibt Header und bereits dargestellte Nutzdaten; er verspricht keine neue Verschlüsselung. Die ursprüngliche Festlegung auf ungeschützte Ausgabe semantischer Messages wird durch xref:0007-contextual-encoder-and-configuration-types.adoc[ADR 0007] ersetzt: Der Encoder hält Schutzoptionen und Schlüsselauflösung; Messages tragen keinen Security-Kontext.
+
+Bestehende breite Wertalternativen, etwa `Int24 of int32`, können außerhalb des zulässigen Drahtwertebereichs konstruiert werden. Die Migration sämtlicher dieser öffentlichen Werttypen auf neue Smart Types würde diesen Schreibpfad unverhältnismäßig erweitern. Daher prüfen deren Writer die Bereiche unmittelbar vor Ausgabe und liefern Fehler statt stiller Kürzung. Bereits eingeführte Invarianten wie `LinkUserDataBytes` bleiben konstruktiv gesichert. Nicht darstellbare VIF-Kombinationen, überlange Erweiterungsketten und zu große Nachrichten liefern ebenfalls Fehler.
+
+== Umsetzung und Nachweise
+
+Der aktuelle Umfang und noch blockierte Varianten werden in xref:../../protocols/mbus/conformance.adoc[M-Bus Conformance] geführt. Diese Entscheidung allein bestätigt keine implementierte Message-Variante. Tests müssen normative Bytebeispiele und semantische Roundtrips sowie ungültige Grenzfälle abdecken; ein Erfolg mit einem Writer ist kein vollständiger Konformitätsnachweis aller Verfahren.

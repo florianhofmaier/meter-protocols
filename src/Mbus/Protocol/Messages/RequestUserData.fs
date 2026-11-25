@@ -6,97 +6,49 @@ open Metering.Mbus.Protocol.Frames.DataLinkLayer
 open Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
 open Metering.Mbus.Protocol.Frames.WiredMbus
 
+type RequestUserData = { Fcb: bool; Address: AField }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module RequestUserData =
 
-    let private addressFromAField =
-        function
-        | { Value = AField.Unconfigured } ->
-            passed RequestUserDataAddress.Unconfigured
-
-        | { Value = AField.Configured address } ->
-            passed (RequestUserDataAddress.Configured address)
-
-        | { Value = AField.SelectionOfDevice } ->
-            passed RequestUserDataAddress.SelectionOfDevice
-
-        | { Value = AField.Diagnosis } ->
-            passed RequestUserDataAddress.Diagnosis
-
-        | { Value = AField.RepeaterMgmt } as field ->
-            failed field "REQ_UD2 does not allow primary master repeater management address 251"
-
-        | { Value = AField.Broadcast } as field ->
-            failed field "REQ_UD2 requires a response and does not allow broadcast address 255"
-
     let private frameFailed frame message =
         failed (WiredMbusFrame.asField frame) message
 
-    let matchesFrame =
+    let private requestFrame =
         function
-        | WiredMbusFrame.FixedLength
-            {
-                Value = {
-                    CField = {
-                        Value = CField.Primary {
-                            Func = { Value = PrimaryFunction.RequestUserDataClass2 }
-                        }
-                    }
-                }
-            } ->
-            true
+        | WiredMbusFrame.FixedLength frame ->
+            let dll = frame.Value
 
-        | _ ->
-            false
+            match dll.CField.Value with
+            | CField.Primary control when control.Func.Value = PrimaryFunction.RequestUserDataClass2 ->
+                Some(dll, control)
+            | _ -> None
+        | _ -> None
 
-    let fromFrame
-        (frame: WiredMbusFrame)
-        : Validation<RequestUserData> =
+    let matchesFrame frame = requestFrame frame |> Option.isSome
 
+    let fromFrame (frame: WiredMbusFrame) : Validation<RequestUserData> =
         validator {
-            match frame with
-            | WiredMbusFrame.FixedLength
-                {
-                    Value = {
-                        CField = ({
-                            Value = CField.Primary
-                                {
-                                    Fcb = fcb
-                                    Fcv = fcv
-                                    Func = { Value = PrimaryFunction.RequestUserDataClass2 }
-                                }
-                        } as cField)
-                        AField = aField
-                    }
-                } ->
+            match requestFrame frame with
+            | Some(dll, control) ->
+                let! () = ensure dll.CField "REQ_UD2 requires FCV to be set" control.Fcv
 
-                let! () =
-                    ensure cField "REQ_UD2 requires FCV to be set" fcv
-
-                let! address =
-                    addressFromAField aField
-
-                return
-                    {
-                        Fcb = fcb
-                        Address = address
-                    }
-
-            | _ ->
-                return!
-                    frameFailed
-                        frame
-                        "frame is not a REQ_UD2 request user data message"
+                return {
+                    Fcb = control.Fcb
+                    Address = dll.AField.Value
+                }
+            | None -> return! frameFailed frame "frame is not a REQ_UD2 request user data message"
         }
 
-    let tryFromFrame
-        (frame: WiredMbusFrame)
-        : RequestUserData option =
+    let tryFromFrame (frame: WiredMbusFrame) : RequestUserData option =
 
         match fromFrame frame with
-        | Passed (message, _) ->
-            Some message
+        | Passed(message, _) -> Some message
 
-        | Failed _ ->
-            None
+        | Failed _ -> None
+
+    /// Writes REQ-UD2 with FCV set.
+    let write (message: RequestUserData) =
+        FixedLengthFrame.write
+            (CField.writePrimary PrimaryFunction.RequestUserDataClass2 message.Fcb true)
+            message.Address

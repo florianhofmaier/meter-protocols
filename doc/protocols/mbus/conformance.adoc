@@ -45,7 +45,11 @@ Die folgenden Nachweise betreffen die implementierten Layer-Codec- und Orchestri
 
 |IEC 60870-5-2 §3.2, S. 14; EN 13757-2, Anhang F.1/F.2, S. 37
 |Vorhandene FT-1.2-Alternativen, DLL-Bytegrenze und rohe Link User Data; unabhängige Prüfungen von wiederholter Länge, Checksumme und Ende
-|`src/Mbus/LayerCodecs.Tests/LayerCodecTests.fs`: `DLL decodes the supported FT 1.2 alternatives without higher-layer parsing`, `DLL collects independent repeated-length checksum and end errors`
+|`src/Mbus/Protocol.Tests/LayerCodecTests.fs`: `DLL decodes the supported FT 1.2 alternatives without higher-layer parsing`, `DLL collects independent repeated-length checksum and end errors`
+
+|IEC 60870-5-2 §3.2, S. 14, §5.1.2, Tabellen 1–2, S. 22–23; EN 13757-2 §5.7.5, S. 20 und Anhang F.1/F.2, S. 37
+|Die drei Frame-`write`-Einstiege und `DllCodec.encode` als Dispatcher: ACK, Fixed-Length und Variable-Length; C-/A-Bitdarstellung, generierte Länge und bestehende Prüfsummenberechnung, opake Link User Data mit durch `LinkUserDataBytes` gesicherter Grenze von 253 Bytes. Verifiziert sind die Bytebeispiele aus Anhang F sowie die aufgeführten Struktur- und Grenzfälle, keine vollständigen Link-Verfahrensregeln oder TPL-/APL-Serialisierung.
+|link:../../../src/Mbus/Protocol.Tests/DllEncodingTests.fs[DllEncodingTests]: Normbeispiele ACK/SND-NKE/REQ-UD2, expliziter Variable-Length-Bytevergleich, Encode→Decode, C-Feld-Bits und Adressalternativen, Payloadgrößen 0/1/253, Ablehnung von 254 und größeren Eingaben im Smart Constructor, Längenvalidierung am Raw-Feld mit erhaltener Provenienz, Provenienzunabhängigkeit und Ausgabeeigentum sowie Normalisierung des reservierten C-Bits. Die Frame-Writer werden außerdem direkt in einem Puffer mit vorangestellten und folgenden Bytes sowie mit zu kleiner Kapazität geprüft.
 
 |EN 13757-7 §§7.2–7.4, Tabellen 11–12, S. 25–26
 |Vorhandene TPL-Varianten ohne/mit kurzem/langem Header; Anwendungsbytes bleiben erhalten
@@ -64,32 +68,175 @@ Die folgenden Nachweise betreffen die implementierten Layer-Codec- und Orchestri
 |`LayerCodecTests.fs`: `wired decoder stops after invalid DLL before parsing malformed higher-layer bytes`, `wired decoder retains DLL bytes alongside separately decoded higher layers`. Nachweis für die DLL-Grenze, keine vollständige Prüfung sämtlicher Decoder-Abbruchpfade.
 
 |EN 13757-2, Anhang F.2, S. 37; EN 13757-7 §7.4, Tabelle 12; EN 13757-3 §6.3.3, Tabelle 6; ADR 0004 / QS-002
-|Öffentlicher `MbusDecoder.decode`-Einstieg für vorhandene RequestUserData-/ResponseUserData-Zuordnungen mit Frame-Provenienz; gültige Frames ohne vorhandene Message-Zuordnung werden ausdrücklich abgewiesen
-|`LayerCodecTests.fs`: `orchestrator returns a request with the parsed frame provenance`, `orchestrator returns response user data after higher-layer processing`, `orchestrator rejects a valid frame without an implemented message mapping`. Kein Nachweis für weitere nur deklarierte Message-Varianten.
+|Öffentliche Decoder-Funktion aus `Decoder.create resolver` für RequestUserData-/ResponseUserData-Zuordnungen sowie SelectionOfDevice, LinkLayerReset und Adress-SET aus CI `51`/`5B` (Nachweise unten); gültige Frames ohne vorhandene Message-Zuordnung werden ausdrücklich abgewiesen
+|`LayerCodecTests.fs`: `orchestrator returns a request message`, `orchestrator returns response user data after higher-layer processing`, `orchestrator rejects a valid frame without an implemented message mapping`. Kein Nachweis für weitere nur deklarierte Message-Varianten.
 |ADR 0004 / QS-006
-|`Message` führt ausschließlich die fachliche Zuordnung aus; ungültige TPL-Daten verhindern Schlüsselabfrage und APL-Verarbeitung
-|`LayerCodecTests.fs`: `final Message codec only validates the assembled frame`, `orchestrator stops on invalid TPL before key lookup or APL parsing`
+|`Message` führt ausschließlich die fachliche Zuordnung aus; ungültige TPL-Daten verhindern Schlüsselabfrage
+|`LayerCodecTests.fs`: `final Message codec only validates the assembled frame`, `orchestrator stops on invalid TPL before key lookup`
 
 |EN 13757-4 §13.2.1–13.2.2, Tabellen 43–44, S. 49–50; EN 13757-7 §5.2
-|CI-abhängige optionale ELL-Struktur mit folgenden Bytes; vorhandene beschädigte ELL und unbekannte CI werden nicht als Abwesenheit behandelt
-|`LayerCodecTests.fs`: `orchestrator represents optional ELL presence and retains the following layer`, `malformed present ELL or unknown CI cannot become absent`. Kein Nachweis zulässiger Layerkombinationen je wired/wireless Kommunikationsprofil.
+|CI-abhängiger optionaler ELL-Header ohne konsumierte Folgebytes; vorhandene beschädigte ELL und unbekannte CI werden nicht als Abwesenheit behandelt
+|`LayerCodecTests.fs`: `orchestrator represents optional ELL presence and retains the following layer`, `malformed present ELL or unknown CI cannot become absent`, `ELL parser leaves the following CI unread whether present or absent`, `standalone ELL decode rejects bytes beyond the header`. Kein Nachweis zulässiger Layerkombinationen je wired/wireless Kommunikationsprofil.
 
 |EN 13757-7 §7.6.5, Tabelle 20, §7.7.4, Tabelle 31 sowie §9.4.4, Tabelle 48, S. 34–35, 41 und 62–63
 |Mode-5-Blockgrenze, Teilverschlüsselung mit klarem Rest, vollständiger verschlüsselter Inhalt bei gesetzten N-Bits, IV aus validierten Adress-/Access-Feldern, Verifikation und Source-Zuordnung
-|`LayerCodecTests.fs`: `invalid encryption layout fails before key lookup`, `Protection preserves clear suffix and APL is parsed from the derived source`, `failed decryption verification prevents APL and derived source creation`, `zero encrypted blocks preserve the original source without key lookup`, `missing key is a Protection failure and prevents APL parsing`. Kein vollständiger Mode-5-Conformance-Nachweis.
+|`LayerCodecTests.fs`: `invalid encryption layout fails before key lookup`, `Protection preserves clear suffix and APL is parsed from the derived source`, `failed decryption verification returns a Protection failure`, `zero encrypted blocks decode without key lookup`, `missing key is a Protection failure`. Kein vollständiger Mode-5-Conformance-Nachweis.
+|EN 13757-7:2018 §8.4, Tabelle 44, S. 50–51; §8.5, Tabelle 45, S. 52
+|Auswahl aller Geräte durch CI `52h` allein und grundlegender Sekundäradressabgleich mit F-Nibble-Platzhaltern in der Identifikationsnummer und unabhängigen FF-Byte-Platzhaltern in Hersteller, Version und Gerätetyp; ungültige BCD-Nibbles werden abgewiesen. Erweiterte Selektion wird ausdrücklich als noch nicht unterstützt abgewiesen.
+|link:../../../src/Mbus/Protocol.Tests/DeviceSelectionTests.fs[DeviceSelectionTests]: CI ohne Auswahlbytes mit erhaltener Provenienz, exakte Adressen, Abweichungen je Byte, jede ID-Platzhalterposition, unabhängige Herstellerbytes, literale F-Nibbles in Binärfeldern, ID-Grenzen, ungültige BCD-Nibbles sowie beschädigte und erweiterte Selektionen.
+
+|EN 13757-7:2018 §8.4, S. 50–51; IEC 60870-5-2 §3.2, S. 14; EN 13757-2 Anhang F.2, S. 37
+|Devices nutzt den Protokollabgleich und verwaltet Auswahl, Abwahl und Zugriff auf Adresse 253. Stream-I/O verwendet aktuelle Decoder, eigene Framekopien und einen injizierten `Encoder` für Responses. Allgemeines Link-Reset-/FCB-Verhalten und Timings sind dadurch nicht vollständig verifiziert.
+|link:../../../src/Mbus/Devices.Tests/DeviceLogic/SelectionOfDeviceTests.fs[SelectionOfDeviceTests], link:../../../src/Mbus/Devices.Tests/DeviceLogic/RequestTests.fs[RequestTests] und link:../../../src/Mbus/Devices.Tests/DeviceRuntimeTests.fs[DeviceRuntimeTests]: passende/nicht passende Selektion, SND-NKE an 253, Kontrolle von Funktion/Adresse, fragmentierte Duplexeingabe, beschädigte Frames, EOF und Abbruch.
+
+|EN 13757-3:2025 §§6.3–6.4, Tabellen 3/4/7/8/10/15, S. 13–25; EN 13757-7:2018 §§7.5.1–7.5.4, S. 26–28; §8.4/Tabelle 44, S. 51; IEC 60870-5-2 §5.1.2/Tabelle 1, S. 22–23; EN 13757-2 §5.7.5, S. 20
+|C#-Gerätefassade mit geprüfter konfigurierter Identität, Plain-RSP-UD, Int32-Volumenrecords (zehn Skalierungen), DIB-Funktion/Speicher/Tarif/Subunit, Sekundärselektion und SND-NKE-Zuordnung. Das Selektionsbit bleibt bei Reset an die eigene Primäradresse erhalten und wird bei Reset an 253 gelöscht.
+|link:../../../src/Mbus/MbusDevices.Tests/MbusDeviceTests.cs[MbusDeviceTests]: `Create_EncodesBoundaryIdentities`, `Create_RejectsVersionWithoutTruncatingIt`, `Builder_EncodesEveryVolumeScale`, `Builder_EncodesFunctionFieldAndSignedValue`, `Builder_EncodesStorageTariffAndSubunitAcrossMultipleDifes`, `RunAsync_SelectsTheDeviceAndAnswersAtSecondaryAddress`, `RunAsync_DeselectsOnSecondaryResetButKeepsSelectionOnPrimaryReset`, `RunAsync_RejectsMalformedResetAndSelectionEnvelopes`. Bytegenaue Duplexprüfungen; keine vollständige FCB-/Timing- oder C#-Mode-5-Abdeckung. Datenwechsel, fehlgeschlagene Updates, eingefangene Builder, fragmentierte Eingaben, EOF und Abbruch besitzen zusätzliche Tests in derselben Datei.
+
 |EN 13757-7 §8.4, Tabelle 44, S. 50–51; ADR 0004
 |Vorhandener Geräteauswahlpfad wird direkt vom Orchestrator aufgerufen; NWL/AFL bleiben ausdrücklich nicht implementiert
-|`LayerCodecTests.fs`: `orchestrator routes selection directly to its codec without TPL or APL`, `orchestrator rejects unsupported NWL and AFL without reaching TPL`, `ELL codec retains opaque following bytes without calling TPL`. Keine zusätzliche Abdeckung sämtlicher Geräteauswahlregeln.
+|`LayerCodecTests.fs`: `orchestrator routes selection directly to its codec without TPL or APL`, `orchestrator rejects unsupported NWL and AFL without reaching TPL`, `ELL codec decodes only its header without calling TPL`. Weitere grundlegende Auswahlregeln sind in `DeviceSelectionTests.fs` geprüft; generalisierte Selektion bleibt nicht unterstützt.
 |EN 13757-7 §§5.1–5.2, Tabellen 1–2; EN 13757-4 §13.2.2, Tabelle 44, S. 50; ADR 0004
-|Optionale Decode-Einstiege erkennen ihre eigene Präsenz, erhalten bei Abwesenheit das ursprüngliche Byte-Field und liefern bei ELL-Präsenz validierte Daten mit den folgenden Bytes; Fehler bleiben Fehler
-|`LayerCodecTests.fs`: `optional layer codecs preserve the original field when absent`, `optional ELL decode returns validated fields and the following byte field`, `optional ELL decode propagates malformed unsupported and unknown CI errors`, `optional NWL decode propagates unsupported and unknown CI errors`, `orchestrator invokes optional NWL parsing after a present ELL`, `optional AFL decode propagates unsupported and unknown CI errors`, `orchestrator invokes optional AFL parsing after a present ELL and absent NWL`. NWL und AFL bleiben nicht implementiert; kein Nachweis zusätzlicher Layerkombinationen oder Kommunikationsprofile.
+|Optionale ELL-/NWL-/AFL-Parser erkennen ihre eigene Präsenz; ELL-Header-Spans enthalten ausschließlich CI, CC und ACC. Die verbleibenden NWL-/AFL-Decode-Adapter erhalten bei Abwesenheit das ursprüngliche Byte-Field. Fehler bleiben Fehler
+|`LayerCodecTests.fs`: `optional layer codecs preserve the original field when absent`, `optional NWL decode propagates unsupported and unknown CI errors`, `orchestrator invokes optional NWL parsing after a present ELL`, `optional AFL decode propagates unsupported and unknown CI errors`, `orchestrator invokes optional AFL parsing after a present ELL and absent NWL`. NWL und AFL bleiben nicht implementiert; kein Nachweis zusätzlicher Layerkombinationen oder Kommunikationsprofile.
 |ADR 0004; EN 13757-3 §7.1, S. 39; EN 13757-4 §13.2.2, Tabelle 44, S. 50
 |`HigherLayersDecoder` verarbeitet abgegrenzte Link User Data eigenständig, erhält deren Provenienz und liefert Header und unverarbeiteten Inhalt; Protection, APL, DLL und Message-Zuordnung gehören zum äußeren Ablauf
-|`LayerCodecTests.fs`: `higher layers decoder returns headers and plain content without APL processing` mit und ohne ELL. Bestehende Abbruch-, Protection- und Orchestrierungstests verwenden den Unterdecoder über `MbusDecoder`. Keine neue AFL-/Reassembly-Unterstützung.
+|`LayerCodecTests.fs`: `higher layers decoder returns headers and plain content without APL processing` mit und ohne ELL. Bestehende Abbruch-, Protection- und Orchestrierungstests verwenden den Unterdecoder über `Decoder`. Keine neue AFL-/Reassembly-Unterstützung.
 |EN 13757-7 §7.6, Tabelle 20, §7.6.5 und §9.4.4, Tabelle 48; ADR 0004
 |Higher-Layers-Rückgabe erhält ELL/NWL/AFL/TPL, opaque Klartextbytes oder abgegrenzte Mode-5-Bereiche und frame-derived Kontext; keine Schlüssel, Entschlüsselung oder APL-Verarbeitung. Bereiche erhalten eigene Field-Identitäten und Spans.
 |`LayerCodecTests.fs`: `higher layers decoder preserves opaque plain APL bytes`, `higher layers decoder returns Mode 5 ranges and frame context without decrypting` für Teilverschlüsselung, vollständigen Inhalt und null verschlüsselte Blöcke. Bestehende Protection-/Message-Tests prüfen den anschließenden normalen Ablauf.
 |ADR 0004; EN 13757-7 §5.2, S. 15–16 und §§7.5.1, 7.7.1, Tabellen 21–22; EN 13757-4 §13.2.2, Tabelle 44, S. 50
 |Gemeinsames strukturelles Header-Parsing vor reiner applikativer Validierung; Provenienz bleibt erhalten, unabhängige TPL-Fehler werden gesammelt und abwesende NWL/AFL verbrauchen keine folgende CI
 |`LayerCodecTests.fs`: `grouped higher-layer parsing preserves raw fields and validation preserves their provenance` mit und ohne ELL, `grouped header parsing precedes pure validation and collects independent TPL failures`, `optional NWL and AFL parsers leave the reader at the following CI when absent`. Keine Erweiterung der NWL-/AFL-Unterstützung oder Profil-Konformität.
+|ADR 0001; EN 13757-7 §7.4, Tabelle 12, S. 26
+|Struktureller Trace erhält gelesene Kindfelder nach einem abgeschnittenen, zwei Bytes langen Konfigurationsfeld im langen TPL-Header. Die Access Number wird anhand von Source und Span erneut mit ihrem vorhandenen Feldparser gelesen; erfolgreiche TPL-Felder behalten ihre IDs und Spans.
+|`src/Mbus/Analyzer.Tests/ParseTraceTests.fs`: `truncated long TPL header keeps child spans for interpretation from the source`, `successful TPL trace retains the parser field identities and full spans`. Nachweis für den Trace-Vertrag, keine neue Protokollvariante oder vollständige Analyzer-Unterstützung.
+|===
+
+== C#-Userdata-Bytegrenze
+
+Grundlage: EN 13757-3:2025 §§6.1–6.3, Tabellen 1–5, S. 12–14; §6.4.1, S. 16; §6.6, S. 38–39.
+`IMbusUserDataBuilder.Build()` liefert vollständige APL-Bytes ohne Telegrammrahmen.
+`MbusDevice.UpdateUserData(Action<MbusUserDataBuilder>)` ist der normale Einstieg;
+`UpdateUserData(IMbusUserDataBuilder)` unterstützt eigene Implementierungen.
+Beide Wege rufen Build genau einmal pro explizitem Update auf, kopieren dessen Ausgabe,
+verwenden die bestehenden Record-Parser und Validatoren und prüfen die Blockbildung
+beider Plain-Antwortformen. Erst nach Erfolg werden die typisierten Daten übernommen.
+Builder werden nicht für die Laufzeit gespeichert. Fehler werden synchron am
+Update-Aufruf gemeldet, während der letzte gültige Stand und laufende Auslesungen erhalten bleiben.
+Herstellerdaten mit abschließendem `0Fh` bleiben erhalten; `1Fh` wird für den vollständigen
+Eingabebestand ausdrücklich abgewiesen. Die Eingabegrenze ist keine Telegrammlängengrenze.
+Die zusätzlich implementierte FCB-/Mehrtelegramm-Zustandsverwaltung ist unten gesondert nachgewiesen.
+
+Testbezug:
+
+* `src/Mbus/MbusDevices.Tests/BuilderTests.cs`: codierte Ausgabe, Reihenfolge, Datenbestand über einer Telegrammlänge und unabhängige Ausgabepuffer.
+* `src/Mbus/MbusDevices.Tests/MbusDeviceTests.cs`: `UpdateUserData_AcceptsEncodedRecords`, `UpdateUserData_OwnsBinaryAndManufacturerBytes`, `UpdateUserData_InvalidEncodedDataPreservesPreviousData`, `UpdateUserData_EmptyEncodedDataClearsTheRecords`.
+* `src/Mbus/Codec.Tests/DecoderTests.fs`: `user data encodes and validates a complete data set larger than one telegram`.
+* `src/Mbus/Devices.Tests/DeviceRuntimeTests.fs`: Herstellerdaten bleiben im ausgegebenen APL erhalten.
+
+Zusätzliche C#-Update-Nachweise in `MbusDeviceTests.cs`:
+`UpdateUserData_RejectsNullCustomBuilders`,
+`UpdateUserData_RejectsNullBuilderOutputWithoutClearingTheData`,
+`UpdateUserData_BuildFailuresLeaveTheRunningDeviceUsable` und
+`UpdateUserData_UnsendableRecordsDoNotReplaceValidData`.
+Die bestehenden Byte-/Ownership-Tests verwenden eigene Builder; der normale Callback
+bleibt durch die vorhandenen Fluent-/Update-Tests geprüft.
+
+== Plain-Mehrtelegramme, FCB und Standardanwendung
+
+Grundlage: EN 13757-2:2024 §§3.1 und 5.7.3–5.7.7, S. 8 und 19–21;
+EN 13757-3:2025 §§6.6 und 7.1–7.6, Tabelle 27, S. 38–43;
+EN 13757-7:2018 §7.5.5.3, S. 30 und §8.4, S. 50–51.
+
+`Devices/Readout` hält die Grössen-/Blockbildung, `DeviceLogic` den FCB- und
+Auslesezustand, `DeviceRuntime` den Stream. Die erste neue Anfrage übernimmt einen
+festen Datenbestand. Gleiches FCB wiederholt denselben Block, geändertes FCB schaltet
+weiter; nach dem letzten Block beginnt die nächste Folge mit dem aktuellen Bestand.
+Die Access Number läuft auch bei Wiederholungen weiter. Primäradresse und 253 haben
+unabhängige Zustände; 254 teilt den Primärzustand. SND-NKE und Application Reset sind
+getrennt; eine durch Dienstwechsel unterbrochene Folge wird mit Application Reset/Select
+neu gestartet. Einzelrecords und Herstellerblöcke werden nicht beliebig zerschnitten.
+
+Das Device bietet eine Standardausgabe mit Blockauswahl und höchstens zwölf Bit
+Blocknummer. Application Reset/Select wird in CI `50`/`53`/`57` verarbeitet, Request
+of selected application in CI `54`/`55`/`56`. Der Standardanwendungsinhalt wird mit
+Anwendungs-/Block-Subcode und den Antwortrecords ausgegeben (CI `68`); CI `66` wird
+beim Lesen ebenfalls unterstützt. SND-UD2 kann diesen Dienst unmittelbar anfordern.
+Andere SND-UD2-Dienste erhalten bei gültigem DLL NACK; REQ-UD1 ohne Alarme erhält ACK.
+Broadcasts werden ohne Antwort behandelt. Dies ist keine vollständige Protokollkonformität:
+Mode-5-Mehrtelegramme und Mode-5-Anwendungsauswahl-Ausgabe bleiben Unsupported,
+physische Timings/Baudraten werden über den Transport bereitgestellt.
+
+Testbezug:
+
+* `src/Mbus/Devices.Tests/ReadoutTests.fs`: Kapazitätsgrenze, Blockkennung, Record-Reihenfolge, Herstellerdaten, übergroßer Einzelrecord, FCB-Wiederholung, fester Datenbestand, Adresswegtrennung, Diagnoseadresse, Reset, Blockauswahl und Access-Number-Überlauf.
+* `src/Mbus/MbusDevices.Tests/MbusDeviceTests.cs`: `RunAsync_FreezesMultiTelegramDataAndRepeatsBlocks`, `RunAsync_SupportsSelectedApplicationAndReturnsToStandardResponse`, `RunAsync_RejectsUnsupportedSendUd2OnlyWhenAddressed` sowie die bestehenden Duplex-/Selektionsprüfungen.
+* `src/Mbus/Codec.Tests/DecoderTests.fs`: alle drei CI-Headerformen der Anwendungsbefehle, CI `66`/`68`-Antworten, Re-Encode und DLL-Validierung vor SND-UD2-Ausgabe.
+* `src/Mbus/Codec.Tests/EncoderTests.fs`: SND-UD2 bleibt von einer gültigen SND-UD-Adressänderung getrennt.
+
+Die Layer-Regressionen verwenden den internen `Decoder.decodeFrame`-Einstieg vor
+der abschließenden Message-Zuordnung. `Codec` gibt diesen Einstieg ausschließlich
+für die Friend-Assembly `Protocol.Tests` frei; der öffentliche Nachrichteneinstieg
+bleibt unverändert. Die vollständige `Protocol.Tests`-Suite läuft ohne ausgeschlossene
+Dateien erfolgreich (164 Tests).
+
+== Gezielt geprüfte Analyseverträge
+
+Die folgenden Tests stehen in `src/Mbus/Analyzer.Tests/MbusAnalyzerTests.fs`. Sie prüfen AN-001 bis AN-006 innerhalb des bereits implementierten Umfangs, keine vollständige Protokoll- oder Profilkonformität. Der Analyzer verwendet dieselben Parser, Validatoren und Schutzoperationen wie der normale Decoder.
+
+[cols="3,4,5"]
+|===
+|Grundlage / Vertrag |Geprüfter Ausschnitt |Testbezug
+
+|IEC 60870-5-2 §3.2, S. 14; EN 13757-2 Anhang F.2, S. 37; QS-003 / AN-004
+|Fehlerhafte DLL-Checksumme verhindert die höhere Analyse bei bekannter Payload-Grenze nicht. Exaktes Parsing lehnt überschüssige Bytes ab, auch wenn das DLL-Field bereits abgeschlossen ist. Fixed Frames benötigen keine höheren Layer.
+|`invalid DLL checksum does not prevent bounded higher layer analysis`, `trailing bytes are reported even after a complete DLL field`, `fixed frame is analyzed without higher layers`
+
+|EN 13757-7 §§7.4, 7.5.1, 7.7.1, Tabellen 12, 21–22, S. 26 und 36; AN-003 / AN-004
+|Unabhängige TPL-Diagnostics bleiben erhalten, bekannte Klartext-APL bleibt erreichbar. Unvollständige TPL blockiert APL, abgeschlossene Kindfelder behalten Source und Span.
+|`TPL accumulates independent issues while plaintext APL remains reachable`, `truncated TPL retains completed children and blocks dependent parsing`
+
+|EN 13757-7 §§5.1–5.2, Tabellen 1–2; EN 13757-4 §13.2.2, Tabelle 44, S. 50; AN-002
+|Abwesende optionale Layer erzeugen keine Schritte. Vorhandene ELL wird unabhängig verarbeitet; vorhandene NWL/AFL und unbekannte CI werden ausdrücklich abgewiesen.
+|`valid analysis links validated values to original fields and omits absent layers`, `present ELL is independently parsed and validated`, `unsupported or unknown layers remain errors with no invented TPL`. Keine zusätzliche NWL-/AFL-Unterstützung und kein Nachweis zulässiger Layerkombinationen je Kommunikationsprofil.
+
+|EN 13757-7 §7.6.5 und §9.4.4, Tabelle 48, S. 34–35 und 62–63; QS-004 / AN-005
+|Konkrete Geräte-/Access-Voraussetzungen, Blockgrenze, Schlüssel und Verifikation entscheiden über Freilegung; ein unabhängiger Inhaltsfehler verhindert sie nicht. Null verschlüsselte Blöcke benötigen keinen IV-Kontext. Nur erfolgreiche Entschlüsselung erzeugt sensible abgeleitete Bytes mit eigener ID und Herkunftsbezug.
+|`Mode 5 uses concrete prerequisites rather than whole TPL validity`, `invalid identity blocks only operations that actually require it`, `invalid cipher boundaries fail before key lookup`, `missing key preserves protected bytes and blocks APL with the actual cause`, `wrong key does not register plaintext or parse APL`. Keine vollständige Mode-5-Konformitätsaussage.
+
+|ADR 0001 / ADR 0004; AN-002 / AN-003 / AN-006
+|Geprüfte Werte mit ursprünglichen IDs und Spans, Ursachenreferenzen und eigener Source Store; JSON-/XML-Export mit Bytes, Feldbaum, Schritten und Diagnostics; leerer Eingang liefert einen exportierbaren Fehlerbericht.
+|`valid analysis links validated values to original fields and omits absent layers`, `JSON and XML export preserve source bytes diagnostics and validated fields`, `failure export preserves the diagnostic field reference and blocking cause`, `empty input produces an exportable parse failure without dependent decoding`. Allgemeiner Derived-Field-Vertrag zusätzlich in `Common.Decoders.Tests/CoreDecoderTests.fs` und `Common.Parsers.Tests/ParserSourceTests.fs`.
+
+|EN 13757-3 §6.3.3, Tabellen 4–5, §6.4.2, Tabelle 10, Anhang A Tabelle A.7; AN-006
+|Vorhandene Datensatzwerte werden mit Bedeutung und Wert exportiert; Gleitkomma-Unendlichkeit bleibt als benannter String und ein im XML-Zeichenbereich nicht darstellbarer Text reversibel JSON-maskiert erhalten.
+|`APL record values including floating point and control text remain exportable`. Exportnachweis für bestehende Validator-Rückgaben, keine vollständige Datensatz- oder Wertevalidierung.
+
+|EN_13757-2-2024_-_Communication_Systems_For_Meters_-_Wired_M-Bus_Communication.pdf §5.7.3.1–4, S.19 und §5.7.7, S.20–21; IEC 60870-5-2 §3.2, S.14
+|Wired Link-Dienst-Erkennung aus Frameform und validiertem C-Feld: ACK, SND-NKE, REQ-UD1/2, SND-UD/SND-UD2 und RSP-UD. FCV unterscheidet SND-UD/SND-UD2; FCB verhindert dort keine Erkennung. Erkennung allein bestätigt weder Prüfsumme noch Nutzlast oder vollständige Message-Unterstützung.
+|`src/Analysis.Tests/AnalysisTests.cs`: `TelegramIdentitySurvivesUnsupportedApplicationOrMessageMapping`, `UnsupportedFrameFormOrControlFlagsDoNotInventAnIdentity`, `ChecksumFailureRemainsARecognizedButInvalidInterpretation` prüfen den Protokollkern über den echten Analyzer und Adapter. Nachweis für Dienstidentifikation; vollständige SND-UD-Nachrichtenabbildung bleibt offen.
+
+|EN 13757-2 §5.7.3, Anhang F; EN 13757-7:2018 §7.4 Tabelle 12, §8.4 Tabelle 44; ADR 0006
+|Typgebundene Message-Writer für SND-NKE, SELECT, REQ-UD1/2 und ungeschützte Long-Header-Antworten mit Records oder Alarmbits. Response-DLL-Adresse gehört zum Nachrichtenmodell. `ChangePrimaryAddress` schreibt SND-UD/CI=51 mit `01 7A <neue Adresse>` gemäß EN 13757-3:2025 Tabellen 4/10, §6.4.7 und EN 13757-7:2018 Tabelle 2. Die Adresse verwendet unsigned Datentyp C, einschließlich Werten über 127.
+|link:../../../src/Mbus/Protocol.Tests/EncodingTests.fs[EncodingTests]: `primary message writers match normative control and address vectors`, `response messages include their DLL address long header and application data`, `selection patterns preserve wildcard granularity when written`, `FT12 maximum payload and overflow are enforced during composition`, `address assignment writes a SET record with an unsigned address` (0, 1, 127, 128, 250). Devices-Runtime-Tests prüfen echte Response-Bytes und verhindern partielle Stream-Ausgabe bei Encoding-Fehlern. Keine vollständige CAP-003- oder Link-Verfahrens-Konformitätsaussage.
+
+|EN 13757-3:2025 §6.3 Tabellen 3–8, §6.4 Tabellen 9–19, Anhang A und C.2
+|Record-/Wert-Writer mit kanonischen VIF-Codes, DIFEs, LVAR, Bereichsprüfungen und Text-VIF; GET-Code E0001111 und Maskierung des Action-Extension-Bits korrigiert. Die Validierung prüft den Herstellerdaten-MDH und übernimmt ausschließlich dessen nachfolgende Nutzbytes.
+|link:../../../src/Mbus/Protocol.Tests/EncodingTests.fs[EncodingTests]: `all value representations roundtrip through complete records`, `invalid value representations fail without truncation`, `record writer matches numeric and DIFE byte vectors`, `text VIF is length-prefixed reversed ASCII and does not consume the value`, `supported VIF table entries have a canonical reversible encoding`, `actions and record errors preserve their extension chains`, `extended text VIF parses before its length and fails explicitly in the narrow text model`, `DIFE and VIFE limits reject overflow and preserve the tenth extension`, `response APL writes the final manufacturer block and more follows marker`. Das aktuelle Text-VIF-Modell trägt keine VIFEs; die Raw-Struktur wird korrekt abgegrenzt, die Kombination aber ausdrücklich nicht unterstützt. Tabellen-Roundtrips belegen die Schreibbarkeit vorhandener unterstützter VIF-Zuordnungen, keine unabhängige vollständige Prüfung sämtlicher Tabelleninhalte.
+
+|EN 13757-7:2018 Tabellen 27/31, §9.4.4 Tabelle 48; EN 13757-4:2019 §13.2.2 Tabelle 44, §13.2.7 Tabelle 50
+|TPL-/ELL-Writer erhalten dargestellte Nutzbytes; Konfigurationsflags S/A/B verwenden Bits 13–15. N-Feld ist auf 0–15 begrenzt. Short-Header Mode 5 wird wie beim Lesen für Wired M-Bus abgewiesen.
+|link:../../../src/Mbus/Protocol.Tests/EncodingTests.fs[EncodingTests]: `configuration flags occupy the high byte independently of encrypted blocks`, `TPL and ELL writers preserve represented headers and opaque payload`. Kein Nachweis neuer Verschlüsselung oder zusätzlicher Kommunikationsprofile.
+
+|EN 13757-7:2018 §7.7.1, Tabelle 23, S.35–37, Tabellen 27/31, S.39/41; ADR 0007
+|Konfigurationsvarianten ohne redundanten Mode-Member; benannte H/R/S-DUs und gemeinsame B/A-Zugriffsarten. Der Raw-Discriminator bleibt erhalten; widersprechende Mode-Bits werden bei variantenbezogener Validierung abgewiesen.
+|link:../../../src/Mbus/Protocol.Tests/ConfigurationFieldTests.fs[ConfigurationFieldTests]: `configuration accessibility is the joint B A function from table 23`, `configuration functions retain their named H R S meanings`, `configuration validators reject raw bits belonging to another mode`. Bestehende Bytevektor-Tests prüfen die unveränderten Bitpositionen. Kein Nachweis von Funk-Zeitverhalten oder Repeater-Verfahren.
+
+|EN 13757-7:2018 §7.7.4 Tabelle 31, §7.6.5, §9.4.4 Tabelle 48, S.34–35, 41, 62–63; EN 13757-3:2025 Tabelle 6, §6.6; ADR 0007
+|Kontextbehafteter Encoder für alle bisherigen Plain-Messages und vollständige Mode-5-RSP-UD-Datennachrichten. IV aus verpflichtender Mode-5-Kontext-Secondary-Address und per Aufruf übergebener Encoding-Access-Number, N=15, AES-Check, Alignment-Filler vor den Records, anschließende TPL-/DLL-Ausgabe; kein Klartext-Fallback. Die Message enthält keinen Security-Kontext; der gemeinsame Resolver erhält eine wertbasierte Identität.
+|link:../../../src/Mbus/Codec.Tests/EncoderTests.fs[EncoderTests]: `mode 5 uses context secondary address and per-call access number for key selection and IV`, `mode 5 context secondary address determines response header key selection and IV`, `mode 5 preserves manufacturer bytes instead of absorbing alignment padding`, `empty records still receive AES check and a full cipher block`, `missing key returns a protection error without plaintext fallback`, `plain encoding never resolves a key`, `mode 5 rejects unsupported message combinations explicitly`, `mode 5 enforces the frame limit including AES check and alignment`, `AES CBC encryption matches NIST and leaves the caller key unchanged`. `Devices.Tests/DeviceRuntimeTests.fs`: `runtime uses the injected mode 5 encoder without storing its security context` prüft die verschlüsselte Ausgabe über die echte Runtime mit anschließendem Decoder-Roundtrip; `runtime supplies device access number to the encoder for each response` prüft die Access-Number-Übergabe aus dem Gerätezustand. Noch keine Mode-5-Alarmbits, Multi-Datagramm- oder Teilverschlüsselungsausgabe; kein vollständiger Nachweis von Access-Number-/FCB-Zustandsverwaltung in Devices.
+|EN 13757-7:2018 Tabelle 2, §7.3/Tabelle 11, §7.4/Tabelle 12, §7.5.5.3, §7.5.7/Tabellen 16–17, §9.4.4/Tabelle 48, S.15–16, 25–26, 30–32, 62–63; EN 13757-2 §5.7.3.4, S.19; EN 13757-3:2025 Tabelle 10, §6.4.7/Tabelle 18 und Anhang A/Tabelle A.3; ADR 0007
+|`ChangePrimaryAddress` wird ohne generischen Message-Typ `Command` direkt als Plain-SND-UD mit CI `51` beziehungsweise Mode-5-SND-UD mit CI `5B` ausgegeben und decodiert. Die Access Number kommt aus `EncodingContext` pro Aufruf; fachliche Messages besitzen diesen Member nicht mehr. Empfangene Access Numbers bleiben in den TPL-Headern. Die Mode-5-Kontext-Secondary-Address bestimmt Header, Schlüsselauflösung und IV. Wired-Partnerstatus wird als null ausgegeben; beim Message-Mapping werden beide Null-Signalpegelarten akzeptiert und unzulässige Signalpegel/reserviertes Bit sowie FCV=0 abgewiesen. Die Adresszuordnung akzeptiert genau einen unsigned SET-Record und weist andere Aktionen oder mehrere Records ab. Linkdienste ohne TPL behalten bei Mode-5-Auswahl ihr definiertes Format. Keine SITP-Implementierung oder Ausführung der Adressänderung im Device.
+|link:../../../src/Mbus/Codec.Tests/EncoderTests.fs[EncoderTests]: `change primary address round-trips directly in plain and mode 5 including unsigned addresses` (0, 1, 127, 128, 250 und unabhängiger OpenSSL-Ciphertextvektor), `address change mode 5 takes access and identity from context rather than link address`, `address change mode 5 requires a key and rejects a wrong key`, `plain TPL responses and alarms take access number from each encoding call`, `mode 5 keeps link services in their defined format without requesting keys`, `address change mapping validates wired partner status and SND-UD FCV`, `address change mapping rejects reserved addresses and other record actions`. link:../../../src/Mbus/Protocol.Tests/CiFieldTplTests.fs[CiFieldTplTests]: CI-5B-Parsing und Code-Roundtrip. Kein vollständiger Nachweis von Link-Verfahrenszustand, Replay-Schutz oder sämtlichen Befehls-VIFs.
 |===

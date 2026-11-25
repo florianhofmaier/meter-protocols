@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <AssemblyName>MbusAnalyzer.Tests</AssemblyName>
+        <IsPackable>false</IsPackable>
+        <GenerateProgramFile>false</GenerateProgramFile>
+        <RootNamespace>Metering.Mbus.Analysis.Tests</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="ParseTraceCollectorTests.fs" />
+        <Compile Include="ParseTraceTests.fs" />
+        <Compile Include="MbusAnalyzerTests.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+        <PackageReference Include="xunit.v3" Version="3.0.1" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" PrivateAssets="all" />
+        <PackageReference Include="FsUnit.Xunit" Version="7.1.1" />
+        <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Analyzer\Analyzer.fsproj" />
+        <ProjectReference Include="..\..\Common\ByteReaders\ByteReaders.csproj" />
+    </ItemGroup>
+
+</Project>

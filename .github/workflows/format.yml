@@ -1,0 +1,26 @@
+name: Code formatting
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: dotnet tool restore
+      - run: pnpm --dir src/Apps/ProtocolInspector/Client install --frozen-lockfile
+      - run: bash scripts/format.sh --check

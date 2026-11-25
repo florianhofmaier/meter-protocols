@@ -1,21 +1,21 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="DeviceTestSupport.fs" />
+    <Compile Include="ReadoutTests.fs" />
     <!-- DeviceLogic unit tests -->
     <Compile Include="DeviceLogic\InitialStateTests.fs" />
-    <Compile Include="DeviceLogic\SelectionTests.fs" />
+    <Compile Include="DeviceLogic\SelectionOfDeviceTests.fs" />
     <Compile Include="DeviceLogic\RequestTests.fs" />
     <Compile Include="DeviceLogic\UnknownFrameTests.fs" />
     <Compile Include="DeviceLogic\PreservationTests.fs" />
     
-    <!-- DeviceSelection unit tests -->
-    <Compile Include="DeviceSelectionTests.fs" />
     
     <!-- DeviceRuntime integration tests -->
     <Compile Include="DeviceRuntimeTests.fs" />

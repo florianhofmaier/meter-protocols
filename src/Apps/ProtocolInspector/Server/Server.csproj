@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>ProtocolInspector.Server</AssemblyName>
+    <RootNamespace>Metering.ProtocolInspector</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../Analysis/Analysis.csproj" />
+    <ProjectReference Include="../../../Mbus/AnalysisAdapter/AnalysisAdapter.csproj" />
+  </ItemGroup>
+</Project>

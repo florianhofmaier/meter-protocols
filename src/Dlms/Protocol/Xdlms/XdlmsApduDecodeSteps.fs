@@ -37,7 +37,7 @@ module XdlmsApduDecodeStepsModule =
             Decoder =
                 fun _ parsed ->
                     parsed
-                    Validation.runParsed InitiateRequestValidatedFields.fromRaw parsed
+                    Validation.runParsed InitiateRequestValidatedFields.validate parsed
                     |> ValidationReport.map XdlmsApduValidatedFields.InitiateRequest
         }
 

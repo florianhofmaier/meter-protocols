@@ -9,6 +9,8 @@
     <ItemGroup>
         <Compile Include="Utility\Bcd.fs" />
         <Compile Include="Utility\BcdParsers.fs" />
+        <Compile Include="Utility\BcdWriters.fs" />
+        <Compile Include="Utility\Writer.fs" />
         <Compile Include="Records\InfoBlock.fs" />
         <Compile Include="Records\DataInfoBlocks\Dife.fs" />
         <Compile Include="Records\DataInfoBlocks\DataField.fs" />
@@ -67,29 +69,39 @@
         <Compile Include="Frames\AuthenticationAndFragmentationLayer\AflCodec.fs" />
         <Compile Include="Frames\HigherLayers.fs" />
         <Compile Include="Frames\DataLinkLayer\CField.fs" />
-        <Compile Include="Frames\DataLinkLayer\WiredMbus\UserData\SelectionOfDevice.fs" />
-        <Compile Include="Frames\MbusProtocolUserData.fs" />
-        <Compile Include="Frames\LinkUserData.fs" />
+        <Compile Include="Frames\DataLinkLayer\WiredMbus\UserData\DeviceSelection.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\StartField.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\AField.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\Crc.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\EndField.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\SingleCharacterFrame.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\FixedLengthFrame.fs" />
+        <Compile Include="Frames\DataLinkLayer\WiredMbus\LinkUserDataBytes.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\VariableLengthFrame.fs" />
         <Compile Include="Frames\DataLinkLayer\WiredMbus\DllCodec.fs" />
+        <Compile Include="Frames\DataLinkLayer\WiredMbus\TelegramType.fs" />
+        <Compile Include="Frames\MbusProtocolUserData.fs" />
+        <Compile Include="Frames\LinkUserData.fs" />
         <Compile Include="Frames\WiredMbusFrame.fs" />
-        <Compile Include="HigherLayersDecoder.fs" />
-        <Compile Include="Messages\MessageTypes.fs" />
+        <Compile Include="Messages\PrimaryAddress.fs" />
+        <Compile Include="Messages\LinkLayerReset.fs" />
+        <Compile Include="Messages\SelectionOfDevice.fs" />
         <Compile Include="Messages\RequestUserData.fs" />
-        <Compile Include="Messages\PrimaryStationMessage.fs" />
+        <Compile Include="Messages\RequestAlarms.fs" />
+        <Compile Include="Messages\ChangePrimaryAddress.fs" />
         <Compile Include="Messages\ResponseUserData.fs" />
+        <Compile Include="Messages\ResponseAlarms.fs" />
+        <Compile Include="Messages\ApplicationResetOrSelect.fs" />
+        <Compile Include="Messages\RequestSelectedApplication.fs" />
+        <Compile Include="Messages\SendUserData2.fs" />
+        <Compile Include="Messages\PrimaryStationMessage.fs" />
+        <Compile Include="Messages\ResponseSelectedApplication.fs" />
         <Compile Include="Messages\SecondaryStationMessage.fs" />
         <Compile Include="Messages\Message.fs" />
-        <Compile Include="MbusDecoder.fs" />
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\Common\BaseWriters\BaseWriters.fsproj" />
       <ProjectReference Include="..\..\Common\Parsers\Parsers.fsproj" />
       <ProjectReference Include="..\..\Common\Decoders\Decoders.fsproj" />
       <ProjectReference Include="..\..\Common\Security\Cryptography\Cryptography.fsproj" />

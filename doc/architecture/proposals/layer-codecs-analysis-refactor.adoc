@@ -11,27 +11,27 @@ Arbeitsbranch:: `codex/layer-codecs-analysis-plan`
 
 Dieser Plan konkretisiert die besprochene Trennung: ein Codec pro Layer, eine eigene Protection-Komponente und zwei unterschiedliche Aufrufer für normales Dekodieren und Analyse. Die Umsetzung erfolgt in kleinen, überprüfbaren Schritten; ihr aktueller Stand ist nachfolgend ausgewiesen.
 
-Implementierungsstand:: Die Verantwortungstrennung ist in xref:../decisions/0004-layer-codecs-and-protocol-analyzers.adoc[ADR 0004] akzeptiert. DLL, ELL, TPL, Selection und APL besitzen unabhängige Codec-Einstiege; optionale ELL sowie die noch nicht implementierten NWL und AFL besitzen eigene `tryDecode`-Einstiege; die vorhandenen Modelle wurden direkt angepasst. `HigherLayersDecoder` liefert ELL, NWL, AFL, TPL und unverarbeiteten Inhalt mit frame-derived Protection-Kontext. `MbusDecoder` verbindet DLL mit Selection oder diesem Unterdecoder und ruft anschließend `MbusProtection.decode`, APL und zuletzt den semantischen Codec `Message.decode` auf. Zusammengesetzte Frame- und Link-User-Data-Modelle enthalten keine Parser oder Orchestrierung. Der M-Bus-DecodePipeline-Versuch ist entfernt. Analyzer, Trace-Wertemeldung, detaillierte Protection-Fehlerkategorien und DLMS-Umstellung bleiben offen.
+Implementierungsstand:: Die Verantwortungstrennung ist in xref:../decisions/0004-layer-codecs-and-protocol-analyzers.adoc[ADR 0004] akzeptiert. DLL, ELL, TPL, Selection und APL besitzen unabhängige Codec-Einstiege; optionale ELL, NWL und AFL besitzen eigene `tryParse`-Einstiege; der nur von Tests verwendete `EllCodec.tryDecode`-Adapter ist entfernt; die vorhandenen Modelle wurden direkt angepasst. `HigherLayersDecoder` liefert ELL, NWL, AFL, TPL und unverarbeiteten Inhalt mit frame-derived Protection-Kontext. `Decoder` verbindet DLL mit Selection oder diesem Unterdecoder und ruft anschließend `MbusProtection.decode`, APL und zuletzt den semantischen Codec `Message.decode` auf. Zusammengesetzte Frame- und Link-User-Data-Modelle enthalten keine Parser oder Orchestrierung. Die M-Bus- und DLMS-DecodePipeline-Versuche sind entfernt. `MbusAnalyzer.analyze` ist mit eigenem Source Store, Trace-Sammler, getrennten Verarbeitungsschritten, Voraussetzungskontrolle und JSON-/XML-Export implementiert. Detaillierte Protection-Fehlerkategorien und DLMS-Umstellung bleiben offen.
 
-Nachweis dieses Schnitts:: `src/Mbus/LayerCodecs.Tests/LayerCodecTests.fs` enthält die gezielten DLL-/TPL-Vertragstests und wird eigenständig in `LayerCodecs.Tests` ausgeführt. Das ältere `Protocol.Tests` referenziert entfallene Typen und ist noch nicht vollständig angepasst; sein vollständiger Testlauf ist kein Abschlusskriterium dieses Schnitts.
+Nachweis dieses Schnitts:: `src/Mbus/Protocol.Tests/LayerCodecTests.fs` enthält die gezielten Layer- und Orchestrierungsverträge. `Protocol.Tests` führt diese zusammen mit den benötigten CI-, Record-, Value- und Konfigurationsfeldtests aus. Die überholten Tests zu `ProtectedApl`, `Mode5.expandLongHeader` und dem früheren vollständigen Pipeline-Ablauf sind durch die aktuellen Verträge ersetzt; bestehende Feldtests wurden direkt an die vorhandenen APIs angepasst. Die Trace- und Analyseverträge stehen getrennt in `Analyzer.Tests`; `MbusAnalyzerTests.fs` prüft Fortsetzung, Blockierung, Field-Zuordnung, Protection und Export anhand von AN-001 bis AN-006.
 
-Die Library ist in Entwicklung; die vorhandenen Piloten sind kein funktionierendes Produkt mit einer zu bewahrenden Verhaltensbaseline. Maßgeblich sind die benötigten Zielverträge und die anwendbaren Protokollstandards. Bestehende Implementierungen, APIs und Tests dürfen unmittelbar ersetzt oder entfernt werden. Characterization-Tests, vorgelagerte Baseline-Testläufe und Kompatibilitätsschichten zur Erhaltung des Pilotverhaltens sind nicht vorgesehen.
+Die Library ist in Entwicklung; die früheren Piloten waren kein funktionierendes Produkt mit einer zu bewahrenden Verhaltensbaseline. Maßgeblich sind die benötigten Zielverträge und die anwendbaren Protokollstandards. Bestehende Implementierungen, APIs und Tests dürfen unmittelbar ersetzt oder entfernt werden. Characterization-Tests, vorgelagerte Baseline-Testläufe und Kompatibilitätsschichten zur Erhaltung des Pilotverhaltens sind nicht vorgesehen.
 
-Der Funktionsumfang ist der im Ausgangsstand bereits implementierte Umfang der Library, einschließlich der Implementierungen außerhalb der Piloten. Auf ausdrücklichen Wunsch ist der M-Bus-DecodePipeline-Versuch mit seinen Berichts-/Ablaufmodellen und Versuchstests verworfen; diese experimentellen Darstellungen und Abläufe werden nicht übertragen. Die eigenständig benötigten DLL-/TPL-Bausteine und ihre Vertragstests bleiben erhalten. Darüber hinaus wird der Umfang durch diesen Plan weder neu ausgewählt noch verkleinert oder um bisher fehlende Funktionen erweitert. Ersetzt werden dürfen technische Darstellungen und Implementierungswege; ihre bereits implementierten Fähigkeiten werden in der neuen Struktur abgebildet. Bisherige Fehler oder zufälliges Verhalten müssen dabei nicht erhalten bleiben. Teilweise implementierte Bereiche bleiben als solche ausgewiesen.
+Der Funktionsumfang ist der im Ausgangsstand bereits implementierte Umfang der Library, einschließlich der Implementierungen außerhalb der Piloten. Auf ausdrücklichen Wunsch sind die M-Bus- und DLMS-DecodePipeline-Versuche mit ihren Berichts-/Ablaufmodellen und Versuchstests verworfen; diese experimentellen Darstellungen und Abläufe werden nicht übertragen. Die eigenständig benötigten DLL-/TPL-Bausteine und ihre Vertragstests bleiben erhalten. Darüber hinaus wird der Umfang durch diesen Plan weder neu ausgewählt noch verkleinert oder um bisher fehlende Funktionen erweitert. Ersetzt werden dürfen technische Darstellungen und Implementierungswege; ihre bereits implementierten Fähigkeiten werden in der neuen Struktur abgebildet. Bisherige Fehler oder zufälliges Verhalten müssen dabei nicht erhalten bleiben. Teilweise implementierte Bereiche bleiben als solche ausgewiesen.
 
 Die xref:layer-codecs-contracts.adoc[Bestandsaufnahme mit festgelegten Zielverträgen] ordnet die vorhandenen Fähigkeiten, Rückgabetypen und Unterstützungslücken konkreten Modulen zu. Diese Detailverträge gelten für die weitere Umsetzung dieses Vorschlags; nur die ausdrücklich ausgewiesenen Teile sind bereits implementiert. Die akzeptierte Verantwortungstrennung wird separat in ADR 0004 geführt.
 
-Die Verantwortlichkeiten und Modellierungsregeln gelten protokollübergreifend für alle strukturellen Layer und eigenständig verarbeitbaren Nachrichtenbestandteile. M-Bus und der bestehende DLMS-Pilot dienen als konkrete Anwendungen und erste Umsetzungsschritte. Weitere Protokolle erhalten ihre eigene Zuordnung, ohne die allgemeinen Regeln um ihre Layer-Namen oder Nachrichtenvarianten zu erweitern.
+Die Verantwortlichkeiten und Modellierungsregeln gelten protokollübergreifend für alle strukturellen Layer und eigenständig verarbeitbaren Nachrichtenbestandteile. M-Bus und die verbleibenden DLMS/COSEM-Bausteine dienen als konkrete Anwendungen und erste Umsetzungsschritte. Weitere Protokolle erhalten ihre eigene Zuordnung, ohne die allgemeinen Regeln um ihre Layer-Namen oder Nachrichtenvarianten zu erweitern.
 
-Der xref:decode-pipeline.adoc[historische Pipeline-Vorschlag] dokumentiert die bisherigen Versuche und den noch vorhandenen DLMS-Piloten, ohne deren Verhalten zur Spezifikation zu machen. Dieser Plan beschreibt das Entwicklungsziel und den ausdrücklich ausgewiesenen Implementierungsstand. Akzeptierte Entscheidungen werden in ADRs geführt; noch offene Detailmodelle dieses Plans werden dadurch nicht als insgesamt implementiert oder akzeptiert behandelt.
+Der xref:decode-pipeline.adoc[historische Pipeline-Vorschlag] dokumentiert die entfernten M-Bus- und DLMS-Versuche, ohne deren Verhalten zur Spezifikation zu machen. Dieser Plan beschreibt das Entwicklungsziel und den ausdrücklich ausgewiesenen Implementierungsstand. Akzeptierte Entscheidungen werden in ADRs geführt; noch offene Detailmodelle dieses Plans werden dadurch nicht als insgesamt implementiert oder akzeptiert behandelt.
 
 == Problem im Ausgangsstand
 
 * Der inzwischen entfernte M-Bus-DecodePipeline-Versuch bündelte DLL-Parsing, Validierung mehrerer höherer Layer, Mode-5-Freilegung, APL-Verarbeitung und den vollständigen Analysebericht.
-* `src/Dlms/DecodePipeline/TcpAarqDecode.fs` verbindet Wrapper, AARQ, Schutzstruktur, Transformation und InitiateRequest mit einem gemeinsamen Bericht.
-* `Stage`, `Transformation` und mehrere `NotReached`-Typen transportieren den Ablauf der gesamten Analyse bis in einzelne Ergebnisse. Blockierungsgründe werden für nachfolgende Stufen wiederholt.
+* Der ebenfalls entfernte DLMS-DecodePipeline-Versuch verband Wrapper, AARQ, Schutzstruktur, Transformation und InitiateRequest mit einem gemeinsamen Bericht.
+* Die entfernten Typen `Stage`, `Transformation` und mehrere `NotReached`-Varianten transportierten den Ablauf der gesamten Analyse bis in einzelne Ergebnisse. Blockierungsgründe wurden für nachfolgende Stufen wiederholt.
 * Im Ausgangsstand verlangten CAP-001 und QS-003 Analyseverhalten vom allgemeinen Decoder. Ein einfacher Aufruf mit Abbruch beim ersten fehlgeschlagenen Schritt bekommt dadurch zusätzliche Verantwortung.
-* `IFieldTracer` protokolliert Feldgrenzen, Parse-Fehler und Sources. Werte und semantische Diagnostics erreichen ihn derzeit nicht automatisch.
+* `IFieldTracer` protokolliert Feldgrenzen, Parse-Fehler und Sources. Die Analyse muss diese Beobachtung mit den referenzierten Raw-Bytes und den getrennten semantischen Diagnostics verbinden.
 
 == Ziel und Verantwortlichkeiten
 
@@ -64,6 +64,8 @@ Die Analyzer dürfen und sollen Protokollregeln kennen. Die Trennung betrifft lo
 
 Ein Codec pro Layer bedeutet zunächst getrennte Module innerhalb der bestehenden Protokollprojekte. Ein eigenes Projekt pro Layer ist kein Ziel dieses Umbaus.
 
+Die M-Bus-Aufrufer sind dagegen als eigene Assemblies getrennt: `MbusCodec.dll` enthält den normalen Decoder und Encoder sowie `HigherLayersDecoder`; `MbusAnalyzer.dll` enthält das Trace-Modell und den Sammler sowie künftig Analyse-Orchestrierung und Export. Beide referenzieren das Protokollprojekt und den gemeinsamen Core, ohne sich gegenseitig zu referenzieren. Der konkrete Tracer gehört zur Analyzer-Assembly; sein vom Parser benötigtes Interface bleibt im Core. Die Trace-Verträge werden in `Analyzer.Tests` geprüft.
+
 == Allgemeiner API-Vertrag und Modelle
 
 Für strukturelle Layer gilt dasselbe Verarbeitungsschema. `LayerCodec`, `LayerRaw` und `Layer` sind Platzhalter für einen konkreten protokollspezifischen Baustein, keine vorgeschlagene gemeinsame Layer-Hierarchie:
@@ -72,14 +74,14 @@ Für strukturelle Layer gilt dasselbe Verarbeitungsschema. `LayerCodec`, `LayerR
 ----
 module LayerCodec =
     val parse: Parser<Field<LayerRaw>>
-    val fromRaw: Field<LayerRaw> -> Validation<Field<Layer>>
+    val validate: Field<LayerRaw> -> Validation<Field<Layer>>
     val decode: Field<ReadOnlyMemory<byte>> -> Decoder<Field<Layer>>
 ----
 
 Das Beispiel beschreibt einen Baustein mit einer abgegrenzten Bytefolge als Eingabe. Benötigt ein Baustein zusätzlich einen bereits gelesenen Diskriminator oder andere Nachrichtenfelder, erhält er dafür konkrete typisierte Argumente. Der gemeinsame Vertrag legt Verantwortlichkeiten fest; er verlangt weder identische Parameterlisten noch ein generisches Codec-Interface für alle Protokolle.
 
 * `parse` erkennt Struktur und führt weder semantische Gesamtvalidierung noch Transformationen aus.
-* `fromRaw` bleibt rein und applikativ. Unabhängige Prüfungen verwenden `and!`; echte Abhängigkeiten dürfen anschließend sequenziell geprüft werden.
+* `validate` bleibt rein und applikativ. Unabhängige Prüfungen verwenden `and!`; echte Abhängigkeiten dürfen anschließend sequenziell geprüft werden.
 * `decode` kombiniert Parserausführung und Validierung. Der bestehende `Decoder<'T> = DecodeContext -> DecodeResult<'T>` kann dafür weiterverwendet werden.
 * Ein fehlgeschlagener Validierungsschritt enthält alle lokal ermittelten unabhängigen Fehler. Der Abbruch erfolgt zwischen Schritten, nicht zwischen diesen unabhängigen Prüfungen.
 * Ergebnisse modellieren die tatsächlich unterstützten Alternativen des jeweiligen Layers oder Nachrichtenbestandteils. Discriminated Unions und spezifische Records halten variantenspezifische Pflichtfelder zusammen und schließen unzulässige Kombinationen möglichst aus.
@@ -97,11 +99,11 @@ Die Zusammenfassung mehrerer Header zu einer strukturellen Stufe folgt xref:../d
 
 Ein optionaler Parser liefert `None` ausschließlich bei nach der jeweiligen Grammatik festgestellter Abwesenheit. Dazu prüft er den Diskriminator bzw. Tag ohne Eingabeverbrauch. Ein erkannter vorhandener Bestandteil wird verbindlich geparst; dessen Parse-Fehler werden nicht nach `None` umgewandelt. Eine nicht klassifizierbare Kennung ist ebenfalls kein Beweis für Abwesenheit. Eingabeende gilt nur dort als Abwesenheit, wo die umgebende Struktur es erlaubt.
 
-Damit hat `Parser<Field<PartRaw> option>` drei beobachtbare Ergebnisse: erfolgreich abwesend, erfolgreich vorhanden oder Parse-Fehler. Bei `None` bleibt die Eingabe unverändert. `fromRaw` erhält einen tatsächlich gelesenen Bestandteil; der Aufrufer validiert vorhandene optionale Ergebnisse und sammelt deren unabhängige Fehler. Nach erfolgreichem Parsing kann somit `Some raw` vorliegen, obwohl seine Validierung fehlschlägt.
+Damit hat `Parser<Field<PartRaw> option>` drei beobachtbare Ergebnisse: erfolgreich abwesend, erfolgreich vorhanden oder Parse-Fehler. Bei `None` bleibt die Eingabe unverändert. `validate` erhält einen tatsächlich gelesenen Bestandteil; der Aufrufer validiert vorhandene optionale Ergebnisse und sammelt deren unabhängige Fehler. Nach erfolgreichem Parsing kann somit `Some raw` vorliegen, obwohl seine Validierung fehlschlägt.
 
-Optionalität eines Layers gehört zur protokollspezifischen Zusammenstellung, nicht in die Union des einzelnen Layers. Ein ELL-Codec liefert bei direktem `parse` ein ELL-Ergebnis oder einen Fehler; sein zusätzlicher `tryParse`-Einstieg liefert `Field<EllRaw> option`. Sein `tryDecode`-Einstieg liefert den optionalen validierten Layer und das folgende Byte-Field. Bei Abwesenheit bleibt das Eingabe-Field unverändert. Die M-Bus-Zusammenstellung ruft diese Einstiege in der richtigen Reihenfolge auf und kann die Option halten. Ein fehlender Layer ist weder ein fehlgeschlagener noch ein blockierter Analyse-Schritt.
+Optionalität eines Layers gehört zur protokollspezifischen Zusammenstellung, nicht in die Union des einzelnen Layers. Ein ELL-Codec liefert bei direktem `parse` ein ELL-Ergebnis oder einen Fehler; sein zusätzlicher `tryParse`-Einstieg liefert `Field<EllRaw> option`. Die produktiven Verbraucher validieren vorhandene Raw-Ergebnisse unmittelbar. Der ausschließlich von Tests verwendete `tryDecode`-Adapter ist entfernt. Der Analyzer hält die folgende Eingabe als `SourceSpan`, ohne ein zusätzliches Field zu erzeugen. Die M-Bus-Zusammenstellung ruft diese Einstiege in der richtigen Reihenfolge auf und kann die Option halten. Ein fehlender Layer ist weder ein fehlgeschlagener noch ein blockierter Analyse-Schritt.
 
-Optionale Felder innerhalb einer Struktur folgen demselben Prinzip zur Unterscheidung von Abwesenheit und Fehler. Ihre semantischen Regeln können jedoch anders sein: Ein ASN.1-Default kann bei Abwesenheit einen effektiven Wert liefern; ein syntaktisch optionales Feld kann für einen bestimmten Anwendungskontext erforderlich sein. Solche Regeln gehören in `fromRaw` und das validierte Variantenmodell. Vorhandene `Field<option<_>>`-Darstellungen für erwartete Feldpositionen dürfen bestehen bleiben; eine Umstellung aller optionalen Felder auf `option<Field<_>>` ist kein eigener Umbauauftrag. Ein Field mit `None` ist dabei keine Behauptung über vorhandene Feldbytes.
+Optionale Felder innerhalb einer Struktur folgen demselben Prinzip zur Unterscheidung von Abwesenheit und Fehler. Ihre semantischen Regeln können jedoch anders sein: Ein ASN.1-Default kann bei Abwesenheit einen effektiven Wert liefern; ein syntaktisch optionales Feld kann für einen bestimmten Anwendungskontext erforderlich sein. Solche Regeln gehören in `validate` und das validierte Variantenmodell. Vorhandene `Field<option<_>>`-Darstellungen für erwartete Feldpositionen dürfen bestehen bleiben; eine Umstellung aller optionalen Felder auf `option<Field<_>>` ist kein eigener Umbauauftrag. Ein Field mit `None` ist dabei keine Behauptung über vorhandene Feldbytes.
 
 Ein Analyzer behält Fehler vorhandener Bestandteile als Fehler. Eine Fortsetzung nach einem beschädigten Feld setzt eine unabhängig belastbare Grenze voraus, beispielsweise einen bereits geprüften begrenzten Inhaltsbereich. Ein solcher Recovery-Schritt wird ausdrücklich im Analyseablauf dokumentiert; er verändert den fehlgeschlagenen Parse-Ausgang nicht zu Abwesenheit.
 
@@ -145,12 +147,12 @@ DLL- und TPL-Signaturen sind für diesen Vorschlag so festgelegt:
 ----
 module DllCodec =
     val parse: Parser<Field<DllRaw>>
-    val fromRaw: Field<DllRaw> -> Validation<Field<Dll>>
+    val validate: Field<DllRaw> -> Validation<Field<Dll>>
     val decode: Field<ReadOnlyMemory<byte>> -> Decoder<Field<Dll>>
 
 module TplCodec =
     val parse: Parser<Field<TplRaw>>
-    val fromRaw: Field<TplRaw> -> Validation<Field<Tpl>>
+    val validate: Field<TplRaw> -> Validation<Field<Tpl>>
     val decode: Field<ReadOnlyMemory<byte>> -> Decoder<Field<Tpl>>
 ----
 
@@ -158,9 +160,9 @@ ELL, TPL, Selection und APL erhalten die im xref:layer-codecs-contracts.adoc#mbu
 
 === DLMS/COSEM
 
-Die Zuordnung beginnt beim bestehenden `TcpAarqDecode`-Piloten: Kommunikationsprofil, ACSE, Schutzverarbeitung und Klartext-APDU erhalten jeweils einen eigenen Verarbeitungskontrakt nach denselben allgemeinen Regeln. Kommunikationsprofil- und ACSE-Ergebnisse stellen die für nachfolgende Verarbeitung benötigten Felder und Inhalte bereit. Ein Klartext-APDU-Codec liefert seine unterstützten Nachrichtentypen mit ihren jeweiligen Daten.
+Die verbleibenden DLMS-Bausteine werden zugeordnet: Kommunikationsprofil, ACSE, Schutzverarbeitung und Klartext-APDU erhalten jeweils einen eigenen Verarbeitungskontrakt nach denselben allgemeinen Regeln. Kommunikationsprofil- und ACSE-Ergebnisse stellen die für nachfolgende Verarbeitung benötigten Felder und Inhalte bereit. Ein Klartext-APDU-Codec liefert seine unterstützten Nachrichtentypen mit ihren jeweiligen Daten.
 
-M-Bus-Begriffe wie DLL-Frame-Alternativen oder TPL-Header-Varianten werden dafür nicht übernommen. Der Pilot ist der erste Umsetzungsschnitt, keine Einschränkung des Umfangs auf diesen Pilot. Die vorhandenen AARE-Feldbausteine, Antwort-/ServiceError-Body-Parser, Open-Zuordnungen und Server-Funktionen sind im xref:layer-codecs-contracts.adoc#dlms-contracts[DLMS-Vertragsabschnitt] ebenfalls zugeordnet. Nur deklarierte oder auskommentierte APDU-Varianten werden nicht als implementiert behandelt. Die neue Zuordnung ist keine abgeschlossene DLMS-Conformance-Aussage.
+M-Bus-Begriffe wie DLL-Frame-Alternativen oder TPL-Header-Varianten werden dafür nicht übernommen. Wrapper/AARQ/InitiateRequest bleibt als erster Umsetzungsschnitt vorgesehen; die entfernten Pilotmodelle werden nicht übertragen und beschränken den Umfang der verbleibenden Bausteine nicht. Die vorhandenen AARE-Feldbausteine, Antwort-/ServiceError-Body-Parser, Open-Zuordnungen und Server-Funktionen sind im xref:layer-codecs-contracts.adoc#dlms-contracts[DLMS-Vertragsabschnitt] ebenfalls zugeordnet. Nur deklarierte oder auskommentierte APDU-Varianten werden nicht als implementiert behandelt. Die neue Zuordnung ist keine abgeschlossene DLMS-Conformance-Aussage.
 
 === Weitere Layer und Protokolle
 
@@ -198,33 +200,26 @@ Blockierungen werden im Analyseablauf beim verursachenden Schritt gespeichert. N
 
 == Trace und Analysemodell
 
-Die bestehende Trace-Schnittstelle liefert `BeginField`, `EndField`, `FailField` und `SourceCreated`. Sie übermittelt keine Werte und keine semantischen Validierungsergebnisse; die Bytes liegen im Source Store.
+Die bestehende Trace-Schnittstelle liefert `BeginField`, `EndField`, `FailField` und `SourceCreated`. Source und Span referenzieren die Raw-Bytes eines Feldes im Source Store. Diese Schnittstelle bleibt für die Feldbeobachtung ausreichend; semantische Validierungsergebnisse übernimmt der Analyzer aus den Validator-Rückgaben.
 
 Das Zielmodell führt folgende Informationsquellen zusammen:
 
 * Parserereignisse: Field-ID, Name, Source, Bytebereich, Verschachtelung und Parse-Fehler.
-* Raw- und Validierungsergebnisse: gelesene Werte, geprüfte Bedeutung, Fehler und Notices mit Field-Bezug.
+* Source Store und Spans: Raw-Bytes der erkannten Felder; vorhandene Parser und Validatoren liefern ihre protokollspezifische Interpretation, geprüfte Bedeutung, Fehler und Notices mit Field-Bezug.
 * Protection-Ergebnisse: ursprüngliches Envelope, benötigte Voraussetzungen, Transformationsergebnis und Derived Sources.
 * Analyzer-Ablauf: ausgeführter Schritt, Eingabe, Abhängigkeit, gewählte Fortsetzung oder Blockierungsgrund.
 
 Validatoren bekommen keinen Trace-Seiteneffekt. Der Analyzer übernimmt ihre Rückgabe. Parse-Fehler außerhalb eines `parseField`, etwa verbleibende Eingabebytes beim exakten Parsing, werden ebenfalls aus der ParserRunner-Rückgabe übernommen.
 
-Bei einem äußeren Parse-Abbruch sind Werte bereits erfolgreich gelesener innerer Fields heute nicht über `IFieldTracer` verfügbar. Dafür wird die folgende protokollunabhängige Meldung ergänzt:
+Eine erfolgreiche Kindlesung meldet `EndField` mit ihrem Span. Ein späterer Parse-Abbruch des Elternfeldes entfernt diese Beobachtung nicht. Auch ohne ein vollständiges Raw-Modell des Elternfeldes bleiben die Bytes des Kindes über Source und Span verfügbar. Der Analyzer kann sie mit dem passenden vorhandenen Feldparser innerhalb dieses begrenzten Bereichs interpretieren. Die Zuordnung von Feld und Parser erfolgt protokollspezifisch; der gemeinsame Trace sammelt keine zusätzlichen Wertkopien oder Laufzeittypen.
 
-[source,fsharp]
-----
-abstract FieldRead<'T> : id: FieldId * span: SourceSpan * value: 'T -> unit
-----
+Layer-Ergebnisse und Validatoren bleiben typisiert. `Field<'T>.Value` bleibt Bestandteil der normalen Protokollverarbeitung; für die Analyse entsteht kein zusätzlicher Raw-Wertspeicher. Protokollspezifische Projektionen liefern die Darstellung aus Source-Bytes und Verarbeitungsergebnissen. Raw-Darstellung und geprüfte Bedeutung bleiben unterscheidbar; bei fehlgeschlagener Gesamtvalidierung werden keine gültigen Gesamtmodelle erfunden.
 
-`parseField` meldet nach erfolgreichem Lesen zuerst `FieldRead` und danach `EndField`. Eine spätere Fehlermeldung des Elternfeldes entfernt die erfolgreiche Kindlesung nicht. Der normale Decoder kann einen No-op-Tracer verwenden; die Aufzeichnung ist keine Voraussetzung seiner Ergebnisbildung.
+Field-ID und Span bleiben beim Wechsel von Raw zu valid identisch. Eine Derived Source erhält einen eigenen Byte-Field mit neuer Identität und explizitem Bezug zur ursprünglichen Source/Span; ihre Bytes sind ein neues Leseobjekt. `Core.createDerivedSource` und `ParserSource.createDerived` erzeugen dafür neue IDs und entsprechende Trace-Ereignisse. Source-Beziehung, strukturelle Elternbeziehung und Abhängigkeit zwischen Verarbeitungsschritten sind getrennte Beziehungen.
 
-Der Analysis-Collector hält den Wert zusammen mit seinem Laufzeittyp. Boxing ist auf diese heterogene Sammlung begrenzt; Layer-Ergebnisse und Validatoren bleiben typisiert. Protokollspezifische Projektionen liefern die Darstellung. Es werden keine formatierten Texte oder Analysezustände in Domain-Records aufgenommen. Raw-Werte und durch `fromRaw` geprüfte Werte werden als unterschiedliche Einträge geführt; bei fehlgeschlagener Gesamtvalidierung werden keine gültigen Gesamtmodelle erfunden.
+Ein Analyse-Schritt speichert seine ID, Bezeichnung, Eingabe-Span, Abhängigkeiten und genau ein Ergebnis: erfolgreich, fehlgeschlagen mit lokalen Diagnostics oder blockiert durch eine referenzierte Ursache. Nicht vorhandene optionale Layer erzeugen keinen Schritt. Parsing und Validierung besitzen getrennte Ergebnisse, damit ein Validierungsfehler die vorhandene Raw-Struktur nicht verdeckt. Kein Layer-Ergebnis enthält dafür `NotReached`-Varianten anderer Layer.
 
-Field-ID und Span bleiben beim Wechsel von Raw zu valid identisch. Eine Derived Source erhält einen eigenen Byte-Field mit neuer Identität und explizitem Bezug zur ursprünglichen Source/Span; ihre Bytes sind ein neues Leseobjekt. Die bestehende Wiederverwendung der ursprünglichen Field-ID in `createDerivedSource` wird dafür ersetzt. Source-Beziehung, strukturelle Elternbeziehung und Abhängigkeit zwischen Verarbeitungsschritten sind getrennte Beziehungen.
-
-Ein Analyse-Schritt speichert seine ID, Bezeichnung, Eingabe-Fields, Abhängigkeiten und genau ein Ergebnis: erfolgreich, fehlgeschlagen mit lokalen Diagnostics oder blockiert durch eine referenzierte Ursache. Nicht vorhandene optionale Layer erzeugen keinen Schritt. Parsing und Validierung besitzen getrennte Ergebnisse, damit ein Validierungsfehler die vorhandene Raw-Struktur nicht verdeckt. Kein Layer-Ergebnis enthält dafür `NotReached`-Varianten anderer Layer.
-
-Ein vollständiger Trace bleibt Beobachtung. Fortsetzung verwendet die typisierten Raw-Ergebnisse und geprüften Voraussetzungen, niemals den heterogenen Wertespeicher als alternative Nachricht.
+Ein vollständiger Trace bleibt Beobachtung. Für die Interpretation eines bereits abgegrenzten Feldes reicht dessen Source-Span mit dem passenden Parser. Die Auswahl einer nächsten Protokollstufe erfordert weiterhin eine belastbare Eingabegrenze, passende Diskriminatoren und geprüfte Voraussetzungen; die Position eines Parse-Abbruchs allein bestimmt keine nächste Eingabe.
 
 == Umsetzungsschritte
 
@@ -232,7 +227,7 @@ Ein vollständiger Trace bleibt Beobachtung. Fortsetzung verwendet die typisiert
 
 * Erledigt: der bisherige Arbeitsstand ist als `7d9670e` gesichert; Planbranch erstellt. Der Commit dient nur als nachvollziehbarer Ausgangsstand.
 * Erledigt: die Quellcode-Fähigkeiten und Unterstützungslücken sind in der xref:layer-codecs-contracts.adoc[Vertragsbestandsaufnahme] erfasst und den Modulen zugeordnet, einschließlich vorhandener Einzelbausteine außerhalb der Piloten.
-* Festgelegt: Raw-/validierte Ergebnisse, Bytegrenzen, Protection-Eingaben, reine Service-Zuordnungen, Analyzer- und Device-/Server-Verantwortung sowie Trace-Wertemeldung.
+* Festgelegt: Raw-/validierte Ergebnisse, Bytegrenzen, Protection-Eingaben, reine Service-Zuordnungen, Analyzer- und Device-/Server-Verantwortung sowie Trace-Auswertung.
 * Festgelegt: die unten genannten Umsetzungsschnitte mit gezielten Nachweisen. Bestehende Fixtures und Tests werden nur übernommen, wenn sie diese Verträge oder die jeweilige Standardregel prüfen.
 
 Die Bestandsaufnahme ist als Planungsschritt abgeschlossen. Das besagt nicht, dass ihre Zielverträge bereits implementiert sind. Ein vollständiger Testlauf des bisherigen Prototyps ist keine Voraussetzung.
@@ -253,20 +248,20 @@ Abschlusskriterium: Fehlerakkumulation innerhalb einer Stufe und unterschiedlich
 
 === 2. M-Bus-Layer-Codecs herauslösen
 
-Stand:: DLL, ELL, TPL, Selection und APL sind unabhängig verwendbar. Die bisherigen höheren Sammelparser mit integrierter Validierung und APL-Verarbeitung sind entfernt. ELL und TPL erhalten die folgenden Bytes; NWL/AFL erhalten keinen erfolgreichen Platzhalter im zusammengesetzten Modell. `HigherLayersDecoder.parse` kombiniert die unabhängigen Parser zu einem Raw-Headerblock, dessen Validierung anschließend getrennt erfolgt.
+Stand:: DLL, ELL, TPL, Selection und APL sind unabhängig verwendbar. Die bisherigen höheren Sammelparser mit integrierter Validierung und APL-Verarbeitung sind entfernt. ELL enthält nur ihre Headerfelder und lässt die folgenden Bytes im Reader stehen; TPL erhält die Anwendungsbytes; NWL/AFL erhalten keinen erfolgreichen Platzhalter im zusammengesetzten Modell. `HigherLayersDecoder.parse` kombiniert die unabhängigen Parser zu einem Raw-Headerblock, dessen Validierung anschließend getrennt erfolgt.
 
 * Die vorhandenen wired DLL-Modelle und ihre Parser/Validatoren direkt konsolidieren. Link User Data als Bytes zurückgeben; keinen Security-Resolver an den DLL-Parser weiterreichen.
-* `DllCodec`, `EllCodec`, `TplCodec`, `SelectionCodec` und `AplCodec` entsprechend der Vertragsbestandsaufnahme verwenden. ELL-/NWL-/AFL-Präsenz sowie NWL-/AFL-Ablehnung liegen in deren `tryParse`-Einstiegen; `tryDecode` bleibt unabhängig verwendbar. Erfolgreiche `Unit`-Platzhalter entfallen.
+* `DllCodec`, `EllCodec`, `TplCodec`, `SelectionCodec` und `AplCodec` entsprechend der Vertragsbestandsaufnahme verwenden. ELL-/NWL-/AFL-Präsenz sowie NWL-/AFL-Ablehnung liegen in deren `tryParse`-Einstiegen; Optionale produktive Pfade verwenden `tryParse` und die reine Validierung direkt. Erfolgreiche `Unit`-Platzhalter entfallen.
 * Die frühere Sammelverarbeitung in `MbusProtocolUserDataRaw` durch unabhängige Layer-Codecs ersetzen. Der heutige `HigherLayersDecoder` bündelt deren Aufrufe als getrennte Parse- und Validierungsstufe; er enthält keine APL-Verarbeitung und keinen Analysebericht.
 * TPL-Raw- und validiertes Modell um den gemeinsam benötigten abgegrenzten Payload ergänzen; `TplRaw.expand` und die nachgelagerte APL-Verarbeitung aus dem Layer-Parser entfernen.
 * Record- und Value-Parsing dem APL-/Daten-Codec zuordnen. Zusätzliche Daten-Codecs nur für einen eigenständig sinnvollen Eingabe- und Ergebnisvertrag schaffen.
-* Für die tatsächlich implementierten strukturellen Bausteine `parse`, `fromRaw` und `decode` anbieten; APL erhält seinen typisierten Anwendungsdiskriminator zusätzlich. Keine schichtübergreifenden Analysezustände zurückgeben.
+* Für die tatsächlich implementierten strukturellen Bausteine `parse`, `validate` und `decode` anbieten; APL erhält seinen typisierten Anwendungsdiskriminator zusätzlich. Keine schichtübergreifenden Analysezustände zurückgeben.
 
 Abschlusskriterium: jeder im Umbauumfang enthaltene M-Bus-Layer ist mit explizitem Unterstützungsstand einzeln verwendbar. DLL und TPL bilden den ersten Schnitt. Mehrere unabhängige Validierungsfehler werden gesammelt; nach fehlgeschlagener Validierung wird keine abhängige Operation ausgeführt. Eine gemeinsame strukturelle Headerstufe darf vor ihrer Validierung mehrere Layer lesen.
 
 === 3. M-Bus-Protection konsolidieren
 
-Stand:: Die vorhandene Mode-5-Operation ist unter `Mode5.unprotect` gebündelt; `Mode5.decode` verwendet vorbereitete Bereiche und einen frame-derived Kontext, bildet Fehler ab und registriert tatsächliche Entschlüsselung als Derived Source. `MbusProtection` verbindet Klartextdurchgabe und Mode 5. Teilverschlüsselung, vollständiger Inhalt bei gesetzten N-Bits, fehlender Schlüssel und Verifikationsfehler sind gezielt geprüft. Detailliert typisierte Protection-Fehler und Analyzer-Anbindung bleiben offen.
+Stand:: Die vorhandene Mode-5-Operation ist unter `Mode5.unprotect` gebündelt; `Mode5.decode` verwendet vorbereitete Bereiche und einen frame-derived Kontext, bildet Fehler ab und registriert tatsächliche Entschlüsselung als Derived Source. `MbusProtection` verbindet Klartextdurchgabe und Mode 5. Teilverschlüsselung, vollständiger Inhalt bei gesetzten N-Bits, fehlender Schlüssel und Verifikationsfehler sind gezielt geprüft. Die Analyzer-Anbindung verwendet `MbusProtectionInput.decodeRaw` zur konkreten Voraussetzungskontrolle und dieselbe `MbusProtection.decode`-Operation. Detailliert typisierte Protection-Fehler bleiben offen.
 
 * Die vorhandene Mode-5-Verarbeitung unter `TransportLayer/Security` und ihre Aufruforchestrierung in einen gemeinsamen protokollspezifischen Protection-Baustein überführen. Der verworfene M-Bus-Pilot wird nicht als zweiter Verarbeitungsweg erhalten.
 * Eingabe aus gelesenen Frame-Feldern und geschützten Bytes aufbauen. Externer Resolver liefert ausschließlich Schlüsselmaterial.
@@ -278,21 +273,23 @@ Abschlusskriterium: normaler Decoder und Analyzer verwenden dieselbe Protection-
 
 === 4. Analysebeobachtung vervollständigen
 
-* Den oben festgelegten `FieldRead`-Vertrag und Analysis-Collector implementieren; Parser-Trace, getrennte Raw-/Validierungsergebnisse und Source Store verbinden.
-* Werte erfolgreich gelesener innerer Fields bei späterem Parse-Abbruch erhalten und an einem tatsächlichen Fehlerfall prüfen.
+Stand:: Der `ParseTraceCollector` der Analyzer-Assembly in `Mbus/Analyzer/ParseTrace.fs` implementiert die bestehende Trace-Schnittstelle. Sein unveränderlicher `ParseTrace` enthält Source-Metadaten und einen verschachtelten Feldbaum mit laufenden, erfolgreich gelesenen oder fehlgeschlagenen Feldern. Es werden keine Raw-Werte oder Bytekopien im Trace abgelegt. `Mbus/Analyzer.Tests/ParseTraceCollectorTests.fs` prüft Snapshot-Stabilität und getrennte Wurzeln bei abgeleiteten Sources. `Mbus/Analyzer.Tests/ParseTraceTests.fs` prüft Field-Identität und Spans im erfolgreichen TPL sowie das erneute Parsen der Access Number aus ihrer Source nach einem abgeschnittenen Konfigurationsfeld. Validierungszuordnung, Ablaufbeziehungen, eigene IDs abgeleiteter Byte-Fields und JSON-/XML-Export sind implementiert und in `MbusAnalyzerTests.fs` sowie den betroffenen Core-Tests geprüft. Der Bericht hält erfolgreiche geprüfte Werte als Darstellung mit ursprünglichen Field-IDs und Spans; Source-Bytes werden nur je Source exportiert.
+
+* Einen Analysis-Collector auf dem bestehenden Parser-Trace aufbauen; Field-Identitäten, Spans, Sources und Validierungsergebnisse verbinden.
+* Prüfen, dass erfolgreich abgegrenzte Kindfelder nach einem späteren Parse-Abbruch des Elternfeldes über Source und Span verfügbar bleiben und mit dem vorhandenen Feldparser interpretiert werden können.
 * Field-Identität, Elternbeziehung und Ausführungsbeziehung unterscheiden: nachgelagertes Payload-Parsing kann separat starten, obwohl es von einem früheren Field abhängt.
 * Blockierungen und Transformationen als Ablaufereignisse erfassen; keine vollständige Kombination aller Layer-Zustände im Domain-Modell bilden.
 * Zusätzliche Aufzeichnungsmodi erst ergänzen, wenn ein konkreter Aufrufer sie benötigt.
 
-Abschlusskriterium: Werte, Diagnostics und Sources sind zuordenbar; die Beobachtung erhält auch Informationen vor einem Parse-Abbruch. `fromRaw` bleibt rein.
+Abschlusskriterium: Werte, Diagnostics und Sources sind zuordenbar; die Beobachtung erhält auch Informationen vor einem Parse-Abbruch. `validate` bleibt rein.
 
 === 5. Zwei M-Bus-Aufrufer umsetzen
 
-Stand:: `MbusDecoder.decodeFrame` verbindet DLL mit Selection oder `HigherLayersDecoder`; dieser Unterdecoder liefert Header und unverarbeitete Inhalte mit Schutz-Envelope; `MbusDecoder` ruft Protection und APL auf; `MbusDecoder.decode` ruft danach `Message.decode` auf. `Message` bildet ausschließlich den zusammengesetzten Frame fachlich ab. Der normale Ablauf stoppt nach lokalen Fehlern; `MbusAnalyzer` bleibt offen.
+Stand:: Die über `Decoder.create resolver` erzeugte Decoder-Funktion verbindet intern DLL mit Selection oder `HigherLayersDecoder`; dieser Unterdecoder liefert Header und unverarbeitete Inhalte mit Schutz-Envelope; `Decoder` ruft Protection und APL auf; der private Message-Decoder ruft danach `Message.decode` auf. `Message` bildet ausschließlich den zusammengesetzten Frame fachlich ab. Der normale Ablauf stoppt nach lokalen Fehlern. `MbusAnalyzer.analyze` verwendet die unabhängigen Codec-Einstiege und setzt nach semantischen Fehlern fort, wenn konkrete Voraussetzungen genügen. Parserfehler, fehlende Protection-Eingaben und fehlgeschlagene Freilegung blockieren die jeweils abhängige Verarbeitung mit referenzierter Ursache.
 
-Der aktuelle Higher-Layers-Ablauf lautet `parse` → `fromRaw` → Protection-Vorbereitung. `parse` kombiniert die optionalen ELL-/NWL-/AFL-Parser und den TPL-Parser innerhalb der Parser-CE; bei vorhandener ELL wird deren Payload als begrenzter Parserbereich verwendet. `fromRaw` validiert den gesamten gelesenen Headerblock applikativ. Die Decoder-CE erhält keinen Reader. Ein strukturell unvollständiger Block wird im normalen Decoder nicht insgesamt validiert; nach einer fehlgeschlagenen Gesamtvalidierung folgen weder Protection-Vorbereitung noch Protection oder APL. DLL bleibt eine vorgelagerte eigene Stufe. Der Analyzer kann die unabhängigen Codec-Einstiege für seine eigene Beobachtung und Fortsetzung verwenden.
+Der aktuelle Higher-Layers-Ablauf lautet `parse` → `validate` → Protection-Vorbereitung. `parse` kombiniert die optionalen ELL-/NWL-/AFL-Parser und den TPL-Parser innerhalb der Parser-CE auf demselben Reader. ELL konsumiert nur ihren Header und enthält kein Payload-Feld. Die Folgeparser lesen unmittelbar an der nächsten CI weiter. `validate` validiert den gesamten gelesenen Headerblock applikativ. Die Decoder-CE erhält keinen Reader. Ein strukturell unvollständiger Block wird im normalen Decoder nicht insgesamt validiert; nach einer fehlgeschlagenen Gesamtvalidierung folgen weder Protection-Vorbereitung noch Protection oder APL. DLL bleibt eine vorgelagerte eigene Stufe. Der Analyzer kann die unabhängigen Codec-Einstiege für seine eigene Beobachtung und Fortsetzung verwenden.
 
-* Einen eigenen Protokoll-Orchestrator aus den einzelnen Codecs und Protection aufbauen; Header und Schutz-Envelope in `HigherLayersDecoder` bündeln, Protection und APL im `MbusDecoder` aufrufen und `Message` als abschließenden semantischen Codec aufrufen. Er liefert gültige Ergebnisse oder den ersten fehlgeschlagenen Schritt mit dessen akkumulierten lokalen Diagnostics.
+* Einen eigenen Protokoll-Orchestrator aus den einzelnen Codecs und Protection aufbauen; Header und Schutz-Envelope in `HigherLayersDecoder` bündeln, Protection und APL im `Decoder` aufrufen und `Message` als abschließenden semantischen Codec aufrufen. Er liefert gültige Ergebnisse oder den ersten fehlgeschlagenen Schritt mit dessen akkumulierten lokalen Diagnostics.
 * Einen `MbusAnalyzer` mit protokollspezifischer Auswahl und Fortsetzung auf Raw-Ergebnissen aufbauen.
 * Gemeinsame normative Prüfungen verwenden. Analyse-spezifische Fortsetzungspolitik darf unterschiedlich sein; keine zweite Parser-, Validator- oder Kryptografieimplementierung schaffen.
 * Nur die benötigten Zielverträge auf Layer-, Protection- und Analyse-Ebene prüfen. Tests auf überholte `Stage`- und `NotReached`-Darstellungen entfernen; passende vorhandene Tests können direkt angepasst werden.
@@ -319,15 +316,15 @@ Stand:: Offen. Der aktuelle schlüsselfreie `HigherLayersDecoder.decode` liefert
 * Vor Änderungen von DLMS-Protokollverhalten die relevanten Stellen im lokalen Green Book prüfen. Association-Zustand und Replay-Prüfung bleiben explizite spätere Integrationsaufgaben.
 * Bereits implementierte DLMS-Fähigkeiten bleiben im Funktionsumfang. Deren bisherige APIs, interne Darstellungen und zufällige Verhaltensfälle sind kein verpflichtender Übernahmevertrag.
 
-Abschlusskriterium: der implementierte DLMS-Umfang ist nach denselben Verantwortlichkeiten strukturiert, ohne eine gemeinsame M-Bus-/DLMS-Schichthierarchie zu benötigen. Der Pilot ist der erste überprüfbare Schnitt dieses Schritts.
+Abschlusskriterium: der implementierte DLMS-Umfang ist nach denselben Verantwortlichkeiten strukturiert, ohne eine gemeinsame M-Bus-/DLMS-Schichthierarchie zu benötigen. Wrapper/AARQ/InitiateRequest ist als erster überprüfbarer Schnitt dieses Schritts vorgesehen.
 
 === 7. Bestehende Aufrufer anbinden und überholten Code entfernen
 
 * Bestehende Verwendungen in `Mbus.Devices`, `MbusDevices`, `Dlms.Server`, I/O, vorhandenen Writer-Helfern und Public Types direkt anpassen. Fehlende Protokollserializer bleiben ausdrücklich Integrationslücken; eine alte Referenz auf einen fehlenden Writer ist keine implementierte Schreibunterstützung. Überholte technische Wege ersetzen, ohne vorhandene Fähigkeiten zu streichen.
 * Überflüssige Pilot-Hüllen, doppelte Schutzverarbeitung und schichtübergreifende Blocker entfernen. Noch verbleibende Verwendungen im selben Schritt auflösen; keine Kompatibilitätsschicht für verworfene Pilotmodelle aufbauen.
-* `Stage`, `Transformation` und `decodeStage` nur dort behalten, wo sie im Analysemodell noch einen konkreten Nutzen haben; aus dem gemeinsamen normalen Decoder-Core entfernen, wenn keine Verbraucher bleiben.
+* Erledigt: Die nur von den entfernten Pipeline-Versuchen verwendeten Typen `Never`, `Stage`, `Transformation` und `Decoder.decodeStage` sind aus dem gemeinsamen Decoder-Core entfernt.
 * Architektur, Proposal-Status und Conformance-Verweise mit dem tatsächlichen Stand aktualisieren. Verifizierte Abdeckung verlangt Standardstelle und Testbezug.
-* Vorhandenes C#-Gerät und Datenbuilder direkt anpassen und ihre betroffenen Aufrufe kompilierend prüfen. Keine zusätzlichen öffentlichen Fassaden pro Layer. Decode-/Analyse-Fassaden nur bei Bedarf eines vorhandenen C#-Verbrauchers ergänzen.
+* Erledigt für das bestehende C#-Gerät: `MbusDevices` verwendet die aktuelle Runtime, einen Plain-Encoder aus `Codec`, wertbasierte Geräteidentität und die aktuellen Record-Typen. `MbusDevices.Tests` läuft auf `net10.0` und prüft die bestehende Fluent-API über echte Duplexeingaben mit bytegenauen Antworten. Die Mode-5-Konfiguration bleibt bei der F#-API. Keine zusätzlichen öffentlichen Fassaden pro Layer. Decode-/Analyse-Fassaden nur bei Bedarf eines vorhandenen C#-Verbrauchers ergänzen.
 
 Abschlusskriterium: die bestehenden Aufrufer sind angebunden, der bisher implementierte Funktionsumfang ist abgebildet, Unterstützungslücken sind dokumentiert und ersetzte Implementierungen entfernt. Die betroffenen Projekte kompilieren; der normale Decode-Pfad konstruiert keinen Analysebericht.
 
@@ -406,11 +403,11 @@ Die Reihenfolge konkretisiert die Schritte oben. Ein Schnitt benötigt nur Nachw
 |Mode-5-Freilegung einschließlich klarem Rest, erforderlicher Frame-Felder, Schlüssel- und Verifikationsfehler; erfolgreiche Bytes stammen aus einer Derived Source. Keine doppelte Schutzimplementierung.
 
 |4
-|`FieldRead`, Wertesammlung und Analyse-Schritte
-|Gelesener Kindwert überlebt späteren Parse-Abbruch; Raw und valid bleiben unterscheidbar; Derived Sources und Schritt-Abhängigkeiten sind zuordenbar. Validator bleibt rein.
+|Bestehender Parser-Trace, Source-/Span-Auswertung und Analyse-Schritte
+|Source und Span eines erfolgreich gelesenen Kindfeldes bleiben nach späterem Parse-Abbruch verfügbar und erlauben die Interpretation seiner Raw-Bytes. Raw und valid bleiben unterscheidbar; Derived Sources und Schritt-Abhängigkeiten sind zuordenbar. Validator bleibt rein.
 
 |5
-|`MbusDecoder`, `HigherLayersDecoder`, abschließender `Message`-Codec, `MbusAnalyzer` und vorhandene Message-Zuordnungen
+|`Decoder`, `HigherLayersDecoder`, abschließender `Message`-Codec, `MbusAnalyzer` und vorhandene Message-Zuordnungen
 |Abbruch vor abhängiger Operation im Decoder; Analyzer setzt nur bei eindeutiger Eingabe und erfüllten konkreten Voraussetzungen fort. Fehlende Voraussetzungen blockieren mit referenzierter Ursache.
 
 |6
@@ -426,4 +423,4 @@ Die Reihenfolge konkretisiert die Schritte oben. Ein Schnitt benötigt nur Nachw
 |Betroffene Projekte und konkrete vorhandene Aufrufe kompilieren; fachliche Zustands-/Policy-Funktionen behalten ihre Verantwortung. Offene Integrationslücken und tatsächliche Conformance bleiben sichtbar.
 |===
 
-Die bisherigen offenen Designpunkte sind damit für den Vorschlag festgelegt: konkrete Codec-Namen und Ergebnistopologie stehen in der Bestandsaufnahme, Trace-Werte folgen dem `FieldRead`-Vertrag, Routing bleibt protokollspezifisch ohne universelle `next`-API, und vorhandene C#-Aufrufer werden direkt angepasst. Normative Einzelregeln werden bei ihrer Umsetzung anhand der lokalen Standards geprüft; dies ist keine erneute Auswahl des Funktionsumfangs.
+Die bisherigen offenen Designpunkte sind damit für den Vorschlag festgelegt: konkrete Codec-Namen und Ergebnistopologie stehen in der Bestandsaufnahme, Raw-Bytes bleiben über Source und Span zugänglich, Routing bleibt protokollspezifisch ohne universelle `next`-API, und vorhandene C#-Aufrufer werden direkt angepasst. Normative Einzelregeln werden bei ihrer Umsetzung anhand der lokalen Standards geprüft; dies ist keine erneute Auswahl des Funktionsumfangs.

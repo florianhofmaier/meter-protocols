@@ -9,11 +9,9 @@ let parseBcd2Digit: Parser<uint8> =
         let! b = parseU8
 
         match Bcd.tryDecodeByte b with
-        | Some value ->
-            return value
+        | Some value -> return value
 
-        | None ->
-            return! failBefore 1 $"invalid BCD byte: 0x{b:X2}"
+        | None -> return! failBefore 1 $"invalid BCD byte: 0x{b:X2}"
     }
 
 let parseBcd4Digit: Parser<uint16> =
@@ -31,14 +29,14 @@ let parseBcd6Digit: Parser<uint32> =
         return uint32 b0 + (uint32 b1 * 100u) + (uint32 b2 * 10000u)
     }
 
-let parseBcd8Digit : Parser<uint32> =
+let parseBcd8Digit: Parser<uint32> =
     parser {
         let! n0 = parseBcd4Digit
         let! n1 = parseBcd4Digit
         return uint32 n0 + (uint32 n1 * 10000u)
     }
 
-let parseBcd12Digit : Parser<uint64> =
+let parseBcd12Digit: Parser<uint64> =
     parser {
         let! n0 = parseBcd4Digit
         let! n1 = parseBcd4Digit

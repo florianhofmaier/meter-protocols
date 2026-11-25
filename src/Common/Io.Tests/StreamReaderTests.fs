@@ -1,135 +1,70 @@
-module Mbus.Io.Tests.StreamReaderTests
+module Metering.Common.Io.Tests.StreamReaderTests
 
-open Xunit
+open System
 open System.IO
 open System.Threading
-open Mbus.Io
-open Mbus.Frames
+open Xunit
 open FsUnit.Xunit
+open Metering.Common.Io
+
+// A deliberately non-M-Bus protocol verifies that Common owns no frame rules.
+let private parse (bytes: ReadOnlyMemory<byte>) =
+    if bytes.Span[0] <> 0xAAuy then StreamReader.Invalid
+    elif bytes.Length < 3 then StreamReader.Incomplete
+    else StreamReader.Parsed(bytes.Slice(1, 2).ToArray(), 3)
 
 [<Fact>]
-let ``ReadAsync WhenStreamContainsConfirmation ShouldReturnConfirmationFrame`` () =
+let ``reader skips noise returns owned frames and reaches clean EOF`` () =
     task {
-        let data = [| 0xE5uy |]
-        use ms = new MemoryStream(data)
-        let reader = StreamReader.create ms 1024
+        use stream = new MemoryStream([| 0uy; 0xAAuy; 1uy; 2uy; 0xAAuy; 3uy; 4uy |])
+        let read = StreamReader.create stream 4 parse
+        let! first = read CancellationToken.None
+        let! second = read CancellationToken.None
+        let! last = read CancellationToken.None
+        first |> should equal (StreamReader.FrameRead [| 1uy; 2uy |])
+        second |> should equal (StreamReader.FrameRead [| 3uy; 4uy |])
 
-        let! frame = reader CancellationToken.None
-
-        match frame with
-        | StreamReader.FrameRead Frame.Confirmation -> ()
-        | _ -> failwith "Expected Confirmation"
+        last
+        |> should equal (StreamReader.EndOfInput: StreamReader.ReadFrameResult<byte[]>)
     }
 
 [<Fact>]
-let ``ReadAsync WhenStreamContainsShortFrame ShouldReturnShortFrame`` () =
+let ``reader reports a truncated final frame`` () =
     task {
-        let data = [| 0x10uy; 0x40uy; 0x01uy; 0x41uy; 0x16uy |]
-        use ms = new MemoryStream(data)
-        let reader = StreamReader.create ms 1024
+        use stream = new MemoryStream([| 0xAAuy; 1uy |])
+        let read = StreamReader.create stream 4 parse
 
-        let! frame = reader CancellationToken.None
+        match! read CancellationToken.None with
+        | StreamReader.TruncatedInput bytes -> bytes.ToArray() |> should equal [| 0xAAuy; 1uy |]
+        | actual -> failwith $"Expected truncated input, got {actual}"
+    }
 
-        match frame with
-        | StreamReader.FrameRead (Frame.ShortFrame _) -> ()
-        | _ -> failwith "Expected ShortFrame"
+[<Theory>]
+[<InlineData(0)>]
+[<InlineData(2)>]
+let ``reader rejects invalid consumed lengths`` consumed =
+    task {
+        use stream = new MemoryStream([| 1uy |])
+        let read = StreamReader.create stream 4 (fun _ -> StreamReader.Parsed((), consumed))
+
+        let! error =
+            Record.ExceptionAsync(fun () ->
+                task { let! _ = read CancellationToken.None in return () })
+
+        Assert.IsType<InvalidOperationException>(error) |> ignore
     }
 
 [<Fact>]
-let ``ReadAsync WhenStreamContainsGarbageThenConfirmation ShouldReturnConfirmation`` () =
+let ``reader respects cancellation before consuming input`` () =
     task {
-        let data = [| 0x00uy; 0xFFuy; 0xE5uy |]
-        use ms = new MemoryStream(data)
-        let reader = StreamReader.create ms 1024
+        use stream = new MemoryStream([| 0xAAuy; 1uy; 2uy |])
+        use cts = new CancellationTokenSource()
+        cts.Cancel()
+        let read = StreamReader.create stream 4 parse
 
-        let! frame = reader CancellationToken.None
+        let! error =
+            Record.ExceptionAsync(fun () -> task { let! _ = read cts.Token in return () })
 
-        match frame with
-        | StreamReader.FrameRead Frame.Confirmation -> ()
-        | _ -> failwith "Expected Confirmation"
+        Assert.IsAssignableFrom<OperationCanceledException>(error) |> ignore
+        stream.Position |> should equal 0L
     }
-
-[<Fact>]
-let ``ReadAsync WhenStreamEndsIncomplete ShouldReturnTruncatedInput`` () =
-    task {
-        let data = [| 0x10uy; 0x40uy |]
-        use ms = new MemoryStream(data)
-        let reader = StreamReader.create ms 1024
-
-        let! frame = reader CancellationToken.None
-
-        match frame with
-        | StreamReader.TruncatedInput bytes -> bytes.ToArray() |> should equal data
-        | _ -> failwith "Expected TruncatedInput"
-    }
-
-[<Fact>]
-let ``ReadAsync WhenStreamIsEmpty ShouldReturnEndOfInput`` () =
-    task {
-        use ms = new MemoryStream([||])
-        let reader = StreamReader.create ms 1024
-
-        let! frame = reader CancellationToken.None
-
-        frame |> should equal StreamReader.EndOfInput
-    }
-
-[<Fact>]
-let ``ReadAsync WhenInvalidFollowedByValid ShouldRecover`` () =
-    task {
-        let data = [| 0x10uy; 0x40uy; 0x01uy; 0x00uy; 0x16uy; 0xE5uy |]
-        use ms = new MemoryStream(data)
-        let reader = StreamReader.create ms 1024
-
-        let! frame = reader CancellationToken.None
-
-        match frame with
-        | StreamReader.FrameRead Frame.Confirmation -> ()
-        | _ -> failwith "Expected Confirmation"
-    }
-
-[<Fact>]
-let ``ReadAsync WhenStreamContainsLongFrame ShouldReturnLongFrame`` () =
-    task {
-        let data = [| 0x68uy; 0x06uy; 0x06uy; 0x68uy; 0x53uy; 0x00uy; 0x51uy; 0x01uy; 0x7Auy; 0x01uy; 0x20uy; 0x16uy |]
-        use ms = new MemoryStream(data)
-        let reader = StreamReader.create ms 1024
-
-        let! frame = reader CancellationToken.None
-
-        match frame with
-        | StreamReader.FrameRead (Frame.LongFrame _) -> ()
-        | actual -> failwith $"Expected LongFrame but was %A{actual}"
-    }
-
-[<Fact>]
-let ``ReadAsync WhenLongFrameChecksumInvalid ShouldSkipAndRecover`` () =
-    task {
-        let data = [|
-            0x68uy; 0x03uy; 0x03uy; 0x68uy; 0x08uy; 0x01uy; 0x50uy; 0x00uy; 0x16uy;
-            0xE5uy
-        |]
-        use ms = new MemoryStream(data)
-        let reader = StreamReader.create ms 1024
-
-        let! frame = reader CancellationToken.None
-
-        match frame with
-        | StreamReader.FrameRead Frame.Confirmation -> ()
-        | _ -> failwith "Expected Confirmation"
-    }
-
-[<Fact>]
-let ``ReadAsync WhenLongFrameIncomplete ShouldReturnTruncatedInput`` () =
-    task {
-        let data = [| 0x68uy; 0x03uy; 0x03uy; 0x68uy; 0x08uy |]
-        use ms = new MemoryStream(data)
-        let reader = StreamReader.create ms 1024
-
-        let! frame = reader CancellationToken.None
-
-        match frame with
-        | StreamReader.TruncatedInput bytes -> bytes.ToArray() |> should equal data
-        | _ -> failwith "Expected TruncatedInput"
-    }
-

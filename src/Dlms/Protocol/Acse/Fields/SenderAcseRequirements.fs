@@ -11,12 +11,9 @@ type SenderAcseRequirements =
 module SenderAcseRequirements =
 
     let private isAuthenticationBitSet (bits: Ber.BitString) =
-        bits.Payload.Length > 0
-        && (bits.Payload.Span[0] &&& 0x80uy) <> 0uy
+        bits.Payload.Length > 0 && (bits.Payload.Span[0] &&& 0x80uy) <> 0uy
 
-    let validate
-        (raw: Field<Ber.BitString>)
-        : Validation<SenderAcseRequirements> =
+    let validate (raw: Field<Ber.BitString>) : Validation<SenderAcseRequirements> =
 
         validator {
             if isAuthenticationBitSet raw.Value then
@@ -25,8 +22,8 @@ module SenderAcseRequirements =
             else
                 do!
                     info
-                        <| raw
-                        <| "sender-acse-requirements is present, but authentication bit is not set; authentication functional unit is not selected"
+                    <| raw
+                    <| "sender-acse-requirements is present, but authentication bit is not set; authentication functional unit is not selected"
 
                 return AuthenticationNotSelected
         }

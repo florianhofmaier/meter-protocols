@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <AssemblyName>MbusAnalyzer</AssemblyName>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <RootNamespace>Metering.Mbus.Analysis</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="ParseTrace.fs" />
+        <Compile Include="AnalysisReport.fs" />
+        <Compile Include="AnalysisSession.fs" />
+        <Compile Include="MbusAnalyzer.fs" />
+        <Compile Include="AnalysisExport.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Protocol\Protocol.fsproj" />
+        <ProjectReference Include="..\..\Common\Decoders\Decoders.fsproj" />
+        <ProjectReference Include="..\..\Common\Parsers\Parsers.fsproj" />
+        <ProjectReference Include="..\..\Common\Validators\Validators.fsproj" />
+        <ProjectReference Include="..\..\Common\ByteReaders\ByteReaders.csproj" />
+    </ItemGroup>
+
+</Project>

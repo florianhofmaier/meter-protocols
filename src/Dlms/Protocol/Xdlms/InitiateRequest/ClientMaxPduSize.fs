@@ -4,21 +4,15 @@ open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 
-type ClientMaxReceivePduSize =
-    private
-        ClientMaxReceivePduSize of Axdr.Unsigned16
+type ClientMaxReceivePduSize = private ClientMaxReceivePduSize of Axdr.Unsigned16
 
 module ClientMaxReceivePduSize =
 
-    let create value =
-        ClientMaxReceivePduSize value
+    let create value = ClientMaxReceivePduSize value
 
-    let value (ClientMaxReceivePduSize value) =
-        value
+    let value (ClientMaxReceivePduSize value) = value
 
-    let validate
-        (raw: Field<Axdr.Unsigned16>)
-        : Validation<Field<ClientMaxReceivePduSize>> =
+    let validate (raw: Field<Axdr.Unsigned16>) : Validation<Field<ClientMaxReceivePduSize>> =
 
         raw.Value
         |> create

@@ -14,22 +14,19 @@ let ``source id helpers preserve known and unknown identity`` () =
 
 [<Fact>]
 let ``parser error default source only replaces unknown source`` () =
-    let fallback =
-        SourceId.create 12
+    let fallback = SourceId.create 12
 
-    let unknownError =
-        {
-            Source = SourceId.unknown
-            Pos = 7
-            Msg = "bad"
-        }
+    let unknownError = {
+        Source = SourceId.unknown
+        Pos = 7
+        Msg = "bad"
+    }
 
-    let explicitError =
-        {
-            Source = SourceId.create 99
-            Pos = 8
-            Msg = "worse"
-        }
+    let explicitError = {
+        Source = SourceId.create 99
+        Pos = 8
+        Msg = "worse"
+    }
 
     ParserError.withDefaultSource fallback unknownError
     |> should equal { unknownError with Source = fallback }
@@ -39,29 +36,24 @@ let ``parser error default source only replaces unknown source`` () =
 
 [<Fact>]
 let ``parser error default source keeps position and message unchanged`` () =
-    let error =
-        {
-            Source = SourceId.unknown
-            Pos = 123
-            Msg = "same"
-        }
+    let error = {
+        Source = SourceId.unknown
+        Pos = 123
+        Msg = "same"
+    }
 
-    let mapped =
-        ParserError.withDefaultSource (SourceId.create 4) error
+    let mapped = ParserError.withDefaultSource (SourceId.create 4) error
 
     mapped.Pos |> should equal 123
     mapped.Msg |> should equal "same"
 
 [<Fact>]
 let ``field ids compare by their underlying value`` () =
-    let left =
-        FieldId.create 1
+    let left = FieldId.create 1
 
-    let same =
-        FieldId.create 1
+    let same = FieldId.create 1
 
-    let right =
-        FieldId.create 2
+    let right = FieldId.create 2
 
     left |> should equal same
     compare left right |> should be (lessThan 0)
@@ -69,16 +61,17 @@ let ``field ids compare by their underlying value`` () =
 
 [<Fact>]
 let ``source span and transform preserve supplied data`` () =
-    let span =
-        {
-            Source = SourceId.create 7
-            Offset = 11
-            Length = 13
-        }
+    let span = {
+        Source = SourceId.create 7
+        Offset = 11
+        Length = 13
+    }
 
     span.Source |> should equal (SourceId.create 7)
     span.Offset |> should equal 11
     span.Length |> should equal 13
     SourceTransform.Root |> should equal SourceTransform.Root
     SourceTransform.Decrypt "AES" |> should equal (SourceTransform.Decrypt "AES")
-    SourceTransform.Decompress "LZ" |> should equal (SourceTransform.Decompress "LZ")
+
+    SourceTransform.Decompress "LZ"
+    |> should equal (SourceTransform.Decompress "LZ")

@@ -7,16 +7,13 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
 
-type CrcBytes =
-    private CrcBytes of ReadOnlyMemory<uint8>
+type CrcBytes = private CrcBytes of ReadOnlyMemory<uint8>
 
 module CrcBytes =
 
-    let bytes (CrcBytes bytes) =
-        bytes
+    let bytes (CrcBytes bytes) = bytes
 
-    let create bytes =
-        CrcBytes bytes
+    let create bytes = CrcBytes bytes
 
 module CrcCalculator =
 
@@ -28,17 +25,13 @@ module CrcCalculator =
 
         sum
 
-type Crc =
-    private Crc of uint8
+type Crc = private Crc of uint8
 
 module Crc =
 
-    let value (Crc v) =
-        v
+    let value (Crc v) = v
 
-    let parse : Parser<Field<Crc>> =
-        parseField "CRC" parseU8
-        |>> Field.map Crc
+    let parse: Parser<Field<Crc>> = parseField "CRC" parseU8 |>> Field.map Crc
 
     let validate (raw: Field<Crc>) (crcBytes: CrcBytes) =
         let expectedCrc = CrcCalculator.calculate crcBytes

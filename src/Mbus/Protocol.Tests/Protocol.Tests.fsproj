@@ -9,16 +9,17 @@
 
     <ItemGroup>
         <Compile Include="TestSupport.fs" />
+        <Compile Include="BcdWritersTests.fs" />
         <Compile Include="CiFieldTplTests.fs" />
         <Compile Include="ValueConverterTests.fs" />
         <Compile Include="VariableLengthValueTests.fs" />
         <Compile Include="RecordRawTests.fs" />
         <Compile Include="ConfigurationFieldTests.fs" />
         <Compile Include="NumberOfEncryptedBlocksTests.fs" />
-        <Compile Include="Mode5SecurityContextTests.fs" />
-        <Compile Include="Mode5Tests.fs" />
-        <Compile Include="ProtectedAplTests.fs" />
-        <Compile Include="CompleteMessagePipelineTests.fs" />
+        <Compile Include="LayerCodecTests.fs" />
+        <Compile Include="DllEncodingTests.fs" />
+        <Compile Include="EncodingTests.fs" />
+        <Compile Include="DeviceSelectionTests.fs" />
     </ItemGroup>
 
     <ItemGroup>
@@ -35,6 +36,7 @@
         <ProjectReference Include="..\..\Common\Parsers\Parsers.fsproj" />
         <ProjectReference Include="..\..\Common\Validators\Validators.fsproj" />
         <ProjectReference Include="..\Protocol\Protocol.fsproj" />
+        <ProjectReference Include="..\Codec\Codec.fsproj" />
     </ItemGroup>
 
 </Project>

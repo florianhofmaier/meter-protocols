@@ -59,3 +59,59 @@ Diese Anforderungen beschreiben das Ziel der Library. Der protokollspezifische I
 |Ein Verarbeitungsschritt eines normalen Nachrichtendecoders schlägt fehl.
 |Nach dem erkannten Fehler wird keine abhängige Operation ausgeführt. Ein Headerblock darf zuerst vollständig strukturell gelesen und anschließend applikativ validiert werden; bei einem Parse-Fehler entfällt dessen Gesamtvalidierung, bei einem Validierungsfehler die folgende Protection- und APL-Verarbeitung. Der Fehler enthält die akkumulierten lokalen Diagnostics und die zuvor angefallenen Notices; ein Analysebericht wird nicht konstruiert.
 |===
+
+== 3. Analysevertrag
+
+Diese Anforderungen konkretisieren CAP-002. Der tatsächlich unterstützte Protokollumfang steht weiterhin im jeweiligen Conformance-Dokument.
+
+[cols="1,4"]
+|===
+|ID |Anforderung
+
+|AN-001
+|Der Analyzer verwendet die bestehenden Parser, reinen Validatoren und Schutzoperationen. Er bestimmt die protokollspezifische Reihenfolge und die Voraussetzungen einer Fortsetzung selbstständig.
+
+|AN-002
+|Parsing und Validierung bleiben getrennt beobachtbar. Ein Schritt enthält ID, Bezeichnung, Eingabebereich, Abhängigkeiten, Notices und genau ein Ergebnis: erfolgreich, fehlgeschlagen oder durch eine referenzierte Ursache blockiert. Abwesende optionale Layer erzeugen keinen Schritt; vorhandene beschädigte oder nicht unterstützte Layer bleiben Fehler.
+
+|AN-003
+|Raw-Bytes bleiben über Source und Span verfügbar; der Trace enthält keine zusätzliche Sammlung gelesener Werte. Erfolgreich validierte Werte behalten ihre Field-ID und ihren Span. Fehler und Notices referenzieren ihre Fields. Bei einem späteren Parse-Abbruch bleiben abgeschlossene Kindfelder erhalten; Fehler außerhalb eines Fields werden ebenfalls erfasst.
+
+|AN-004
+|Ein Parse-Fehler blockiert die davon abhängige Verarbeitung. Der Fehlercursor allein bestimmt keine nächste Eingabe. Ein semantischer Fehler darf die Analyse einer separat abgegrenzten Folgeeingabe zulassen, wenn Diskriminator und konkrete Operationsvoraussetzungen ausreichen. Ein ungültiges Gesamtmodell wird dabei nicht als gültig ausgegeben.
+
+|AN-005
+|Protection prüft nur ihre tatsächlich benötigten Frame-Felder und Bytegrenzen. Externe Schlüssel bleiben außerhalb des Berichts. Erst erfolgreiche Entschlüsselung registriert eine Derived Source mit eigenem Byte-Field und eigener ID; der Ursprung bleibt separat verknüpft. Ohne erfolgreiche Freilegung wird keine APL aus geschützten Bytes geparst.
+
+|AN-006
+|Ein Analysebericht lässt sich als JSON und XML exportieren. Beide Darstellungen enthalten Sources einschließlich Bytes, Feldbaum, erfolgreiche geprüfte Werte, Diagnostics und Schrittbeziehungen. Raw-Bytewerte werden pro Source exportiert und über Spans referenziert.
+Der native M-Bus-Bericht typisiert die Schritte samt jeweils zugehörigem Ergebnistyp, Schrittidentitäten und Sources einschließlich Bytes. Anzeigenamen werden aus den Schrittvarianten abgeleitet. JSON ist kein internes Austauschformat zwischen Analyzer und Adapter; der Bericht benötigt keinen laufenden Source-Store.
+|===
+
+== 4. Protocol Inspector
+
+Die Anwendung nutzt die Library als austauschbarer Client. Ihr Implementierungsstand
+steht in der Architektur und in `src/Apps/ProtocolInspector/README.md`.
+
+[cols="1,4"]
+|===
+|ID |Anforderung
+
+|UI-001
+|Eine React-/TypeScript-Weboberfläche stellt einen versionierten, UI-neutralen Analysebericht dar. Eine andere Oberfläche kann denselben Vertrag über HTTP oder den Application-Service im selben Prozess nutzen.
+
+|UI-002
+|Die Eingabe erkennt unterstützte vollständige Byte-Darstellungen automatisch. Mehrdeutige Darstellungen und mögliche Protokolleinstiege bleiben auswählbar. Das Ranking nennt seine Gründe und ist keine statistische Wahrscheinlichkeit; unbekannte Eingaben werden nicht zwangsweise einem Protokoll zugeordnet.
+
+|UI-003
+|Feldbaum, Hexdarstellung, Felddetails und Diagnosen sind über Feldidentitäten und Source-Spans gekoppelt. Auswahl und Navigation erfolgen lokal im Browser. Fehlgeschlagene Felder erhalten keinen erfundenen vollständigen Span.
+
+|UI-004
+|Ein gespeicherter JSON-Bericht lässt sich ohne erneute Analyse öffnen; ein eigenständiger HTML-Bericht dokumentiert die ausgewählte Interpretation. Erklärungen und Normreferenzen stammen aus dem Protokolladapter, nicht aus protokollspezifischen UI-Regeln.
+
+|UI-005
+|Weitere Protokolle werden durch registrierte Analyseadapter ergänzt. Zunächst ist ein einzelnes wired M-Bus-Frame unterstützt. DLMS/COSEM bleibt ein weiterer geplanter Adapter und darf bis zu dessen Implementierung nicht als analysierbar ausgewiesen werden.
+
+|UI-006
+|Die Zusammenfassung und Exporte enthalten den erkannten Telegrammdienst mit Richtung und Bezug zum typbestimmenden Feld. Die Erkennung bleibt unabhängig vom Erfolg der nachfolgenden Inhaltsanalyse; unbekannte oder nicht unterstützte Kombinationen erhalten keinen erfundenen Dienstnamen.
+|===

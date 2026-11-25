@@ -16,50 +16,38 @@ type NoopTracer() =
     interface IFieldTracer with
         member _.SourceCreated _ = ()
 
-        member _.BeginField(_, _) =
-            FieldId.create 0
+        member _.BeginField(_, _) = FieldId.create 0
 
         member _.EndField(_, _) = ()
 
         member _.FailField(_, _) = ()
 
-let trace =
-    NoopTracer() :> IFieldTracer
+let trace = NoopTracer() :> IFieldTracer
 
 type TestSourceStore() =
-    let buffers =
-        Dictionary<SourceId, ReadOnlyMemory<byte>>()
+    let buffers = Dictionary<SourceId, ReadOnlyMemory<byte>>()
 
-    let sources =
-        ResizeArray<SourceInfo>()
+    let sources = ResizeArray<SourceInfo>()
 
-    let mutable nextId =
-        0
+    let mutable nextId = 0
 
-    let add
-        name
-        origin
-        transform
-        (bytes: ReadOnlyMemory<byte>)
-        sensitive =
+    let add name origin transform (bytes: ReadOnlyMemory<byte>) sensitive =
 
-        let info: SourceInfo =
-            {
-                Id = SourceId.create nextId
-                Name = name
-                Origin = origin
-                Transform = transform
-                Length = bytes.Length
-                Sensitive = sensitive
-            }
+        let info: SourceInfo = {
+            Id = SourceId.create nextId
+            Name = name
+            Origin = origin
+            Transform = transform
+            Length = bytes.Length
+            Sensitive = sensitive
+        }
 
         nextId <- nextId + 1
         buffers.Add(info.Id, bytes)
         sources.Add info
         info
 
-    member _.Sources =
-        sources |> Seq.toList
+    member _.Sources = sources |> Seq.toList
 
     interface ISourceStore with
         member _.AddRoot name bytes sensitive =
@@ -71,42 +59,32 @@ type TestSourceStore() =
         member _.CreateReader source =
             ByteReaderFactory.Create(buffers[source], 0)
 
-let sources =
-    TestSourceStore() :> ISourceStore
+let sources = TestSourceStore() :> ISourceStore
 
 type RecordingTracer(?firstId: int) =
-    let events =
-        ResizeArray<TraceEvent>()
+    let events = ResizeArray<TraceEvent>()
 
-    let mutable nextId =
-        defaultArg firstId 0
+    let mutable nextId = defaultArg firstId 0
 
-    member _.Events =
-        events |> Seq.toList
+    member _.Events = events |> Seq.toList
 
     interface IFieldTracer with
-        member _.SourceCreated source =
-            events.Add(SourceCreated source)
+        member _.SourceCreated source = events.Add(SourceCreated source)
 
         member _.BeginField(name, span) =
-            let id =
-                FieldId.create nextId
+            let id = FieldId.create nextId
 
             nextId <- nextId + 1
-            events.Add(BeginField (name, span, id))
+            events.Add(BeginField(name, span, id))
             id
 
-        member _.EndField(id, span) =
-            events.Add(EndField (id, span))
+        member _.EndField(id, span) = events.Add(EndField(id, span))
 
-        member _.FailField(id, error) =
-            events.Add(FailField (id, error))
+        member _.FailField(id, error) = events.Add(FailField(id, error))
 
-let memory (bytes: byte[]) =
-    ReadOnlyMemory<byte>(bytes)
+let memory (bytes: byte[]) = ReadOnlyMemory<byte>(bytes)
 
-let reader (bytes: byte[]) =
-    ByteReaderFactory.Create(memory bytes)
+let reader (bytes: byte[]) = ByteReaderFactory.Create(memory bytes)
 
 let readerAt offset (bytes: byte[]) =
     ByteReaderFactory.Create(memory bytes, offset)

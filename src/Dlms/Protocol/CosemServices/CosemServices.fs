@@ -41,30 +41,19 @@ type CosemServiceRaw =
     | Xdlms of Xdlms.XdlmsApdu
 
 module CosemServiceRaw =
-    let parse : Parser<CosemServiceRaw> =
+    let parse: Parser<CosemServiceRaw> =
         parser {
             let! tag = Tag.peek<ApduTag>
 
             match tag with
             | ApduTag.Aarq ->
-                return!
-                    withCtx "AARQ" <|
-                        OpenRequestRawFields.parseBody |>> OpenRequest
+                return! withCtx "AARQ" <| OpenRequestRawFields.parseBody |>> OpenRequest
 
-            | ApduTag.Aare ->
-                return!
-                    withCtx "AARE" <|
-                    fail "AARE not supported"
+            | ApduTag.Aare -> return! withCtx "AARE" <| fail "AARE not supported"
 
-            | ApduTag.Rlrq ->
-                return!
-                    withCtx "RLRQ" <|
-                    fail "RLRQ not supported"
+            | ApduTag.Rlrq -> return! withCtx "RLRQ" <| fail "RLRQ not supported"
 
-            | ApduTag.Rlre ->
-                return!
-                    withCtx "RLRE" <|
-                    fail "RLRE not supported"
+            | ApduTag.Rlre -> return! withCtx "RLRE" <| fail "RLRE not supported"
 
             | _ ->
                 let! xdlms = Xdlms.XdlmsApduRaw.parse
@@ -81,19 +70,15 @@ type CosemService =
     | Xdlms of Xdlms.XdlmsApdu
 
 module CosemService =
-    let fromRaw (raw: CosemServiceRaw) : Validation<CosemService> =
+    let validate (raw: CosemServiceRaw) : Validation<CosemService> =
         match raw with
         | CosemServiceRaw.OpenRequest request ->
-            request
-            |> OpenRequest.fromRaw
-            |> Validation.map CosemService.OpenRequest
+            request |> OpenRequest.validate |> Validation.map CosemService.OpenRequest
 
         | CosemServiceRaw.OpenResponse response ->
-            response
-            |> OpenResponse.fromRaw
-            |> Validation.map CosemService.OpenResponse
+            response |> OpenResponse.validate |> Validation.map CosemService.OpenResponse
 
         // | CosemServiceRaw.Xdlms xdlms ->
         //     xdlms
-        //     |> Xdlms.Service.fromRaw
+        //     |> Xdlms.Service.validate
         //     |> Validation.map CosemService.Xdlms

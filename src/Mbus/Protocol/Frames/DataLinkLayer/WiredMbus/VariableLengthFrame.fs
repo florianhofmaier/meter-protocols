@@ -2,6 +2,8 @@ namespace Metering.Mbus.Protocol.Frames.DataLinkLayer.WiredMbus
 
 open System
 open Metering.Common.Decoding.Parsers
+open Metering.Common.BaseWriters.Core
+open Metering.Common.BaseWriters.BinaryWriters
 open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
@@ -10,16 +12,15 @@ open Metering.Common.Decoding.Validators.Core
 open Metering.Common.Decoding.Validators.Utility
 open Metering.Mbus.Protocol.Frames.DataLinkLayer
 
-type VariableLengthUserDataRaw =
-    {
-        CField: Field<CFieldRaw>
-        AField: Field<AFieldRaw>
-        LinkUserData: Field<ReadOnlyMemory<byte>>
-    }
+type VariableLengthUserDataRaw = {
+    CField: Field<CFieldRaw>
+    AField: Field<AFieldRaw>
+    LinkUserData: Field<ReadOnlyMemory<byte>>
+}
 
 module VariableLengthUserDataRaw =
 
-    let parse : Parser<Field<VariableLengthUserDataRaw>> =
+    let parse: Parser<Field<VariableLengthUserDataRaw>> =
         parseField "User Data"
         <| parser {
             let! cField = CFieldRaw.parse
@@ -33,23 +34,22 @@ module VariableLengthUserDataRaw =
             }
         }
 
-type VariableLengthFrameRaw =
-    {
-        Start: Field<unit>
-        Length1: Field<uint8>
-        Length2: Field<uint8>
-        RepeatedStart: Field<unit>
-        UserData: Field<VariableLengthUserDataRaw>
-        CrcBytes: CrcBytes
-        Crc: Field<Crc>
-        End: Field<EndFieldRaw>
-    }
+type VariableLengthFrameRaw = {
+    Start: Field<unit>
+    Length1: Field<uint8>
+    Length2: Field<uint8>
+    RepeatedStart: Field<unit>
+    UserData: Field<VariableLengthUserDataRaw>
+    CrcBytes: CrcBytes
+    Crc: Field<Crc>
+    End: Field<EndFieldRaw>
+}
 
 module VariableLengthFrameRaw =
 
     /// IEC 60870-5-2, 3.2; EN 13757-2, Annex F.2.
     /// Only the DLL is parsed. Link User Data remains opaque.
-    let parse : Parser<Field<VariableLengthFrameRaw>> =
+    let parse: Parser<Field<VariableLengthFrameRaw>> =
         parseField "Format FT 1.2 Frame With Variable Length"
         <| parser {
             let! start = StartVariableLength.parse
@@ -75,27 +75,22 @@ module VariableLengthFrameRaw =
             }
         }
 
-type VariableLengthFrame =
-    {
-        CField: Field<CField>
-        AField: Field<AField>
-        LinkUserData: Field<ReadOnlyMemory<byte>>
-    }
+type VariableLengthFrame = {
+    CField: Field<CField>
+    AField: Field<AField>
+    LinkUserData: Field<LinkUserDataBytes>
+}
 
 module VariableLengthFrame =
 
-    let fromRaw
-        (raw: Field<VariableLengthFrameRaw>)
-        : Validation<Field<VariableLengthFrame>> =
+    let validate (raw: Field<VariableLengthFrameRaw>) : Validation<Field<VariableLengthFrame>> =
 
         validator {
-            let! cField =
-                raw.Value.UserData.Value.CField
-                |> validateField CField.fromRaw
+            let! cField = raw.Value.UserData.Value.CField |> validateField CField.validate
 
-            and! aField =
-                raw.Value.UserData.Value.AField
-                |> validateField AField.fromRaw
+            and! aField = raw.Value.UserData.Value.AField |> validateField AField.validate
+
+            and! linkUserData = LinkUserDataBytes.validate raw.Value.UserData.Value.LinkUserData
 
             and! () =
                 ensure
@@ -112,6 +107,32 @@ module VariableLengthFrame =
                 |> Field.withValue {
                     CField = cField
                     AField = aField
-                    LinkUserData = raw.Value.UserData.Value.LinkUserData
+                    LinkUserData = linkUserData
                 }
         }
+
+    /// Writes a complete variable-length frame from control and payload writers.
+    /// Link User Data are bounded before framing; field provenance is not serialized.
+    /// IEC 60870-5-2, 3.2, p. 14; EN 13757-2, Annex F.2, p. 37.
+    let write control address payload : Writer<unit> =
+        match Writer.run LinkUserDataBytes.maxLength payload with
+        | Error error -> writerError error.Msg
+        | Ok bytes ->
+            match LinkUserDataBytes.create (ReadOnlyMemory bytes) with
+            | Error error -> writerError error
+            | Ok bounded ->
+                writer {
+                    let linkUserData = LinkUserDataBytes.bytes bounded
+                    let length = byte (linkUserData.Length + 2)
+                    do! writeU8 0x68uy
+                    do! writeU8 length
+                    do! writeU8 length
+                    do! writeU8 0x68uy
+                    let! userDataStart = getPos
+                    do! control
+                    do! AField.write address
+                    do! LinkUserDataBytes.write bounded
+                    let! bytes = getMem userDataStart (int length)
+                    do! writeU8 (bytes |> CrcBytes.create |> CrcCalculator.calculate)
+                    do! writeU8 EndField.value
+                }

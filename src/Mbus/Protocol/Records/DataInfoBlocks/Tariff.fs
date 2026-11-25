@@ -2,13 +2,12 @@ namespace Metering.Mbus.Protocol.Records.DataInfoBlocks
 
 open System
 
-type Tariff =
-    private
-        Tariff of uint32
+type Tariff = private Tariff of uint32
 
 module Tariff =
-    let create (v : int) =
+    let create (v: int) =
         let max = (1 <<< 20) - 1
+
         match v with
         | _ when v < 0 -> Error $"Value for Tariff must be non-negative, got {v}"
         | _ when v > max -> Error $"Value for Tariff must be in [0..{max}], got {v}"
@@ -25,11 +24,8 @@ module Tariff =
     let private fromDifeByte b i =
         (b &&& mask) >>> 4 |> uint32 <<< (shift i)
 
-    let fromBytes(bytes: ReadOnlyMemory<uint8>) =
-        Dife.foldBytes
-        <| (fun acc b i -> acc ||| fromDifeByte b (i - 1))
-            <| 0u
-            <| bytes
+    let fromBytes (bytes: ReadOnlyMemory<uint8>) =
+        Dife.foldBytes <| (fun acc b i -> acc ||| fromDifeByte b (i - 1)) <| 0u <| bytes
         |> Tariff
 
     let private toDifeByte tariff i =

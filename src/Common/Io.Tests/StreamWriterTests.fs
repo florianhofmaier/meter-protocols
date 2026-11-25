@@ -1,47 +1,83 @@
-module Mbus.Io.Tests.StreamWriterTests
+module Metering.Common.Io.Tests.StreamWriterTests
 
-open Xunit
-open FsUnit.Xunit
+open System
 open System.IO
 open System.Threading
-open Mbus.Io
-open Mbus.Frames
+open System.Threading.Tasks
+open Xunit
+open FsUnit.Xunit
+open Metering.Common.Io
 
 [<Fact>]
-let ``WriteAsync WhenConfirmation ShouldWriteSingleByte`` () =
+let ``writer serializes shared-buffer encoding together with concurrent writes`` () =
     task {
-        use ms = new MemoryStream()
-        let writer = StreamWriter.create ms
+        use output = new MemoryStream()
 
-        do! writer Frame.Confirmation CancellationToken.None
+        use stream = {
+            new MemoryStream() with
+                override _.WriteAsync(bytes: ReadOnlyMemory<byte>, ct) =
+                    ValueTask(
+                        task {
+                            do! Task.Yield()
+                            do! output.WriteAsync(bytes, ct)
+                        }
+                    )
+        }
 
-        ms.ToArray() |> should equal [| 0xE5uy |]
+        let buffer = Array.zeroCreate<byte> 2
+
+        let write =
+            StreamWriter.create stream (fun value ->
+                Array.fill buffer 0 2 value
+                ReadOnlyMemory buffer)
+
+        let! _ =
+            [| for value in 1uy .. 50uy -> write value CancellationToken.None |]
+            |> Task.WhenAll
+
+        let actual = output.ToArray()
+        actual.Length |> should equal 100
+
+        actual
+        |> Array.chunkBySize 2
+        |> Array.iter (fun pair -> pair[0] |> should equal pair[1])
+
+        actual
+        |> Array.chunkBySize 2
+        |> Array.map Array.head
+        |> Array.sort
+        |> should equal [| 1uy .. 50uy |]
     }
 
 [<Fact>]
-let ``WriteAsync WhenShortFrame ShouldWriteShortFrameBytes`` () =
+let ``encoder failure releases the lock for a subsequent write`` () =
     task {
-        use ms = new MemoryStream()
-        let writer = StreamWriter.create ms
-        let sf = { CField = 0x40uy; PrmAdr = 0x01uy }
+        use stream = new MemoryStream()
 
-        do! writer (Frame.ShortFrame sf) CancellationToken.None
+        let write =
+            StreamWriter.create stream (fun value ->
+                if value = 0uy then
+                    invalidOp "encoding failed"
 
-        let expected = [| 0x10uy; 0x40uy; 0x01uy; 0x41uy; 0x16uy |]
-        ms.ToArray() |> should equal expected
+                ReadOnlyMemory [| value |])
+
+        let! error = Record.ExceptionAsync(fun () -> write 0uy CancellationToken.None)
+        Assert.IsType<InvalidOperationException>(error) |> ignore
+        do! write 1uy CancellationToken.None
+        stream.ToArray() |> should equal [| 1uy |]
     }
 
 [<Fact>]
-let ``WriteAsync WhenLongFrameCiOnly ShouldWriteCorrectBytes`` () =
+let ``canceled writer does not call encoder`` () =
     task {
-        use ms = new MemoryStream()
-        let writer = StreamWriter.create ms
-        let tpl = Tpl.CiOnly TplCiOnlyFunc.AplSelect
-        let apl = Apl.RspUdData { DataRecords = []; MfrSpecificData = None; IsMoreDataInNextTelegram = false }
-        let lf = { CField = 0x53uy; PrmAdr = 0x01uy; Tpl = tpl; Apl = apl }
+        use stream = new MemoryStream()
+        use cts = new CancellationTokenSource()
+        cts.Cancel()
 
-        do! writer (Frame.LongFrame lf) CancellationToken.None
+        let write =
+            StreamWriter.create stream (fun () -> failwith "Must not encode canceled writes")
 
-        let expected = [| 0x68uy; 0x03uy; 0x03uy; 0x68uy; 0x53uy; 0x01uy; 0x50uy; 0xA4uy; 0x16uy |]
-        ms.ToArray() |> should equal expected
+        let! error = Record.ExceptionAsync(fun () -> write () cts.Token)
+        Assert.IsAssignableFrom<OperationCanceledException>(error) |> ignore
+        stream.Length |> should equal 0L
     }

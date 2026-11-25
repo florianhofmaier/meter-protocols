@@ -2,6 +2,7 @@
 
 Status:: Accepted
 Datum:: 2026-10-12
+Aktualisiert:: 2026-11-03
 Ergänzt:: xref:0002-separate-parser-validator-and-decoder.adoc[ADR 0002]
 
 == Kontext
@@ -10,7 +11,7 @@ Die Pilotdecoder verbinden lokale Protokollverarbeitung mit Analysefortsetzung u
 
 == Entscheidung
 
-Ein struktureller Layer bzw. eigenständig verarbeitbarer Nachrichtenbestandteil besitzt seinen eigenen Codec. `parse` liefert Raw-Struktur, `fromRaw` liefert reine applikative `Validation`, und `decode` verbindet Parserausführung und Validierung. Der Codec führt weder den nächsten Layer noch Protection aus. Passende Ergebnisvarianten behalten benötigte nachfolgende Bytes und deren Field-Provenienz.
+Ein struktureller Layer bzw. eigenständig verarbeitbarer Nachrichtenbestandteil besitzt seinen eigenen Codec. `parse` liefert Raw-Struktur, `validate` liefert reine applikative `Validation`, und `decode` verbindet Parserausführung und Validierung. Der Codec führt weder den nächsten Layer noch Protection aus. Passende Ergebnisvarianten behalten benötigte nachfolgende Bytes und deren Field-Provenienz.
 
 Protection verarbeitet typisierte Nachrichtenfelder und getrenntes externes Schlüsselmaterial. Ein vorbereitetes Protection-Envelope hält verschlüsselte und klare Bereiche zusammen mit dem zugehörigen frame-derived Operationskontext; dieser enthält keine Schlüssel. Varianten unterscheiden Klartext von den unterstützten Schutzoperationen. Die normale Dekodierung und die Analyse verwenden dieselbe Schutzoperation.
 
@@ -24,10 +25,17 @@ Optionalität wird durch die jeweilige Grammatik festgestellt. Ein vorhandener, 
 
 Die gemeinsame Infrastruktur bleibt protokollunabhängig. Es gibt weder eine gemeinsame Layer-Union noch ein verpflichtendes Codec-Interface oder eine universelle `next`-API. Ein Codec pro Layer bedeutet ein Modul, kein eigenes Projekt pro Layer.
 
+Für M-Bus liegen normaler Decoder und Encoder gemeinsam im Projekt `Codec` mit der Assembly `MbusCodec.dll` und dem Namespace `Metering.Mbus.Codec`. Die Module heißen `Decoder` und `Encoder`; ihre `create`-Funktionen binden die dauerhafte Konfiguration und liefern Funktionen für einzelne Nachrichten. Beide Richtungen bilden gemeinsam die API-Grenze zwischen Bytes und `Message`. Der Analyzer bleibt im eigenen Projekt `Analyzer` mit `MbusAnalyzer.dll`. Codec und Analyzer verwenden das Protokollprojekt und den gemeinsamen Core, ohne voneinander abhängig zu sein. `HigherLayersDecoder` gehört als Unterorchestrator zur Codec-Assembly. Der konkrete `ParseTraceCollector` einschließlich seiner Berichtsmodelle gehört zur Analyzer-Assembly; das von den Parsern benötigte `IFieldTracer` bleibt im gemeinsamen Core.
+
 == Konsequenzen und Implementierungsstand
 
 * Unabhängige lokale Validierungsfehler werden weiterhin gemeinsam gemeldet; der Abbruch erfolgt zwischen Operationen.
 * Layer-Ergebnisse enthalten keine `NotReached`-Zustände anderer Layer.
 * Die benötigten Tests prüfen Zielverträge und Standardregeln. Characterization-Tests und Kompatibilitätsschichten für den Pilot sind nicht erforderlich.
-* Für M-Bus verbindet `MbusDecoder` DLL mit Selection oder `HigherLayersDecoder`. Der Unterdecoder kombiniert zuerst ELL-/NWL-/AFL-/TPL-Parser, validiert den Headerblock applikativ und bereitet anschließend Inhaltsbereiche mit frame-derived Protection-Kontext vor. `MbusDecoder` ruft danach Protection und APL auf; `Message.decode` ist die abschließende semantische Stufe. Der M-Bus-DecodePipeline-Versuch ist verworfen. Die gezielten Verträge stehen in `LayerCodecs.Tests`. Analyzer, Trace-Wertemeldung und detaillierte Protection-Fehler bleiben offen; der DLMS-Pilot ist noch nicht umgestellt.
+* Für M-Bus verbindet `Decoder` DLL mit Selection oder `HigherLayersDecoder`. Der Unterdecoder kombiniert zuerst ELL-/NWL-/AFL-/TPL-Parser, validiert den Headerblock applikativ und bereitet anschließend Inhaltsbereiche mit frame-derived Protection-Kontext vor. `Decoder` ruft danach Protection und APL auf; `Message.decode` ist die abschließende semantische Stufe. Der M-Bus-DecodePipeline-Versuch ist verworfen. Die gezielten Verträge stehen in `Protocol.Tests`. Detaillierte Protection-Fehler bleiben offen. Auch der DLMS-Pilot und seine Versuchstests sind entfernt; die Migration der verbleibenden DLMS-Bausteine ist noch offen. Die exklusiven gemeinsamen Ablaufmodelle `Never`, `Stage`, `Transformation` und `Decoder.decodeStage` sind entfernt.
+* Der `ParseTraceCollector` in `MbusAnalyzer.dll` liefert Feldbaum und Source-Metadaten über die bestehende Trace-Schnittstelle. Source und Span erhalten die Raw-Bytes auch bei späterem Parse-Abbruch. Die Sammlerlogik enthält keine Protokollregeln. Abgeleitete Bytes erhalten eigene Field-IDs; ihr Ursprung wird separat verknüpft.
+* Der native Bericht verwendet die geschlossene Union `MbusAnalysisStep`: Jede Variante legt den Ergebnistyp ihres `AnalysisStep<'value>` fest. Freier Schrittname und davon unabhängig gewählter Ergebniswert sind kein Berichtsmodell. Namen werden für Anzeige und Export abgeleitet; `AnalysisStepId` typisiert Schrittbeziehungen. Sources samt Bytes werden als Daten gehalten, ohne `ISourceStore` im Bericht. Erst Export beziehungsweise Präsentation projizieren die Ergebnisse. Der UI-Adapter konsumiert den nativen Bericht direkt; das JSON-/XML-Exportformat bleibt davon getrennt.
+* `MbusAnalyzer.analyze` besitzt eigenen Source Store und Sammler, protokollspezifische Fortsetzung sowie getrennte Parse-, Validierungs- und Protection-Schritte. Erfolgreiche Werte behalten ihre Field-Zuordnung; blockierte Schritte referenzieren die Ursache. `MbusProtectionInput.decodeRaw` prüft benötigte Voraussetzungen aus Raw-Feldern, danach wird dieselbe Protection wie beim Decoder verwendet. `MbusAnalysis.toJson` und `toXml` exportieren Sources, Trace und Schritte. Die Zielverträge stehen in `Analyzer.Tests` und konkretisieren AN-001 bis AN-006.
 * Die weitere Reihenfolge und noch offene Detailmodelle stehen im xref:../proposals/layer-codecs-analysis-refactor.adoc[Entwicklungsplan] und der xref:../proposals/layer-codecs-contracts.adoc[Vertragsbestandsaufnahme]. Diese Dokumente bleiben offene Umsetzungsvorschläge; diese ADR erklärt ihre gesamte Umsetzung nicht für abgeschlossen.
+
+Die ergänzende Ausgabeentscheidung ist in xref:0006-type-owned-protocol-writers.adoc[ADR 0006] festgehalten: Typmodule besitzen `write`, während `encode` die Writer ausführt. Daraus entsteht keine zusätzliche Abhängigkeit zwischen Decodern verschiedener Schichten.

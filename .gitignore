@@ -5,3 +5,11 @@ riderModule.iml
 /_ReSharper.Caches/
 .idea/
 *.DotSettings.user
+
+/artifacts/
+
+node_modules/
+
+dist/
+
+/doc/local-standards/

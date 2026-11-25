@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>MbusCodec</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace>Metering.Mbus.Codec</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Protocol.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="HigherLayersDecoder.fs" />
+    <Compile Include="Decoder.fs" />
+    <Compile Include="UserData.fs" />
+    <Compile Include="Encoder.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Protocol\Protocol.fsproj" />
+    <ProjectReference Include="..\..\Common\ByteReaders\ByteReaders.csproj" />
+    <ProjectReference Include="..\..\Common\Decoders\Decoders.fsproj" />
+    <ProjectReference Include="..\..\Common\Parsers\Parsers.fsproj" />
+    <ProjectReference Include="..\..\Common\Validators\Validators.fsproj" />
+  </ItemGroup>
+</Project>

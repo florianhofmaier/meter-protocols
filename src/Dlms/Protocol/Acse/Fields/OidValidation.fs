@@ -13,8 +13,7 @@ module OidValidation =
         (raw: Field<Ber.ObjectIdentifier>)
         : Validation<unit> =
 
-        let bytes =
-            Ber.ObjectIdentifier.toBytes raw.Value
+        let bytes = Ber.ObjectIdentifier.toBytes raw.Value
 
         let isValidPrefix =
             bytes.Length >= prefix.Length
@@ -31,13 +30,14 @@ module OidValidation =
         (raw: Field<Ber.ObjectIdentifier>)
         : Validation<byte> =
 
-        let bytes =
-            Ber.ObjectIdentifier.toBytes raw.Value
+        let bytes = Ber.ObjectIdentifier.toBytes raw.Value
 
         if bytes.Length = prefix.Length + 1 then
             passed bytes.Span[prefix.Length]
         else
-            failed raw $"{fieldName} object identifier must contain exactly one context id after the prefix"
+            failed
+                raw
+                $"{fieldName} object identifier must contain exactly one context id after the prefix"
 
     let validatePrefixAndSingleId
         (prefix: byte[])
@@ -46,11 +46,9 @@ module OidValidation =
         : Validation<byte> =
 
         validator {
-            let! () =
-                validatePrefix prefix fieldName raw
+            let! () = validatePrefix prefix fieldName raw
 
-            and! id =
-                validateSingleId prefix fieldName raw
+            and! id = validateSingleId prefix fieldName raw
 
             return id
         }

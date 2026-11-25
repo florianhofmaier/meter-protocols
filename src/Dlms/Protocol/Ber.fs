@@ -19,33 +19,31 @@ let parseLengthDelimited (p: Parser<'a>) : Parser<'a> =
         return! runOnSubSlice len p
     }
 
-let parseTagged<'a, 'b when 'a : enum<byte> and 'a: equality> (expectedTag: 'a) (p: Parser<'b>) : Parser<'b> =
+let parseTagged<'a, 'b when 'a: enum<byte> and 'a: equality>
+    (expectedTag: 'a)
+    (p: Parser<'b>)
+    : Parser<'b> =
     parser {
         do! Tag.expect expectedTag
         return! parseLengthDelimited p
     }
 
-let parseTaggedOptional<'a, 'b when 'a : enum<byte> and 'a: equality> expectedTag (p: Parser<'b>) =
+let parseTaggedOptional<'a, 'b when 'a: enum<byte> and 'a: equality> expectedTag (p: Parser<'b>) =
     parser {
         let! tag = Tag.tryParseExact<'a> expectedTag
+
         match tag with
-        | Some _ ->
-            return! parseLengthDelimited p |>> Some
-        | None ->
-            return None
+        | Some _ -> return! parseLengthDelimited p |>> Some
+        | None -> return None
     }
 
-type OctetString =
-    private
-        OctetString of ReadOnlyMemory<byte>
+type OctetString = private OctetString of ReadOnlyMemory<byte>
 
 module OctetString =
 
-    let value (OctetString bytes) =
-        bytes
+    let value (OctetString bytes) = bytes
 
-    let length (OctetString bytes) =
-        bytes.Length
+    let length (OctetString bytes) = bytes.Length
 
     let parse: Parser<OctetString> =
         parser {
@@ -63,10 +61,10 @@ module OctetString =
 
 module Integer =
 
-    let private parseIntegerBytes : Parser<ReadOnlyMemory<byte>> =
+    let private parseIntegerBytes: Parser<ReadOnlyMemory<byte>> =
         parseTagged UniversalTag.Integer takeAll
 
-    let parseUint32 : Parser<uint32> =
+    let parseUint32: Parser<uint32> =
         parser {
             let! bytes = parseIntegerBytes
 
@@ -84,17 +82,17 @@ module Integer =
                 return uint32 value
         }
 
-type BitString =
-    {
-        UnusedBitCount : byte
-        Payload : ReadOnlyMemory<byte>
-    }
+type BitString = {
+    UnusedBitCount: byte
+    Payload: ReadOnlyMemory<byte>
+}
 
 module BitString =
 
     let parseContent: Parser<BitString> =
         parser {
             let! len = remaining
+
             if len < 1 then
                 return! fail "BIT STRING content must contain at least the unused-bits octet"
             else
@@ -104,44 +102,36 @@ module BitString =
                     return! fail $"invalid BIT STRING unused bit count {unusedBitCount}"
                 else
                     let! payload = take (len - 1)
-                    return { UnusedBitCount = unusedBitCount; Payload = payload }
+
+                    return {
+                        UnusedBitCount = unusedBitCount
+                        Payload = payload
+                    }
         }
 
-    let parseImplicit: Parser<BitString> =
-        parseLengthDelimited parseContent
+    let parseImplicit: Parser<BitString> = parseLengthDelimited parseContent
 
-type ObjectIdentifier =
-    private
-        ObjectIdentifier of ReadOnlyMemory<byte>
+type ObjectIdentifier = private ObjectIdentifier of ReadOnlyMemory<byte>
 
 module ObjectIdentifier =
 
-    let fromBytes bytes =
-        ObjectIdentifier bytes
+    let fromBytes bytes = ObjectIdentifier bytes
 
-    let toBytes (ObjectIdentifier bytes) =
-        bytes
+    let toBytes (ObjectIdentifier bytes) = bytes
 
-    let parseContent: Parser<ObjectIdentifier> =
-        takeAll |>> fromBytes
+    let parseContent: Parser<ObjectIdentifier> = takeAll |>> fromBytes
 
     let parse: Parser<ObjectIdentifier> =
         parseTagged UniversalTag.ObjectIdentifier parseContent
 
-type GraphicString =
-    private
-        GraphicString of ReadOnlyMemory<byte>
+type GraphicString = private GraphicString of ReadOnlyMemory<byte>
 
 module GraphicString =
 
-    let fromBytes bytes =
-        GraphicString bytes
+    let fromBytes bytes = GraphicString bytes
 
-    let toBytes (GraphicString bytes) =
-        bytes
+    let toBytes (GraphicString bytes) = bytes
 
-    let parseContent: Parser<GraphicString> =
-        takeAll |>> fromBytes
+    let parseContent: Parser<GraphicString> = takeAll |>> fromBytes
 
-    let parseImplicit: Parser<GraphicString> =
-        parseLengthDelimited parseContent
+    let parseImplicit: Parser<GraphicString> = parseLengthDelimited parseContent

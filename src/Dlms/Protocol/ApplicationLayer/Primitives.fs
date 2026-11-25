@@ -16,38 +16,33 @@ type ServerSap =
     | AssignedLogicalDevice of uint16
     | AllStationBroadcast
 
-type CosemAddress =
-    {
-        ClientSap : ClientSap
-        ServerSap : ServerSap
-    }
+type CosemAddress = {
+    ClientSap: ClientSap
+    ServerSap: ServerSap
+}
 
-type XxDataIndication =
-    {
-        Payload : Field<ReadOnlyMemory<byte>>
-        Address : CosemAddress
-    }
+type XxDataIndication = {
+    Payload: Field<ReadOnlyMemory<byte>>
+    Address: CosemAddress
+}
 
-type XxDataRequest =
-    {
-        Payload : ReadOnlyMemory<byte>
-        Address : CosemAddress
-    }
+type XxDataRequest = {
+    Payload: ReadOnlyMemory<byte>
+    Address: CosemAddress
+}
 
-type PendingAssociation =
-    {
-        Address : CosemAddress
-        OpenIndication : CosemOpenIndication
-    }
+type PendingAssociation = {
+    Address: CosemAddress
+    OpenIndication: CosemOpenIndication
+}
 
-type AssociationContext =
-    {
-        Address : CosemAddress
-        ApplicationContext : ApplicationContextName
-        Authentication : AuthenticationContext
-        XdlmsContext : XdlmsContext
-        SecurityContext : SecurityContext option
-    }
+type AssociationContext = {
+    Address: CosemAddress
+    ApplicationContext: ApplicationContextName
+    Authentication: AuthenticationContext
+    XdlmsContext: XdlmsContext
+    SecurityContext: SecurityContext option
+}
 
 type CfState =
     | Idle

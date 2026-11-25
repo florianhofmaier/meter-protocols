@@ -16,19 +16,21 @@ Die allgemeinen Verträge stehen im Entwicklungsplan. Hier sind ihre konkrete Zu
 
 Die Pfade in dieser Tabelle beziehen sich auf `src/Mbus/Protocol/`, sofern kein anderer Pfad angegeben ist. Raw-Typen enthalten ungeprüfte Felder; die gleichnamigen Typen ohne `Raw` enthalten geprüfte Felder. Beide erhalten die Provenienz über `Field`.
 
-Im ersten umgesetzten Schnitt wurden die vorhandenen `VariableLengthUserDataRaw`, `VariableLengthFrameRaw` und `VariableLengthFrame` direkt geändert. Es gibt keine parallelen `DllVariableFrame`-Typen. `DllRaw.VariableLength` und `Dll.VariableLength` verwenden diese vorhandenen Typen. Der zusammengesetzte wired Decoder hält das DLL-Ergebnis und die dekodierten Link User Data als getrennte Ergebnisse zusammen. Der M-Bus-DecodePipeline-Versuch samt Versuchsreports und Versuchstests ist verworfen; die benötigten DLL-/TPL-Vertragstests stehen eigenständig unter `src/Mbus/LayerCodecs.Tests/`. `Tpl.fs` und `TplCodec.fs` trennen Modell und Codec.
+`Decoder`, `Encoder` und `HigherLayersDecoder` liegen unter `src/Mbus/Codec/` in der Assembly `MbusCodec.dll` und im Namespace `Metering.Mbus.Codec`. Die Assembly `MbusAnalyzer.dll` unter `src/Mbus/Analyzer/` besitzt den Namespace `Metering.Mbus.Analysis` und enthält `MbusAnalyzer`, `MbusAnalysis`, Analyse-Schritte, Parse-Trace und Sammler sowie JSON-/XML-Export. Beide Projekte referenzieren `Protocol` und den gemeinsamen Core und haben keine gegenseitige Projektabhängigkeit.
+
+Im ersten umgesetzten Schnitt wurden die vorhandenen `VariableLengthUserDataRaw`, `VariableLengthFrameRaw` und `VariableLengthFrame` direkt geändert. Es gibt keine parallelen `DllVariableFrame`-Typen. `DllRaw.VariableLength` und `Dll.VariableLength` verwenden diese vorhandenen Typen. Der zusammengesetzte wired Decoder hält das DLL-Ergebnis und die dekodierten Link User Data als getrennte Ergebnisse zusammen. Der M-Bus-DecodePipeline-Versuch samt Versuchsreports und Versuchstests ist verworfen; die benötigten Layer-Vertragstests stehen gemeinsam mit den Feldtests unter `src/Mbus/Protocol.Tests/`. `Tpl.fs` und `TplCodec.fs` trennen Modell und Codec.
 
 [cols="3,4,5"]
 |===
 |Vorhandene Fähigkeit / Quelle |Zuständigkeit im Ziel |Eingabe und Rückgabe
 
 |Wired SingleCharacter-, FixedLength- und VariableLength-Frames; `Frames/DataLinkLayer/WiredMbus/`
-|`DllCodec`; Framing, C-/A-Felder und lokale Integritätsprüfungen
-|Abgegrenzter Frame → `Field<DllRaw>` → `Validation<Field<Dll>>`. Beide Typen sind Unions der drei vorhandenen Alternativen. VariableLength enthält `Field<ReadOnlyMemory<byte>>` für Link User Data. Kein nachfolgender Parser und kein Schlüsselresolver.
+|`DllCodec`; Lesen und Validieren der DLL; frame-spezifische `write`-Einstiege besitzen die Ausgabe, `DllCodec.encode` dispatcht und führt den Writer aus
+|Abgegrenzter Frame → `Field<DllRaw>` → `Validation<Field<Dll>>`. Beide Typen sind Unions der drei vorhandenen Alternativen. VariableLength enthält im Raw-Modell `Field<ReadOnlyMemory<byte>>` und im validierten Modell `Field<LinkUserDataBytes>` für Link User Data; der private Werttyp begrenzt die Länge auf 253 Bytes. Kein nachfolgender Parser und kein Schlüsselresolver.
 
 |ELL-Variante `NoDllEncryption`
 |`EllCodec`
-|Abgegrenzte Eingabe ab ELL-CI → `Field<EllRaw>` → `Validation<Field<Ell>>`. Eigene CI-/CC-/Access-Number-Felder und verbleibende Bytes; keine Verarbeitung des nächsten Layers.
+|Eingabe ab ELL-CI → `Field<EllRaw>` → `Validation<Field<Ell>>`. Der Parser liest nur CI, CC und ACC und lässt die folgenden Bytes im Reader stehen. Raw- und validiertes ELL-Modell enthalten kein Payload-Feld; keine Verarbeitung des nächsten Layers. `decode` erwartet genau den Header. Optionale Verbraucher kombinieren `tryParse` und `validate`; der ungenutzte `tryDecode`-Adapter ist entfernt.
 
 |NWL und AFL: CI-Erkennung, danach explizite Ablehnung; bisherige Raw-/Valid-Typen sind `Unit`
 |`NwlCodec.tryDecode` und `AflCodec.tryDecode` für die eigene Präsenz/Ablehnung
@@ -43,8 +45,8 @@ Im ersten umgesetzten Schnitt wurden die vorhandenen `VariableLengthUserDataRaw`
 |`MbusProtectionInput` unterscheidet Klartext und `Mode5ProtectionInput` mit verschlüsseltem Bereich, klarem Rest, Ursprung und `Mode5ProtectionContext` aus den Frame-Feldern; externer `IExternalSecurityContextResolver` liefert Schlüssel. Ergebnis sind freigelegte Bytes oder ein lokaler Protection-Fehler. Teilverschlüsselung und vorhandene Prüfung der Freilegung gehören hierher. Der bisher nicht dekodierbare kurze Mode-5-Header bleibt als Unterstützungslücke ausgewiesen.
 
 |Geräteauswahl / `SelectionOfDevice`
-|`SelectionCodec`; Auswahlabgleich bleibt bei `Devices/DeviceSelection.fs`
-|Auswahlbytes → `Field<SelectionRaw>` → `Validation<Field<Selection>>`. Vorhandene Wildcard-Felder und optionaler Erweiterungsteil bleiben erhalten. Diese Struktur wird nicht in einen künstlichen TPL-Header gepackt.
+|`SelectionCodec`; der reine Auswahlabgleich liegt bei `SelectionOfDevice.matches` in `Protocol`, der Auswahlzustand bei `Devices/DeviceLogic.fs`
+|Auswahlbytes → `Field<SelectionOfDeviceRaw>` → `Validation<Field<SelectionOfDevice>>`. `AllDevices` und die Auswahl anhand der Sekundäradresse sind getrennte Varianten; vorhandene Wildcard-Felder bleiben erhalten. Der optionale Erweiterungsteil wird roh gelesen, aber bis zur Implementierung seines Abgleichs ausdrücklich bei der Validierung abgewiesen. Diese Struktur wird nicht in einen künstlichen TPL-Header gepackt.
 
 |Antwort- und Kommandodaten, Alarmbits, ApplicationResetOrSelect
 |`AplCodec`
@@ -60,7 +62,7 @@ Im ersten umgesetzten Schnitt wurden die vorhandenen `VariableLengthUserDataRaw`
 
 |Geräteauswahl, RequestUserData-Behandlung, Zustand und Stream-Lauf; `src/Mbus/Devices/`; C#-Gerät und Datenbuilder unter `src/Mbus/MbusDevices/`
 |Device-Logik und Runtime bleiben Aufrufer; C#-Builder bleibt Anwendungs-API
-|Gültige Nachrichten → vorhandene Auswahl-/Antwortaktionen und Zustandsänderungen. Stream-Grenzen, EOF, Abbruch und unvollständige Eingabe bleiben Aufgaben der Runtime. Geräteerzeugung, Datenaktualisierung und vorhandene Record-Builder werden direkt an die neuen Modelle angepasst.
+|Gültige Nachrichten → vorhandene Auswahl-/Antwortaktionen und Zustandsänderungen. Stream-Grenzen, EOF, Abbruch und unvollständige Eingabe bleiben Aufgaben der Runtime. Geräteerzeugung, Datenaktualisierung und vorhandene Record-Builder sind direkt an die neuen Modelle angepasst; die C#-Fassade verwendet Plain und veröffentlicht Record-Momentaufnahmen.
 |===
 
 `TplRaw` darf strukturell lesbare, aber nicht unterstützte oder semantisch ungültige Fälle zeigen. `Tpl` darf sie nicht als gültig ausgeben. Eine im Raw-Modell gelesene Security-Mode-Kennung wird daher nicht zu einer Zusage über implementierte Schutzmodi.
@@ -72,30 +74,29 @@ Die vorhandene CI-Auswahl umfasst im Quellcode `0x50`, `0x51`, `0x52`, `0x53`, `
 ----
 module DllCodec =
     val parse: Parser<Field<DllRaw>>
-    val fromRaw: Field<DllRaw> -> Validation<Field<Dll>>
+    val validate: Field<DllRaw> -> Validation<Field<Dll>>
     val decode: Field<ReadOnlyMemory<byte>> -> Decoder<Field<Dll>>
 
 module EllCodec =
     val parse: Parser<Field<EllRaw>>
     val tryParse: Parser<Field<EllRaw> option>
-    val fromRaw: Field<EllRaw> -> Validation<Field<Ell>>
+    val validate: Field<EllRaw> -> Validation<Field<Ell>>
     val decode: Field<ReadOnlyMemory<byte>> -> Decoder<Field<Ell>>
-    val tryDecode: Field<ReadOnlyMemory<byte>> -> Decoder<Field<Ell> option * Field<ReadOnlyMemory<byte>>>
 
 module NwlCodec =
     val tryParse: Parser<Field<Nwl> option>
-    val fromRaw: Field<Nwl> -> Validation<Field<Nwl>>
+    val validate: Field<Nwl> -> Validation<Field<Nwl>>
     val tryDecode: Field<ReadOnlyMemory<byte>> -> Decoder<Field<Nwl> option * Field<ReadOnlyMemory<byte>>>
 
 module AflCodec =
     val tryParse: Parser<Field<Afl> option>
-    val fromRaw: Field<Afl> -> Validation<Field<Afl>>
+    val validate: Field<Afl> -> Validation<Field<Afl>>
     val tryDecode: Field<ReadOnlyMemory<byte>> -> Decoder<Field<Afl> option * Field<ReadOnlyMemory<byte>>>
 
 // TplCodec und SelectionCodec folgen dem Schema von DllCodec.
 module AplCodec =
     val parse: CiFieldTpl -> Parser<Field<AplRaw>>
-    val fromRaw: Field<AplRaw> -> Validation<Field<Apl>>
+    val validate: Field<AplRaw> -> Validation<Field<Apl>>
     val decode: CiFieldTpl -> Field<ReadOnlyMemory<byte>> -> Decoder<Field<Apl>>
 
 module MbusProtectionInput =
@@ -106,45 +107,53 @@ module MbusProtection =
     val decode: IExternalSecurityContextResolver -> MbusProtectionInput -> Decoder<Field<ReadOnlyMemory<byte>>>
 
 module Message =
-    val fromRaw: Field<WiredMbusFrame> -> Validation<Field<Message>>
+    val validate: Field<WiredMbusFrame> -> Validation<Field<Message>>
     val decode: Field<WiredMbusFrame> -> Decoder<Field<Message>>
 
 module HigherLayersDecoder =
     val parse: Parser<HigherLayersRaw>
-    val fromRaw: Field<HigherLayersRaw> -> Validation<Field<HigherLayersHeaders>>
+    val validate: Field<HigherLayersRaw> -> Validation<Field<HigherLayersHeaders>>
     val decode: Field<ReadOnlyMemory<byte>> -> Decoder<Field<HigherLayers>>
 
-module MbusDecoder =
-    val decodeFrame: IExternalSecurityContextResolver -> Field<ReadOnlyMemory<byte>> -> Decoder<Field<WiredMbusFrame>>
-    val decode: IExternalSecurityContextResolver -> Field<ReadOnlyMemory<byte>> -> Decoder<Field<Message>>
+module Decoder =
+    val create: IExternalSecurityContextResolver -> (ReadOnlyMemory<byte> -> DecodeResult<Message>)
+
+module Encoder =
+    val create: EncodingOptions -> IExternalSecurityContextResolver -> (EncodingContext -> Message -> Result<byte[], EncodeError>)
 ----
 
-Der folgende Analyzer-Einstieg ist geplant. `MbusAnalyzer` und `MbusAnalysis` sind noch nicht implementiert. Die geplante Analyse verwendet denselben externen Schlüsselresolver wie Decoder und Protection.
+Der Analyzer-Einstieg ist implementiert und verwendet denselben externen Schlüsselresolver wie Decoder und Protection. Er nimmt die Bytes eines einzelnen abgegrenzten wired Frames entgegen und erzeugt den Source Store und Trace-Sammler selbst.
 
-.Geplanter M-Bus-Analyzer-Einstieg
+.Implementierter M-Bus-Analyzer-Einstieg und Export
 [source,fsharp]
 ----
 module MbusAnalyzer =
-    val analyze: IExternalSecurityContextResolver -> Field<ReadOnlyMemory<byte>> -> DecodeContext -> MbusAnalysis
+    val analyze: IExternalSecurityContextResolver -> ReadOnlyMemory<byte> -> MbusAnalysis
+
+module MbusAnalysis =
+    val toJson: MbusAnalysis -> string
+    val toXml: MbusAnalysis -> string
 ----
 
-Der öffentliche Nachrichteneinstieg ist `MbusDecoder.decode`; `decodeFrame` liefert alternativ den zusammengesetzten Frame vor der Message-Zuordnung. `MbusDecoder` ruft DLL und anschließend entweder Selection oder `HigherLayersDecoder` auf und führt zuletzt `Messages.Message.decode` aus. `HigherLayersDecoder` verarbeitet die abgegrenzten Link User Data durch die optionalen ELL-/NWL-/AFL-Einstiege und TPL und liefert `Field<HigherLayers>` mit deren Ergebnissen, vorbereitetem Schutz-Envelope und Provenienz der Eingabe. Er benötigt keine Schlüssel und führt weder Entschlüsselung noch APL-Parsing aus. `MbusDecoder` ruft anschließend `MbusProtection.decode` und `AplCodec.decode` auf und setzt erst dann `CompleteLinkUserData` zusammen. Er besitzt ausschließlich den normalen Ablauf; die einzelnen Codec-Verträge bleiben unabhängig verwendbar. `Message.fromRaw` ist die reine fachliche Zuordnung, `Message.decode` ihre Decoder-Fehlerabbildung; beide rufen keine anderen Codecs auf. Zusammengesetzte Modelle unter `Frames/` enthalten keine Parser. Aktuell sind nur die vorhandenen RequestUserData-/ResponseUserData-Zuordnungen erreichbar; andere gültige Frame-/APL-Strukturen sind nicht automatisch unterstützte `Message`-Varianten. `DllCodec.decode` bleibt der unabhängige DLL-Einstieg.
+`MbusAnalysis` enthält `Trace`, `Steps` und `Sources`. Ein Schritt besitzt ID, Name, Eingabe-Span, Abhängigkeiten, Notices und `Succeeded`, `Failed` oder `Blocked` mit Ursachen-ID. Erfolgreiche Validierungswerte erhalten ihre Field-IDs und Spans in einer JSON-Darstellung; Raw-Bytes bleiben im Source Store. Der Export enthält Source-Bytes einmal je Source und keine externen Schlüssel. `IsValid` verlangt Erfolg aller Schritte einschließlich Message-Zuordnung; es bedeutet keine vollständige Standardkonformität. Der Vertrag ist in AN-001 bis AN-006 und `Analyzer.Tests/MbusAnalyzerTests.fs` konkretisiert.
 
-Implementiert sind DLL, ELL, TPL, Selection und APL mit den vorhandenen Typnamen. `NwlCodec` und `AflCodec` implementieren ausschließlich Präsenzprüfung und Ablehnung ihrer vorhandenen Schicht. Die geschlossenen, nicht von Aufrufern konstruierbaren Ergebnistypen `Nwl` und `Afl` besitzen noch keine unterstützten Varianten; eine positive Verarbeitung ist damit nicht zugesagt. Raw-Modelle und konstruktive Ergebnisvarianten werden erst mit tatsächlicher NWL-/AFL-Verarbeitung ergänzt. `CiFieldTpl` ist der APL-Diskriminator; ein zusätzlicher `AplKind`-Typ ist dafür nicht erforderlich. Die gemeinsame Mode-5-Operation heißt `Mode5.unprotect` und nimmt den externen Resolver sowie das vorbereitete `Mode5ProtectionInput` entgegen; `MbusProtection` dispatcht Klartext und Mode 5. Nur tatsächliche Entschlüsselung erzeugt eine Derived Source. Detaillierte Protection-Fehlerkategorien und Analyzer-Eingaben sind noch offen; lokale Fehler verwenden derzeit `EncryptionError` und `DecodeFailure.EncryptionFailed`. Die ELL-Strukturunterstützung ersetzt keine noch offene Prüfung der zulässigen Layerkombinationen je Kommunikationsprofil.
+Die öffentlichen Nachrichteneinstiege sind `Decoder.create resolver` und `Encoder.create options resolver`. Sie liefern die Funktionen zur Verarbeitung einzelner Nachrichten; Frame-Orchestrierung und Message-Zuordnung bleiben im Decoder privat. `Decoder` ruft DLL und anschließend entweder Selection oder `HigherLayersDecoder` auf und führt zuletzt `Messages.Message.decode` aus. `HigherLayersDecoder` verarbeitet die abgegrenzten Link User Data durch die optionalen ELL-/NWL-/AFL-Einstiege und TPL und liefert `Field<HigherLayers>` mit deren Ergebnissen, vorbereitetem Schutz-Envelope und Provenienz der Eingabe. Er benötigt keine Schlüssel und führt weder Entschlüsselung noch APL-Parsing aus. `Decoder` ruft anschließend `MbusProtection.decode` und `AplCodec.decode` auf und setzt erst dann `CompleteLinkUserData` zusammen. Er besitzt ausschließlich den normalen Ablauf; die einzelnen Codec-Verträge bleiben unabhängig verwendbar. `Message.validate` ist die reine fachliche Zuordnung, `Message.decode` ihre Decoder-Fehlerabbildung; beide rufen keine anderen Codecs auf. Zusammengesetzte Modelle unter `Frames/` enthalten keine Parser. Aktuell sind nur die vorhandenen RequestUserData-/ResponseUserData-Zuordnungen erreichbar; andere gültige Frame-/APL-Strukturen sind nicht automatisch unterstützte `Message`-Varianten. `DllCodec.decode` bleibt der unabhängige DLL-Einstieg.
+
+Implementiert sind DLL, ELL, TPL, Selection und APL mit den vorhandenen Typnamen. `NwlCodec` und `AflCodec` implementieren ausschließlich Präsenzprüfung und Ablehnung ihrer vorhandenen Schicht. Die geschlossenen, nicht von Aufrufern konstruierbaren Ergebnistypen `Nwl` und `Afl` besitzen noch keine unterstützten Varianten; eine positive Verarbeitung ist damit nicht zugesagt. Raw-Modelle und konstruktive Ergebnisvarianten werden erst mit tatsächlicher NWL-/AFL-Verarbeitung ergänzt. `CiFieldTpl` ist der APL-Diskriminator; ein zusätzlicher `AplKind`-Typ ist dafür nicht erforderlich. Die gemeinsame Mode-5-Operation heißt `Mode5.unprotect` und nimmt den externen Resolver sowie das vorbereitete `Mode5ProtectionInput` entgegen; `MbusProtection` dispatcht Klartext und Mode 5. Nur tatsächliche Entschlüsselung erzeugt eine Derived Source. Detaillierte Protection-Fehlerkategorien sind noch offen; lokale Fehler verwenden derzeit `EncryptionError` und `DecodeFailure.EncryptionFailed`. Die ELL-Strukturunterstützung ersetzt keine noch offene Prüfung der zulässigen Layerkombinationen je Kommunikationsprofil.
 
 `HigherLayers` enthält `Ell`, `Nwl`, `Afl`, `Tpl` und `Protection`. Das Schutz-Envelope ist eine Union aus `Plain` und `Mode5`. `Mode5ProtectionInput` ist nach außen nur lesbar und wird ausschließlich nach Layoutprüfung erzeugt: `Context` enthält Geräteidentität und Access Number aus den validierten Frame-Feldern; `Encrypted` und `ClearSuffix` besitzen eigene Field-IDs und Spans; `Origin` erhält das ursprüngliche Payload-Field. Der Kontext enthält keine externen Schlüssel. Null verschlüsselte Blöcke ergeben einen leeren Cipher-Bereich und vollständigen klaren Rest; alle gesetzten N-Bits wählen den vollständigen verschlüsselten Inhalt. Grundlage: EN 13757-7 §7.6.5 und §9.4.4, Tabelle 48.
 
-Die aktuelle Erstellung erfolgt aus einem validierten TPL-Modell. Die geplante Analyzer-Erstellung aus teilweise ungültigen Raw-Ergebnissen muss künftig nur die konkreten Voraussetzungen prüfen; diese zusätzliche Eingangsprüfung ist noch nicht implementiert.
+Die normale Erstellung erfolgt aus einem validierten TPL-Modell. Für die Analyse prüft `MbusProtectionInput.decodeRaw` aus teilweise ungültigen Raw-Ergebnissen nur die konkreten Voraussetzungen der gewählten Operation. `Mode5.decodeInputRaw` validiert Geräteidentität, Access Number und Modus, bevor dieselbe Bereichsprüfung wie im normalen Decoder verwendet wird. TPL-Diagnostics etwa zum Inhaltsfeld verhindern keine Entschlüsselung, wenn deren Voraussetzungen erfüllt sind. Null verschlüsselte Blöcke benötigen weder Geräteidentität für einen IV noch Schlüssel; die Plain-Variante erhält die ursprünglichen Bytes.
 
-`HigherLayersRaw` hält optionale ELL-/NWL-/AFL-Ergebnisse und den TPL-Raw-Header. `HigherLayersDecoder.parse` kombiniert ausschließlich die Parser der einzelnen Codecs. Nach einer vorhandenen ELL werden die folgenden Header mit `parseExactly` auf deren abgegrenztem Payload gelesen; der Reader bleibt innerhalb der Parser-CE. `fromRaw` kombiniert die Validatoren aller vorhandenen Header mit `and!` und liefert `HigherLayersHeaders`. `decode` führt erst nach diesem Erfolg die Protection-Vorbereitung aus. Bei einem Parse-Fehler entfällt die Gesamtvalidierung; zuvor gelesene semantisch ungültige Werte werden im normalen Decoder dann nicht zusätzlich geprüft. Bei einem Validierungsfehler folgen weder Protection-Vorbereitung noch Entschlüsselung oder APL. Der gemeinsame Block ersetzt keine unabhängigen Layer-Einstiege.
+`HigherLayersRaw` hält optionale ELL-/NWL-/AFL-Ergebnisse und den TPL-Raw-Header. `HigherLayersDecoder.parse` kombiniert ausschließlich die Parser der einzelnen Codecs. ELL, NWL, AFL und TPL werden nacheinander auf demselben Reader gelesen. Eine vorhandene ELL konsumiert ausschließlich ihren Header und lässt die nächste CI unangetastet; der Reader bleibt innerhalb der Parser-CE. `validate` kombiniert die Validatoren aller vorhandenen Header mit `and!` und liefert `HigherLayersHeaders`. `decode` führt erst nach diesem Erfolg die Protection-Vorbereitung aus. Bei einem Parse-Fehler entfällt die Gesamtvalidierung; zuvor gelesene semantisch ungültige Werte werden im normalen Decoder dann nicht zusätzlich geprüft. Bei einem Validierungsfehler folgen weder Protection-Vorbereitung noch Entschlüsselung oder APL. Der gemeinsame Block ersetzt keine unabhängigen Layer-Einstiege.
 
-NWL/AFL besitzen im aktuellen Umfang keine konstruktiven Raw- oder validierten Varianten. Ihre `tryParse`-Einstiege liefern nur Abwesenheit oder Fehler; `fromRaw` weist einen dennoch übergebenen vorhandenen Wert ausdrücklich als nicht implementiert ab. Die entsprechenden optionalen Slots in `HigherLayersRaw` verwenden deshalb vorläufig die geschlossenen Typen `Nwl` und `Afl`. Tatsächliche Strukturunterstützung erfordert eigene Raw- und validierte Varianten.
+NWL/AFL besitzen im aktuellen Umfang keine konstruktiven Raw- oder validierten Varianten. Ihre `tryParse`-Einstiege liefern nur Abwesenheit oder Fehler; `validate` weist einen dennoch übergebenen vorhandenen Wert ausdrücklich als nicht implementiert ab. Die entsprechenden optionalen Slots in `HigherLayersRaw` verwenden deshalb vorläufig die geschlossenen Typen `Nwl` und `Afl`. Tatsächliche Strukturunterstützung erfordert eigene Raw- und validierte Varianten.
 
-ELL-Präsenz wird anhand der CI bestimmt (EN 13757-7:2018, §5.2, gedruckte S. 15). `EllCodec.tryParse` erhält das Prinzip der bisherigen `EllRaw.tryParse`-Implementierung: andere erkannte CI → `None` ohne Verbrauch; ELL-CI → `parse` und bei Erfolg `Some`; beschädigte vorhandene ELL oder fehlende Klassifizierbarkeit → Parse-Fehler. `None` enthält keinen Parse-Fehler und kein durch Fehlerbehandlung verworfenes ELL-Ergebnis. Optionale Layer bleiben im M-Bus-Aufrufer optional; `EllRaw` selbst erhält keine Absent-Variante. `tryDecode` verbindet diese Präsenzentscheidung mit Parsing und Validierung: erfolgreiches `None` mit unveränderter Eingabe oder `Some` mit dem abgegrenzten folgenden Byte-Field. Parse-/Validierungsfehler bleiben Decoderfehler. `HigherLayersDecoder` ruft für den gemeinsamen Headerblock die `tryParse`-Einstiege von ELL, NWL und AFL der Reihe nach auf; er prüft deren CI nicht selbst.
+ELL-Präsenz wird anhand der CI bestimmt (EN 13757-7:2018, §5.2, gedruckte S. 15). `EllCodec.tryParse` erhält das Prinzip der bisherigen `EllRaw.tryParse`-Implementierung: andere erkannte CI → `None` ohne Verbrauch; ELL-CI → `parse` und bei Erfolg `Some`; beschädigte vorhandene ELL oder fehlende Klassifizierbarkeit → Parse-Fehler. `None` enthält keinen Parse-Fehler und kein durch Fehlerbehandlung verworfenes ELL-Ergebnis. Optionale Layer bleiben im M-Bus-Aufrufer optional; `EllRaw` selbst erhält keine Absent-Variante. Die produktiven Verbraucher kombinieren `tryParse` und die reine Validierung. `EllCodec.tryDecode` hatte ausschließlich Test-Aufrufer und ist entfernt. Das ELL-Field endet nach CI, CC und ACC. Der Analyzer hält die folgende Eingabe als `SourceSpan` und erzeugt dafür kein künstliches Field. Parse-/Validierungsfehler bleiben Fehler ihrer jeweiligen Operation. `HigherLayersDecoder` ruft für den gemeinsamen Headerblock die `tryParse`-Einstiege von ELL, NWL und AFL der Reihe nach auf; er prüft deren CI nicht selbst.
 
 Für spätere AFL-Unterstützung ist der aktuelle Higher-Layers-Envelope-Vertrag zu erweitern beziehungsweise um einen Empfangs-/Reassembly-Einstieg zu ergänzen. AFL besitzt eine Fragment-PDU mit Kontrollblock und Payload; ihre Verarbeitung kann auf weitere DLL-Datagramme angewiesen sein. Ein gültiges Fragment ist kein automatisch vollständiges TPL-/APL-Ergebnis. Strukturcodec, Reassembly und Fragment-/Nachrichtenauthentifizierung bleiben eigene Verantwortlichkeiten. Normative Grundlage: EN 13757-7 §§6.1–6.2, Tabelle 3, §§6.3.2, 6.3.6–6.3.7, Tabellen 4 und 9, S. 20–24. Diese Erweiterung ist offen; der aktuelle Decoder weist AFL ab.
 
-Die weiterhin geplanten detaillierten `MbusProtectionError`-Varianten unterscheiden fehlenden Schlüssel, ungültige Voraussetzungen, nicht unterstützte Schutzstruktur, Verifikationsfehler und Kryptografiefehler mit den betroffenen Field-Bezügen. Die gemeinsame `unprotect`-Operation erzeugt keine Source und keinen Analysebericht. `decode` registriert tatsächlich entschlüsselte Bytes als Derived Source und bildet lokale Fehler auf `DecodeFailure.EncryptionFailed` ab. Der Analyzer verwendet `unprotect` für die unveränderte lokale Ursache und dieselbe Source-Registrierung bei Erfolg. Fehler der Eingabeprüfung werden vor der Schutzoperation als nicht versucht erfasst.
+Die weiterhin geplanten detaillierten `MbusProtectionError`-Varianten unterscheiden fehlenden Schlüssel, ungültige Voraussetzungen, nicht unterstützte Schutzstruktur, Verifikationsfehler und Kryptografiefehler mit den betroffenen Field-Bezügen. Die gemeinsame `unprotect`-Operation erzeugt keine Source und keinen Analysebericht. `decode` registriert tatsächlich entschlüsselte Bytes als Derived Source und bildet lokale Fehler auf `DecodeFailure.EncryptionFailed` ab. Der Analyzer ruft dieselbe `MbusProtection.decode`-Operation auf. Aktuell erfasst `Protection.prepare` Fehler der Eingabeprüfung als fehlgeschlagenen Schritt; der abhängige APL-Schritt referenziert diese Ursache. Nach fehlgeschlagener Freilegung werden weder Derived Source noch APL erzeugt.
 
 [[dlms-contracts]]
 == DLMS/COSEM
@@ -160,11 +169,11 @@ Pfade beziehen sich auf `src/Dlms/Protocol/`, sofern nicht anders angegeben. Bei
 |WPDU-Bytes → `Field<WrapperPduRaw>` → `Validation<Field<WrapperPdu>>`; Data bleibt ein abgegrenztes Byte-Field. Profil-/SAP-Zuordnungen bleiben separate reine Funktionen.
 
 |AARQ-Parsing und Feldvalidierung; `Acse/`; bisherige Kopplung an User-Information-Verarbeitung
-|`AcseCodec.parseAarq`, `fromAarqRaw`, `decodeAarq`
+|`AcseCodec.parseAarq`, `validateAarq`, `decodeAarq`
 |AARQ-Bytes → `Field<AarqRaw>` → `Validation<Field<Aarq>>`. User-Information bleibt als Byte-Field erhalten; ACSE führt keine Protection und keinen InitiateRequest-Parser aus.
 
 |AARE-Feldparser und Validatoren unter `Acse/AareRawFields.fs`, `AareValidatedFields.fs`; noch kein vollständiger Dispatcherpfad
-|`AcseCodec.parseAareBody`, `fromAareRaw`, `decodeAareBody`
+|`AcseCodec.parseAareBody`, `validateAare`, `decodeAareBody`
 |Abgegrenzter AARE-Body → `Field<AareRaw>` → `Validation<Field<Aare>>`. Vorhandene Feldverarbeitung wird separat verwendbar. Ein vollständiger AARE-Nachrichtendecoder wird nicht allein aus diesen Teilfunktionen als vorhanden angenommen.
 
 |GloInitiateRequest-Hülle, ProtectedApduRaw, SecurityControl und InvocationCounter; `Security/` und zugehörige APDU-Bausteine
@@ -177,7 +186,7 @@ Pfade beziehen sich auf `src/Dlms/Protocol/`, sofern nicht anders angegeben. Bei
 
 |InitiateRequest; Body-Parsing und Validierung von InitiateResponse und ConfirmedServiceError; `Xdlms/` und AARE-User-Information unter `CosemServices/Open/`
 |`PlainApduCodec`; benannte vollständige bzw. Body-Einstiege
-|Klartext-APDU bzw. separat abgegrenzter Body → Raw- und validierte Varianten der vorhandenen Nachrichten. `parse`/`fromRaw`/`decode` für InitiateRequest; `parseInitiateResponseBody`/`fromInitiateResponseRaw`/`decodeInitiateResponseBody` und entsprechende ConfirmedServiceError-Einstiege erhalten die vorhandenen Teilfähigkeiten. Weitere nur deklarierte xDLMS-Tags und Release-APDUs bleiben nicht unterstützt.
+|Klartext-APDU bzw. separat abgegrenzter Body → Raw- und validierte Varianten der vorhandenen Nachrichten. `parse`/`validate`/`decode` für InitiateRequest; `parseInitiateResponseBody`/`validateInitiateResponse`/`decodeInitiateResponseBody` und entsprechende ConfirmedServiceError-Einstiege erhalten die vorhandenen Teilfähigkeiten. Weitere nur deklarierte xDLMS-Tags und Release-APDUs bleiben nicht unterstützt.
 
 |OpenRequest-Zuordnungen mit Logical-/Short-Name-Kontexten; OpenResponse Accepted/Rejected und passende User-Information
 |Reine Funktionen in `CosemServices/Open`
@@ -187,9 +196,9 @@ Pfade beziehen sich auf `src/Dlms/Protocol/`, sofern nicht anders angegeben. Bei
 |DLMS-Server als normaler Aufrufer; Policy und Zustand außerhalb der Codecs
 |Gültige Decodergebnisse → vorhandene Service-Indication, Policy-Entscheidung, Zustandsänderung und Service-Request. Keine zusätzlichen Association-, Replay- oder Release-Funktionen über die vorhandenen Implementierungen hinaus.
 
-|`src/Dlms/DecodePipeline/TcpAarqDecode.fs`
+|Historischer, entfernter DLMS-DecodePipeline-Versuch
 |`DlmsMessageDecoder` und `DlmsAnalyzer`
-|Wrapper → AARQ → gegebenenfalls Protection → InitiateRequest → Open-Zuordnung. Der Decoder bricht zwischen Operationen ab; der Analyzer verwaltet Raw-Ergebnisse und Fortsetzung. Die übrigen vorhandenen Einzelbausteine bleiben unabhängig verwendbar.
+|Geplanter Ablauf aus den verbleibenden Einzelbausteinen: Wrapper → AARQ → gegebenenfalls Protection → InitiateRequest → Open-Zuordnung. Der Pilot samt Reports und Versuchstests ist entfernt. Der künftige Decoder bricht zwischen Operationen ab; der Analyzer verwaltet Raw-Ergebnisse und Fortsetzung. Die übrigen vorhandenen Einzelbausteine bleiben unabhängig verwendbar.
 |===
 
 .Geplante DLMS/COSEM-Einstiege; noch nicht auf die neuen Verträge umgestellt
@@ -197,23 +206,23 @@ Pfade beziehen sich auf `src/Dlms/Protocol/`, sofern nicht anders angegeben. Bei
 ----
 module WrapperCodec =
     val parse: Parser<Field<WrapperPduRaw>>
-    val fromRaw: Field<WrapperPduRaw> -> Validation<Field<WrapperPdu>>
+    val validate: Field<WrapperPduRaw> -> Validation<Field<WrapperPdu>>
     val decode: Field<ReadOnlyMemory<byte>> -> Decoder<Field<WrapperPdu>>
 
 module AcseCodec =
     val parseAarq: Parser<Field<AarqRaw>>
-    val fromAarqRaw: Field<AarqRaw> -> Validation<Field<Aarq>>
+    val validateAarq: Field<AarqRaw> -> Validation<Field<Aarq>>
     val decodeAarq: Field<ReadOnlyMemory<byte>> -> Decoder<Field<Aarq>>
 
 module DlmsProtection =
     val parse: Parser<Field<ProtectedApduRaw>>
-    val fromRaw: Field<ProtectedApduRaw> -> Validation<Field<ProtectedApdu>>
+    val validate: Field<ProtectedApduRaw> -> Validation<Field<ProtectedApdu>>
     val unprotect: DlmsKeys -> GlobalProtectionInput -> Result<ReadOnlyMemory<byte>, DlmsProtectionError>
     val decode: DlmsKeys -> GlobalProtectionInput -> Decoder<Field<ReadOnlyMemory<byte>>>
 
 module PlainApduCodec =
     val parse: Parser<Field<PlainApduRaw>>
-    val fromRaw: Field<PlainApduRaw> -> Validation<Field<PlainApdu>>
+    val validate: Field<PlainApduRaw> -> Validation<Field<PlainApdu>>
     val decode: Field<ReadOnlyMemory<byte>> -> Decoder<Field<PlainApdu>>
 
 module DlmsMessageDecoder =
@@ -233,7 +242,7 @@ ACSE-Feldoptionalität wird durch Tags und die umgebende begrenzte Struktur erka
 
 `Common.Parsers`, `Common.Validators`, Source Store und die vorhandenen Binär-/BCD-/BER-/A-XDR-Helfer bleiben gemeinsam verwendet. Kryptografische Primitive bleiben unter den protokollspezifischen Schutzoperationen. Stream-Lesen trennt und begrenzt Nachrichten; ein Stream mit mehreren Nachrichten wird vor dem einzelnen Decode-Aufruf abgegrenzt.
 
-Strukturdecoder verwenden exaktes Parsing ihrer abgegrenzten Eingabe und weisen unerwartete, nicht konsumierte Restbytes als Parse-Fehler aus. Ausdrücklich als Payload gelesene und zurückgegebene Bytes gehören zum Ergebnis, auch wenn erst ein nachfolgender Codec sie interpretiert. Optionale `tryParse`-Einstiege lassen bei Abwesenheit den Reader unverändert; die zugehörigen `tryDecode`-Einstiege geben dann das ursprüngliche Eingabe-Field als folgende Bytes zurück. Semantische Zuordnungen wie `Message.decode` erhalten bereits zusammengesetzte Modelle und führen kein Parsing aus.
+Strukturdecoder verwenden exaktes Parsing ihrer abgegrenzten Eingabe und weisen unerwartete, nicht konsumierte Restbytes als Parse-Fehler aus. Ausdrücklich als Payload gelesene und zurückgegebene Bytes gehören zum Ergebnis, auch wenn erst ein nachfolgender Codec sie interpretiert. Optionale `tryParse`-Einstiege lassen bei Abwesenheit den Reader unverändert; die noch vorhandenen NWL-/AFL-`tryDecode`-Einstiege geben dann das ursprüngliche Eingabe-Field als folgende Bytes zurück. Semantische Zuordnungen wie `Message.decode` erhalten bereits zusammengesetzte Modelle und führen kein Parsing aus.
 
 Die alten M-Bus-I/O-Bausteine referenzieren `FrameParser`/`FrameWriter`; ein vollständiger entsprechender Protokollwriter ist im aktuellen Quellbaum nicht vorhanden. Auch ein Record mit einer Write-Funktionssignatur ist noch keine Serializerimplementierung. Vorhandene Binärwriter, Wrapper-/Service-Modellzuordnungen, Device-Aktionen und I/O-Funktionen werden angepasst; fehlende Protokollserializer werden als Integrationslücke dokumentiert. Dieser Decoder-Umbau verspricht keine neue vollständige Schreibunterstützung.
 

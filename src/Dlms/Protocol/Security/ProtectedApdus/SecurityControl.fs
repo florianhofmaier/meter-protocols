@@ -6,17 +6,14 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
 
-type SecurityControlRaw =
-    private SecurityControlRaw of uint8
+type SecurityControlRaw = private SecurityControlRaw of uint8
 
 module SecurityControlRaw =
 
-    let value (SecurityControlRaw value) =
-        value
+    let value (SecurityControlRaw value) = value
 
-    let parse : Parser<Field<SecurityControlRaw>> =
-        parseField "security-control" parseU8
-        |>> Field.map SecurityControlRaw
+    let parse: Parser<Field<SecurityControlRaw>> =
+        parseField "security-control" parseU8 |>> Field.map SecurityControlRaw
 
 type ProtectedApduKind =
     | ServiceSpecificGlobal
@@ -38,9 +35,7 @@ module SecuritySuiteId =
         | Suite1 -> 1uy
         | Suite2 -> 2uy
 
-    let fromParsed
-        (field: Field<SecurityControlRaw>)
-        : Validation<SecuritySuiteId> =
+    let validate (field: Field<SecurityControlRaw>) : Validation<SecuritySuiteId> =
 
         let value = SecurityControlRaw.value field.Value
 
@@ -48,8 +43,7 @@ module SecuritySuiteId =
         | 0uy -> passed Suite0
         | 1uy -> passed Suite1
         | 2uy -> passed Suite2
-        | other ->
-            failed field $"unsupported Security_Suite_Id {other}"
+        | other -> failed field $"unsupported Security_Suite_Id {other}"
 
 type ProtectionMode =
     | NoProtection
@@ -61,19 +55,17 @@ type KeySet =
     | Unicast
     | Broadcast
 
-type SecurityControl =
-    {
-        Raw : SecurityControlRaw
-        SecuritySuiteId : SecuritySuiteId
-        ProtectionMode : ProtectionMode
-        KeySet : KeySet
-        CompressionApplied : bool
-    }
+type SecurityControl = {
+    Raw: SecurityControlRaw
+    SecuritySuiteId: SecuritySuiteId
+    ProtectionMode: ProtectionMode
+    KeySet: KeySet
+    CompressionApplied: bool
+}
 
 module SecurityControl =
 
-    let toByte control =
-        SecurityControlRaw.value control.Raw
+    let toByte control = SecurityControlRaw.value control.Raw
 
     type private Mask =
         | AuthenticationApplied = 0x10uy
@@ -81,75 +73,68 @@ module SecurityControl =
         | KeySet = 0x40uy
         | CompressionApplied = 0x80uy
 
-    let private isApplied
-        (field: Field<SecurityControlRaw>)
-        (mask: Mask)
-        : bool =
+    let private isApplied (field: Field<SecurityControlRaw>) (mask: Mask) : bool =
         SecurityControlRaw.value field.Value &&& byte mask <> 0uy
 
     let private protectionMode authenticationApplied encryptionApplied =
         match encryptionApplied, authenticationApplied with
         | false, false -> NoProtection
-        | false, true  -> AuthenticationOnly
-        | true,  false -> EncryptionOnly
-        | true,  true  -> AuthenticatedEncryption
+        | false, true -> AuthenticationOnly
+        | true, false -> EncryptionOnly
+        | true, true -> AuthenticatedEncryption
 
 
-    let private keySet isKeySet =
-        if isKeySet then Broadcast else Unicast
+    let private keySet isKeySet = if isKeySet then Broadcast else Unicast
 
-    let fromParsed
+    let validate
         (apduKind: ProtectedApduKind)
         (field: Field<SecurityControlRaw>)
         : Validation<Field<SecurityControl>> =
 
         validator {
-            let! securitySuiteId =
-                SecuritySuiteId.fromParsed field
+            let! securitySuiteId = SecuritySuiteId.validate field
 
-            let authenticationApplied =
-                isApplied field Mask.AuthenticationApplied
+            let authenticationApplied = isApplied field Mask.AuthenticationApplied
 
-            let encryptionApplied =
-                isApplied field Mask.EncryptionApplied
+            let encryptionApplied = isApplied field Mask.EncryptionApplied
 
-            let keySetApplied =
-                isApplied field Mask.KeySet
+            let keySetApplied = isApplied field Mask.KeySet
 
-            let compressionApplied =
-                isApplied field Mask.CompressionApplied
+            let compressionApplied = isApplied field Mask.CompressionApplied
 
-            let protection =
-                protectionMode authenticationApplied encryptionApplied
+            let protection = protectionMode authenticationApplied encryptionApplied
 
-            let keySet =
-                keySet keySetApplied
+            let keySet = keySet keySetApplied
 
             do!
                 match apduKind, keySetApplied with
                 | ServiceSpecificDedicated, true
                 | GeneralDedicated, true
                 | GeneralCiphering, true ->
-                    failed field "Key_Set bit shall be 0 for service-specific dedicated ciphering, general-ded-ciphering and general-ciphering APDUs"
+                    failed
+                        field
+                        "Key_Set bit shall be 0 for service-specific dedicated ciphering, general-ded-ciphering and general-ciphering APDUs"
 
-                | _ ->
-                    passed ()
+                | _ -> passed ()
 
             do!
                 match apduKind, compressionApplied with
                 | ServiceSpecificGlobal, true
                 | ServiceSpecificDedicated, true ->
-                    failed field "Compression bit shall not be set for service-specific glo/ded ciphering APDUs"
+                    failed
+                        field
+                        "Compression bit shall not be set for service-specific glo/ded ciphering APDUs"
 
-                | _ ->
-                    passed ()
+                | _ -> passed ()
+
             do!
                 match protection with
                 | NoProtection ->
-                    info field "Security Control has neither authentication nor encryption applied; this is a no-protection combination"
+                    info
+                        field
+                        "Security Control has neither authentication nor encryption applied; this is a no-protection combination"
 
-                | _ ->
-                    passed ()
+                | _ -> passed ()
 
             return
                 field

@@ -16,7 +16,7 @@ module FunctionField =
     let errorState = 0x03uy
 
     let (|IsFunc|_|) expected b =
-        if (b &&& mask) >>> shift = expected then Some () else None
+        if (b &&& mask) >>> shift = expected then Some() else None
 
     let fromDif b =
         match b with

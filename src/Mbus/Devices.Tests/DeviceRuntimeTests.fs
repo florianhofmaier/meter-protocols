@@ -1,216 +1,336 @@
-module Devices.Tests.DeviceRuntimeTests
+module Metering.Mbus.Devices.Tests.DeviceRuntimeTests
 
 open System
-open Mbus.Devices
 open System.IO
 open System.Threading
 open System.Threading.Tasks
 open Xunit
 open FsUnit.Xunit
+open Metering.Common.Decoding.Decoders.Core
+open Metering.Mbus.Devices
+open Metering.Mbus.Codec
+open Metering.Mbus.Protocol.Frames.ApplicationLayer
+open Metering.Mbus.Protocol.Messages
+open Metering.Mbus.Protocol.Frames.TransportLayer.Security
+open Metering.Mbus.Protocol.Records
+open Metering.Mbus.Devices.Tests.DeviceTestSupport
 
-let createAddress id mfr version deviceType =
-    match MbusAddress.create id mfr version deviceType with
-    | Ok addr -> addr
-    | Error msg -> failwith $"Failed to create address: {msg}"
+// Reads and writes have independent positions, as on a serial duplex stream.
+type private DuplexStream(input: byte[], chunkSize: int) =
+    inherit Stream()
+    let source = new MemoryStream(input)
+    let output = new MemoryStream()
+    member _.Output = output.ToArray()
+    override _.CanRead = true
+    override _.CanWrite = true
+    override _.CanSeek = false
+    override _.Length = raise (NotSupportedException())
 
-let testAddress = createAddress 12345678 "GWF" 60 MbusDeviceType.WaterMeter
+    override _.Position
+        with get () = raise (NotSupportedException())
+        and set _ = raise (NotSupportedException())
+
+    override _.Seek(_, _) = raise (NotSupportedException())
+    override _.SetLength _ = raise (NotSupportedException())
+    override _.Flush() = ()
+
+    override _.Read(buffer, offset, count) =
+        source.Read(buffer, offset, min count chunkSize)
+
+    override _.Write(buffer, offset, count) = output.Write(buffer, offset, count)
+
+    override _.ReadAsync(buffer: Memory<byte>, ct) =
+        source.ReadAsync(buffer.Slice(0, min buffer.Length chunkSize), ct)
+
+    override _.WriteAsync(buffer: ReadOnlyMemory<byte>, ct) = output.WriteAsync(buffer, ct)
+
+    override _.Dispose(disposing) =
+        if disposing then
+            source.Dispose()
+            output.Dispose()
+
+        base.Dispose(disposing)
+
+let private encode =
+    Encoder.create
+        EncodingOptions.Plain
+        {
+            new IExternalSecurityContextResolver with
+                member _.ResolveMode5Context _ = None
+        }
+
+let private responseBytes =
+    let data =
+        Array.concat [ [| 0x08uy; 0x05uy; 0x72uy |]; address; [| 0uy; 0uy; 0uy; 0uy |] ]
+
+    let checksum = byte ((data |> Array.sumBy int) &&& 255)
+    Array.concat [ [| 0x68uy; 15uy; 15uy; 0x68uy |]; data; [| checksum; 0x16uy |] ]
 
 [<Fact>]
-let ``runAsync should respond to REQ_UD2 on primary address`` () =
+let ``runtime selects requests and deselects across fragmented duplex reads`` () =
     task {
-        // Arrange: Create a stream with REQ_UD2 frame
-        let reqUd2Frame = [| 0x10uy; 0x5Buy; 0x05uy; 0x60uy; 0x16uy |]
-        use ms = new MemoryStream()
-        do! ms.WriteAsync(ReadOnlyMemory(reqUd2Frame))
-        ms.Position <- 0L
+        let other = Array.copy address
+        other[0] <- 0x79uy
 
-        let getUserData () = []
-        let initialState = DeviceLogic.initialState 0x05uy testAddress
+        let input =
+            Array.concat [
+                selectionFrame 0x53uy 0xFDuy [||]
+                shortFrame 0x5Buy 0xFDuy
+                selectionFrame 0x53uy 0xFDuy other
+                shortFrame 0x5Buy 0xFDuy
+            ]
 
-        // Act
-        do! DeviceRuntime.runAsync ms getUserData initialState CancellationToken.None
+        for chunkSize in [ 1; 3; 261 ] do
+            use stream = new DuplexStream(input, chunkSize)
+            let mutable dataCalls = 0
 
-        // Assert: Check response was written
-        ms.Position <- reqUd2Frame.Length
-        let responseLength = int (ms.Length - int64 reqUd2Frame.Length)
-        responseLength |> should be (greaterThan 0)
+            let getUserData () =
+                dataCalls <- dataCalls + 1
+                userData []
+
+            do! DeviceRuntime.runAsync stream encode getUserData (initial ()) CancellationToken.None
+            dataCalls |> should equal 1
+            stream.Output |> should equal (Array.append [| 0xE5uy |] responseBytes)
     }
 
 [<Fact>]
-let ``runAsync should throw OperationCanceledException when canceled on blocking stream`` () =
+let ``runtime skips corrupt checksum and noise before a valid request`` () =
     task {
-        use ms =
-            { new Stream() with
-                override _.CanRead = true
-                override _.CanSeek = false
-                override _.CanWrite = true
-                override _.Length = 0L
-                override _.Position
-                    with get () = 0L
-                    and set _ = ()
+        let broken = selectionFrame 0x53uy 0xFDuy address
+        broken[broken.Length - 2] <- 0uy
 
-                override _.Flush() = ()
-                override _.Seek(_, _) = 0L
-                override _.SetLength(_) = ()
-                override _.Write(_, _, _) = ()
-                override _.Read(_, _, _) = 0
+        use stream =
+            new DuplexStream(Array.concat [ [| 0uy; 0x99uy |]; broken; shortFrame 0x5Buy 5uy ], 2)
 
-                override _.ReadAsync(buffer: Memory<byte>, ct: CancellationToken) =
+        do!
+            DeviceRuntime.runAsync
+                stream
+                encode
+                (fun () -> userData [])
+                (initial ())
+                CancellationToken.None
+
+        stream.Output |> should equal responseBytes
+    }
+
+[<Fact>]
+let ``runtime preserves manufacturer data supplied with response records`` () =
+    task {
+        // EN 13757-3:2025, 6.6, pp. 38-39: DIF=0F precedes the final manufacturer block.
+        let manufacturerBytes = [| 0xAAuy; 0xBBuy |]
+
+        let data =
+            RspUdData.create
+                []
+                (Some(MfrSpecificData.ofBytes (ReadOnlyMemory manufacturerBytes)))
+                false
+
+        use stream = new DuplexStream(shortFrame 0x5Buy 5uy, 1)
+
+        do!
+            DeviceRuntime.runAsync
+                stream
+                encode
+                (fun () -> data)
+                (initial ())
+                CancellationToken.None
+
+        let body =
+            Array.concat [
+                [| 0x08uy; 0x05uy; 0x72uy |]
+                address
+                [| 0uy; 0uy; 0uy; 0uy; 0x0Fuy |]
+                manufacturerBytes
+            ]
+
+        let checksum = byte ((body |> Array.sumBy int) &&& 255)
+
+        stream.Output
+        |> should
+            equal
+            (Array.concat [
+                [| 0x68uy; byte body.Length; byte body.Length; 0x68uy |]
+                body
+                [| checksum; 0x16uy |]
+            ])
+    }
+
+[<Fact>]
+let ``runtime rejects extended selection and still handles following requests`` () =
+    task {
+        let extended =
+            Array.append address [| 0x0Cuy; 0x78uy; 0x78uy; 0x56uy; 0x34uy; 0x12uy |]
+
+        use stream =
+            new DuplexStream(
+                Array.concat [ selectionFrame 0x53uy 0xFDuy extended; shortFrame 0x5Buy 0xFDuy ],
+                261
+            )
+
+        do!
+            DeviceRuntime.runAsync
+                stream
+                encode
+                (fun () -> failwith "Unaddressed frame must not request user data")
+                (initial ())
+                CancellationToken.None
+
+        stream.Output |> Array.isEmpty |> should be True
+    }
+
+[<Fact>]
+let ``runtime reports truncated frame and clean EOF independently`` () =
+    task {
+        use empty = new DuplexStream([||], 1)
+
+        do!
+            DeviceRuntime.runAsync
+                empty
+                encode
+                (fun () -> userData [])
+                (initial ())
+                CancellationToken.None
+
+        use truncated = new DuplexStream([| 0x68uy; 0x0Buy; 0x0Buy; 0x68uy; 0x53uy |], 1)
+
+        let! error =
+            Record.ExceptionAsync(fun () ->
+                DeviceRuntime.runAsync
+                    truncated
+                    encode
+                    (fun () -> userData [])
+                    (initial ())
+                    CancellationToken.None)
+
+        Assert.IsType<InvalidDataException>(error) |> ignore
+    }
+
+[<Fact>]
+let ``runtime reports an oversized response without writing a partial frame`` () =
+    task {
+        use stream = new DuplexStream(shortFrame 0x5Buy 5uy, 5)
+
+        let record: Metering.Mbus.Protocol.Records.DataRecordRsp = {
+            Dib = {
+                Fn = Metering.Mbus.Protocol.Records.DataInfoBlocks.FunctionField.Inst
+                StNum = Metering.Mbus.Protocol.Records.DataInfoBlocks.StorageNumber.zero
+                Tariff = Metering.Mbus.Protocol.Records.DataInfoBlocks.Tariff.zero
+                SubUnit = Metering.Mbus.Protocol.Records.DataInfoBlocks.SubUnit.zero
+            }
+            Vib =
+                Metering.Mbus.Protocol.Records.ValueInfoBlocks.VibRsp.Text(String.replicate 255 "u")
+            Value = Metering.Mbus.Protocol.Records.Value.Text(String.replicate 191 "x")
+        }
+
+        let! error =
+            Record.ExceptionAsync(fun () ->
+                DeviceRuntime.runAsync
+                    stream
+                    encode
+                    (fun () -> userData [ record; record ])
+                    (initial ())
+                    CancellationToken.None)
+
+        Assert.IsType<InvalidDataException>(error) |> ignore
+        stream.Output |> Array.isEmpty |> should be True
+    }
+
+[<Fact>]
+let ``runtime cancellation interrupts a blocked read`` () =
+    task {
+        let entered =
+            TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)
+
+        use stream = {
+            new MemoryStream() with
+                override _.ReadAsync(_: Memory<byte>, ct) =
                     ValueTask<int>(
                         task {
+                            entered.SetResult()
                             do! Task.Delay(Timeout.Infinite, ct)
                             return 0
-                        })
-            }
+                        }
+                    )
+        }
 
-        let getUserData () = []
-        let initialState = DeviceLogic.initialState 0x05uy testAddress
         use cts = new CancellationTokenSource()
 
-        let runTask = DeviceRuntime.runAsync ms getUserData initialState cts.Token
+        let running =
+            DeviceRuntime.runAsync stream encode (fun () -> userData []) (initial ()) cts.Token
 
-        do! Task.Delay(10)
+        do! entered.Task
         cts.Cancel()
-
-        let! ex = Record.ExceptionAsync(fun () -> runTask)
-
-        match ex with
-        | :? OperationCanceledException -> ()
-        | _ -> failwith $"Expected OperationCanceledException but got %A{ex}"
+        let! error = Record.ExceptionAsync(fun () -> running)
+        Assert.IsAssignableFrom<OperationCanceledException>(error) |> ignore
     }
 
 [<Fact>]
-let ``runAsync should throw InvalidDataException on truncated input`` () =
+let ``runtime uses the injected mode 5 encoder without storing its security context`` () =
     task {
-        // Arrange: Start of a long frame but ends prematurely
-        let truncatedFrame = [| 0x68uy; 0x0Buy; 0x0Buy; 0x68uy; 0x53uy; 0xFDuy |]
-        use ms = new MemoryStream(truncatedFrame)
+        let resolver = {
+            new IExternalSecurityContextResolver with
+                member _.ResolveMode5Context meter =
+                    meter |> should equal identity
 
-        let getUserData () = []
-        let initialState = DeviceLogic.initialState 0x05uy testAddress
+                    Some(
+                        Mode5ExternalContext(
+                            Metering.Common.Security.Cryptography.Secret128.TakeOwnership(
+                                Array.zeroCreate<byte> 16
+                            )
+                        )
+                    )
+        }
 
-        // Act
-        let! ex = Record.ExceptionAsync(fun () -> DeviceRuntime.runAsync ms getUserData initialState CancellationToken.None)
+        let context = { SecondaryAddress = identity }
 
-        // Assert
-        match ex with
-        | :? InvalidDataException -> ex.Message |> should startWith "Truncated frame at end of stream"
-        | _ -> failwith $"Expected InvalidDataException but got %A{ex}"
+        let protectedEncode = Encoder.create (EncodingOptions.Mode5 context) resolver
+        use stream = new DuplexStream(shortFrame 0x5Buy 5uy, 1)
+
+        do!
+            DeviceRuntime.runAsync
+                stream
+                protectedEncode
+                (fun () -> userData [])
+                (initial ())
+                CancellationToken.None
+
+        stream.Output[17..18] |> should equal [| 0xF0uy; 5uy |]
+
+        match Metering.Mbus.Codec.Decoder.create resolver (ReadOnlyMemory stream.Output) with
+        | Decoded(Message.SecondaryStationMessage(SecondaryStationMessage.ResponseUserData response),
+                  _) ->
+            response.UserData |> Seq.isEmpty |> should be True
+            response.MeterAddress.IdNum |> should equal identity.IdNum
+        | _ -> failwith "Expected a decrypted response"
     }
 
 [<Fact>]
-let ``runAsync should not respond to REQ_UD2 on different address`` () =
+let ``runtime supplies device access number to the encoder for each response`` () =
     task {
-        // Arrange: Create a stream with REQ_UD2 to different address
-        let reqUd2Frame = [| 0x10uy; 0x5Buy; 0x06uy; 0x61uy; 0x16uy |] // Address 0x06
-        use ms = new MemoryStream()
-        do! ms.WriteAsync(ReadOnlyMemory(reqUd2Frame))
-        ms.Position <- 0L
+        let access = Metering.Mbus.Protocol.Frames.TransportLayer.AccessNumber.create 42uy
 
-        let getUserData () = []
-        let initialState = DeviceLogic.initialState 0x05uy testAddress // Device has address 0x05
+        let state = {
+            initial () with
+                AccessNumber = access
+        }
 
-        // Act
-        do! DeviceRuntime.runAsync ms getUserData initialState CancellationToken.None
+        let mutable calls = 0
 
-        // Assert: Check no response was written
-        ms.Position <- reqUd2Frame.Length
-        let responseLength = int (ms.Length - int64 reqUd2Frame.Length)
-        responseLength |> should equal 0
+        let encodeResponse (context: EncodingContext) message =
+            context.AccessNumber |> should equal access
+            calls <- calls + 1
+            encode context message
+
+        use stream = new DuplexStream(shortFrame 0x5Buy 5uy, 1)
+
+        do!
+            DeviceRuntime.runAsync
+                stream
+                encodeResponse
+                (fun () -> userData [])
+                state
+                CancellationToken.None
+
+        calls |> should equal 1
+        stream.Output[15] |> should equal 42uy
     }
-
-[<Fact>]
-let ``runAsync should handle device selection and subsequent request`` () =
-    task {
-        // Arrange: Selection frame + REQ_UD2 to 0xFD
-        let selection = [| 0x78uy; 0x56uy; 0x34uy; 0x12uy; 0xE6uy; 0x1Euy; 0x3Cuy; 0x07uy |]
-        let selectionFrame =
-            [| 0x68uy; 0x0Buy; 0x0Buy; 0x68uy; // Header
-               0x53uy; 0xFDuy; 0x52uy |] // C-Field, Address, CI
-            |> Array.append <| selection // Selection data
-            |> Array.append <| [| 0x00uy; 0x16uy |] // Checksum placeholder + Stop
-
-        // Calculate actual checksum
-        let checksumData = selectionFrame[4..14]
-        let checksum = Array.fold (fun acc b -> (acc + int b) &&& 0xFF) 0 checksumData |> byte
-        selectionFrame[15] <- checksum
-
-        let reqUd2ToFD = [| 0x10uy; 0x5Buy; 0xFDuy; 0x58uy; 0x16uy |]
-        let fullFrame = Array.append selectionFrame reqUd2ToFD
-
-        use ms = new MemoryStream()
-        do! ms.WriteAsync(ReadOnlyMemory(fullFrame))
-        ms.Position <- 0L
-
-        let getUserData () = []
-        let initialState = DeviceLogic.initialState 0x05uy testAddress
-
-        // Act
-        do! DeviceRuntime.runAsync ms getUserData initialState CancellationToken.None
-
-        // Assert: Should have confirmation + response
-        ms.Position <- fullFrame.Length
-        let responseLength = int (ms.Length - int64 fullFrame.Length)
-        responseLength |> should be (greaterThan 1)
-    }
-
-[<Fact>]
-let ``runAsync should call getUserData for each request`` () =
-    task {
-        // Arrange
-        let reqUd2Frame = [| 0x10uy; 0x5Buy; 0x05uy; 0x60uy; 0x16uy |]
-        use ms = new MemoryStream()
-        do! ms.WriteAsync(ReadOnlyMemory(reqUd2Frame))
-        ms.Position <- 0L
-
-        let mutable callCount = 0
-        let getUserData () =
-            callCount <- callCount + 1
-            []
-
-        let initialState = DeviceLogic.initialState 0x05uy testAddress
-
-        // Act
-        do! DeviceRuntime.runAsync ms getUserData initialState CancellationToken.None
-
-        // Assert
-        callCount |> should be (greaterThan 0)
-    }
-
-[<Fact>]
-let ``runAsync should maintain state across multiple frames`` () =
-    task {
-        // Arrange: Selection + two requests
-        let selection = [| 0x78uy; 0x56uy; 0x34uy; 0x12uy; 0xE6uy; 0x1Euy; 0x3Cuy; 0x07uy |]
-        let selectionFrame =
-            [| 0x68uy; 0x0Buy; 0x0Buy; 0x68uy; 0x53uy; 0xFDuy; 0x52uy |]
-            |> Array.append <| selection
-            |> Array.append <| [| 0x00uy; 0x16uy |]
-
-        let checksumData = selectionFrame[4..14]
-        let checksum = Array.fold (fun acc b -> (acc + int b) &&& 0xFF) 0 checksumData |> byte
-        selectionFrame[15] <- checksum
-
-        let reqUd2 = [| 0x10uy; 0x5Buy; 0xFDuy; 0x58uy; 0x16uy |]
-        let fullFrame =
-            selectionFrame
-            |> Array.append <| reqUd2
-            |> Array.append <| reqUd2 // Second request
-
-        use ms = new MemoryStream()
-        do! ms.WriteAsync(ReadOnlyMemory(fullFrame))
-        ms.Position <- 0L
-
-        let getUserData () = []
-        let initialState = DeviceLogic.initialState 0x05uy testAddress
-
-        // Act
-        do! DeviceRuntime.runAsync ms getUserData initialState CancellationToken.None
-
-        // Assert: Should respond to both requests (device stays selected)
-        ms.Position <- fullFrame.Length
-        let responseLength = int (ms.Length - int64 fullFrame.Length)
-        // Should have: confirmation + response1 + response2 (at least 3 frames)
-        responseLength |> should be (greaterThan 10)
-    }
-

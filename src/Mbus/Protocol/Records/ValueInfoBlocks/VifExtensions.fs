@@ -1,5 +1,8 @@
 namespace Metering.Mbus.Protocol.Records.ValueInfoBlocks
 
+open Metering.Common.BaseWriters.Core
+open Metering.Common.BaseWriters.BinaryWriters
+
 open System
 
 type CombVifExt =
@@ -205,8 +208,11 @@ module VifExtensions =
             0x0Cuy, CombVifExt.DeltaBetweenImportAndExport
             0x0Duy, CombVifExt.UsedForAlternateNonMetricUnitSystem
             0x0Euy, CombVifExt.MeasurementRelatedToASecondarySensorOfTheDevice
-            0x0Fuy, CombVifExt.AdditionalRegisterVariantWithHigherResolutionThanTheMainRegisterOfTheMeter
-            0x10uy, CombVifExt.AccumulationOfAbsoluteValueForBothPositiveAndNegativeContributionAbsoluteCount
+            0x0Fuy,
+            CombVifExt.AdditionalRegisterVariantWithHigherResolutionThanTheMainRegisterOfTheMeter
+            0x10uy,
+            CombVifExt
+                .AccumulationOfAbsoluteValueForBothPositiveAndNegativeContributionAbsoluteCount
             0x11uy, CombVifExt.DataPresentedWithTypeC
             0x12uy, CombVifExt.DataPresentedWithTypeD
             0x13uy, CombVifExt.EndDateTime
@@ -223,21 +229,17 @@ module VifExtensions =
     let private extensionOfVifeCode = 0x7Cuy
     let private mfrSpecificExt = 0x7Fuy
 
-    let private tryMapPrim =
-        Utility.tryMap primTable
+    let private tryMapPrim = Utility.tryMap primTable
 
-    let private tryMapExt =
-        Utility.tryMap extTable
+    let private tryMapExt = Utility.tryMap extTable
 
     let private mapMfrExt (bytes: ReadOnlyMemory<byte>) pos =
-        Some (MfrVifExt (bytes.Slice(pos))), bytes.Span.Length
+        Some(MfrVifExt(bytes.Slice(pos))), bytes.Span.Length
 
-    let tryMap
-        (bytes: ReadOnlyMemory<byte>)
-        (pos: int)
-        : VifExtension option * int =
+    let tryMap (bytes: ReadOnlyMemory<byte>) (pos: int) : VifExtension option * int =
 
-        let asCombVifExt (vifExt, p) = Option.map VifExtension.CombVifExt vifExt, p
+        let asCombVifExt (vifExt, p) =
+            Option.map VifExtension.CombVifExt vifExt, p
 
         if pos >= bytes.Length then
             None, pos
@@ -250,12 +252,32 @@ module VifExtensions =
                     None, bytes.Length
                 else
                     match tryMapExt bytes (pos + 1) with
-                    | Some ext, nextPos -> Some (VifExtension.CombVifExt ext), nextPos
+                    | Some ext, nextPos -> Some(VifExtension.CombVifExt ext), nextPos
                     | None, _ -> None, min (pos + 2) bytes.Length
 
-            | _ when code = mfrSpecificExt ->
-                mapMfrExt bytes (pos + 1)
+            | _ when code = mfrSpecificExt -> mapMfrExt bytes (pos + 1)
 
-            | _ ->
-                tryMapPrim bytes pos
-                |> asCombVifExt
+            | _ -> tryMapPrim bytes pos |> asCombVifExt
+
+    /// Writes VIFE codes; extension bits are set by the enclosing VIB.
+    let write extension : Writer<unit> =
+        match extension with
+        | MfrVifExt bytes ->
+            writer {
+                do! writeU8 0x7Fuy
+                do! writeMemory bytes
+            }
+        | CombVifExt value ->
+            let find prefix table =
+                table
+                |> Map.toList
+                |> List.tryPick (fun (code, v) ->
+                    if v = value then Some(prefix @ [ code ]) else None)
+
+            match find [] primTable |> Option.orElseWith (fun () -> find [ 0x7Cuy ] extTable) with
+            | None -> writerError "VIFE has no supported standard encoding"
+            | Some codes ->
+                writer {
+                    for code in codes do
+                        do! writeU8 code
+                }

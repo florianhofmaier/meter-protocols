@@ -4,18 +4,12 @@ open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 
-type AeQualifier =
-    private
-        AeQualifier of Ber.OctetString
+type AeQualifier = private AeQualifier of Ber.OctetString
 
 module AeQualifier =
 
-    let create value =
-        AeQualifier value
+    let create value = AeQualifier value
 
-    let value (AeQualifier value) =
-        value
+    let value (AeQualifier value) = value
 
-    let validate (raw: Field<Ber.OctetString>) =
-        raw.Value |> create |> passed
-
+    let validate (raw: Field<Ber.OctetString>) = raw.Value |> create |> passed

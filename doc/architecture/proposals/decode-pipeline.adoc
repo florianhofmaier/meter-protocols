@@ -1,9 +1,9 @@
 = Proposal: Stufenweise Decode-Pipeline
 
-Status:: Historischer M-Bus-Versuch; DLMS-Pilot noch vorhanden
+Status:: Verworfen; historische M-Bus- und DLMS-Versuche
 Datum:: 2026-09-15
 
-Ein xref:layer-codecs-analysis-refactor.adoc[Entwicklungsplan für Layer-Codecs und protokollspezifische Analyse] beschreibt die vorgeschlagene Weiterentwicklung dieses Prototyps. Er trennt normale Dekodierung mit Abbruch bei Fehlern von der Analyse mit Erhalt erreichbarer Teilergebnisse. Der bisherige Prototyp ist keine zu bewahrende Verhaltensbaseline; geprüft werden die benötigten Zielverträge und Protokollregeln. Der M-Bus-DecodePipeline-Versuch und seine Versuchstests sind auf ausdrücklichen Wunsch entfernt; die benötigten DLL-/TPL-Vertragstests stehen in `LayerCodecs.Tests`. Die folgenden M-Bus-Beschreibungen sind historisch. Der DLMS-Pilot besteht noch.
+Ein xref:layer-codecs-analysis-refactor.adoc[Entwicklungsplan für Layer-Codecs und protokollspezifische Analyse] beschreibt die vorgeschlagene Weiterentwicklung dieses Prototyps. Er trennt normale Dekodierung mit Abbruch bei Fehlern von der Analyse mit Erhalt erreichbarer Teilergebnisse. Der bisherige Prototyp ist keine zu bewahrende Verhaltensbaseline; geprüft werden die benötigten Zielverträge und Protokollregeln. Die M-Bus- und DLMS-DecodePipeline-Versuche samt Versuchstests sind auf ausdrücklichen Wunsch entfernt. Die benötigten M-Bus-Layer-Vertragstests stehen in `Protocol.Tests`. Auch die nur von den Versuchen verwendeten gemeinsamen Ablaufmodelle und `Decoder.decodeStage` sind entfernt. Die folgenden Beschreibungen beider Versuche sind historisch und kein aktueller Implementierungsstand.
 
 == Problem
 
@@ -30,7 +30,7 @@ Für jede protokollspezifische Stufe führt der Decoder Folgendes aus:
 
 Ein Validierungsfehler allein blockiert die Fortsetzung nicht. Blockiert wird, wenn erforderliche Grenzen, Diskriminatoren oder Transformationsergebnisse fehlen.
 
-Strukturelle Ergebnisse müssen zwischen gelesen, nicht lesbar und nicht erreicht unterscheiden. Transformationen müssen Erfolg, Fehlschlag und nicht versucht unterscheiden. Die folgenden F#-Typen werden im Pilot erprobt; ihre endgültige Übernahme ist noch offen.
+Strukturelle Ergebnisse müssen zwischen gelesen, nicht lesbar und nicht erreicht unterscheiden. Transformationen müssen Erfolg, Fehlschlag und nicht versucht unterscheiden. Die folgenden F#-Typen wurden in den Piloten erprobt und anschließend zusammen mit den Versuchen entfernt.
 
 Der verworfene M-Bus-Pilot verwendete dafür zwei gemeinsame Typen:
 
@@ -47,20 +47,20 @@ Bei M-Bus folgt der Graph den Schichten und CI-Feld-Regeln aus EN 13757-7:2018, 
 
 Bei DLMS/COSEM legt ein Kommunikationsprofil ein Application-APDU frei. Ein geschütztes Application-APDU benötigt vor dem inneren xDLMS-APDU eine Transformation. Siehe DLMS UA 1000-2 Green Book Ed. 12, 4.8, S. 53–56 und 9.1.2, S. 195–196.
 
-Der DLMS-Pilot verwendet den vertikalen Schnitt `TCP Wrapper -> AARQ -> glo-initiate-request -> AES-GCM-Unprotect -> InitiateRequest`. Er folgt der Wrapper-Struktur aus 7.2.3.3.2, der Schutzverarbeitung aus 9.2.7.2 und der Übermittlung des Client System Title im `calling-AP-title` aus 9.3.2. Der System Title wird aus dem AARQ gelesen; der externe Resolver liefert ausschließlich Schlüsselmaterial.
+Der entfernte DLMS-Pilot verwendete den vertikalen Schnitt `TCP Wrapper -> AARQ -> glo-initiate-request -> AES-GCM-Unprotect -> InitiateRequest`. Er folgte der Wrapper-Struktur aus 7.2.3.3.2, der Schutzverarbeitung aus 9.2.7.2 und der Übermittlung des Client System Title im `calling-AP-title` aus 9.3.2. Der System Title wurde aus dem AARQ gelesen; der externe Resolver lieferte ausschließlich Schlüsselmaterial.
 
-Der Pilot prüft insbesondere:
+Die entfernten Versuchstests prüften insbesondere:
 
 * Wrapper- und AARQ-Validierungsfehler verdecken keine strukturell erreichbare `user-information`;
 * fehlende Schlüssel ergeben `NotAttempted` und behalten das geschützte APDU;
 * kryptografische Fehler ergeben `Failed` und behalten das geschützte APDU;
 * erfolgreiche Entschlüsselung erzeugt vor dem Parsing des `InitiateRequest` eine Derived Source.
 
-Der Invocation Counter bleibt ein Feld des geschützten APDU. Zustandsabhängige Replay-Prüfung gemäß 9.2.3.3.7.3, S. 216–217 gehört später in den Association-Kontext des Decoders und nicht in den reinen `fromRaw`-Validator.
+Der Invocation Counter bleibt ein Feld des geschützten APDU. Zustandsabhängige Replay-Prüfung gemäß 9.2.3.3.7.3, S. 216–217 gehört später in den Association-Kontext des Decoders und nicht in den reinen `validate`-Validator.
 
 == Offene Fragen
 
-* endgültige protokollspezifische Form der Decode-Reports nach Auswertung beider Piloten;
+* protokollspezifische Form künftiger Analyseberichte nach den getrennten Codec-/Analyzer-Verträgen;
 * Darstellung teilweise klarer und geschützter Payload-Segmente;
 * Schnittstelle für zustandsabhängige DLMS-Association-Prüfungen;
 * Grenze zwischen internen F#-Ergebnissen und öffentlicher C#-API.

@@ -6,16 +6,13 @@ open Metering.Common.Utility.Result
 
 [<Fact>]
 let ``return creates ok`` () =
-    result { return 42 }
-    |> should equal (Ok 42)
+    result { return 42 } |> should equal (Ok 42)
 
 [<Fact>]
 let ``return from preserves existing result`` () =
-    result { return! Ok 42 }
-    |> should equal (Ok 42)
+    result { return! Ok 42 } |> should equal (Ok 42)
 
-    result { return! Error "bad" }
-    |> should equal (Error "bad")
+    result { return! Error "bad" } |> should equal (Error "bad")
 
 [<Fact>]
 let ``successful let bang passes value onward`` () =
@@ -27,8 +24,7 @@ let ``successful let bang passes value onward`` () =
 
 [<Fact>]
 let ``failed let bang short-circuits later code`` () =
-    let mutable invoked =
-        false
+    let mutable invoked = false
 
     let output =
         result {
@@ -41,6 +37,4 @@ let ``failed let bang short-circuits later code`` () =
     invoked |> should equal false
 
 [<Fact>]
-let ``zero returns ok unit`` () =
-    result.Zero()
-    |> should equal (Ok ())
+let ``zero returns ok unit`` () = result.Zero() |> should equal (Ok())

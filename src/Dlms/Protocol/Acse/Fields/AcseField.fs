@@ -14,22 +14,18 @@ module AcseField =
 
         validator {
             match raw.Value with
-            | None ->
-                return None
+            | None -> return None
 
             | Some value ->
-                let present =
-                    {
-                        Id = raw.Id
-                        Span = raw.Span
-                        Value = value
-                    }
+                let present = {
+                    Id = raw.Id
+                    Span = raw.Span
+                    Value = value
+                }
 
-                let! valid =
-                    validatePresent present
+                let! valid = validatePresent present
 
-                do!
-                    PresenceDiagnostic.emit raw presenceDiagnostic
+                do! PresenceDiagnostic.emit raw presenceDiagnostic
 
                 return Some valid
         }
@@ -41,8 +37,7 @@ module AcseField =
         : Validation<Field<'valid option>> =
 
         validator {
-            let! valid =
-                optional presenceDiagnostic validatePresent raw
+            let! valid = optional presenceDiagnostic validatePresent raw
 
             return raw |> Field.withValue valid
         }
@@ -55,20 +50,16 @@ module AcseField =
 
         validator {
             match raw.Value with
-            | None ->
-                return!
-                    failed raw missingMessage
+            | None -> return! failed raw missingMessage
 
             | Some value ->
-                let present: Field<'raw> =
-                    {
-                        Id = raw.Id
-                        Span = raw.Span
-                        Value = value
-                    }
+                let present: Field<'raw> = {
+                    Id = raw.Id
+                    Span = raw.Span
+                    Value = value
+                }
 
-                return!
-                    validatePresent present
+                return! validatePresent present
         }
 
     let requiredField
@@ -78,15 +69,13 @@ module AcseField =
         : Validation<Field<'valid>> =
 
         validator {
-            let! valid =
-                required missingMessage validatePresent raw
+            let! valid = required missingMessage validatePresent raw
 
-            return
-                {
-                    Id = raw.Id
-                    Span = raw.Span
-                    Value = valid
-                }
+            return {
+                Id = raw.Id
+                Span = raw.Span
+                Value = valid
+            }
         }
 
     let defaulted
@@ -98,22 +87,18 @@ module AcseField =
 
         validator {
             match raw.Value with
-            | None ->
-                return defaultValue
+            | None -> return defaultValue
 
             | Some value ->
-                let present: Field<'raw> =
-                    {
-                        Id = raw.Id
-                        Span = raw.Span
-                        Value = value
-                    }
+                let present: Field<'raw> = {
+                    Id = raw.Id
+                    Span = raw.Span
+                    Value = value
+                }
 
-                let! valid =
-                    validatePresent present
+                let! valid = validatePresent present
 
-                do!
-                    PresenceDiagnostic.emit raw presenceDiagnostic
+                do! PresenceDiagnostic.emit raw presenceDiagnostic
 
                 return valid
         }
@@ -126,13 +111,11 @@ module AcseField =
         : Validation<Field<'valid>> =
 
         validator {
-            let! valid =
-                defaulted defaultValue presenceDiagnostic validatePresent raw
+            let! valid = defaulted defaultValue presenceDiagnostic validatePresent raw
 
-            return
-                {
-                    Id = raw.Id
-                    Span = raw.Span
-                    Value = valid
-                }
+            return {
+                Id = raw.Id
+                Span = raw.Span
+                Value = valid
+            }
         }

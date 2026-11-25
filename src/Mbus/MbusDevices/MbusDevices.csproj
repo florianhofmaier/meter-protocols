@@ -1,19 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <RootNamespace>Mbus</RootNamespace>
+        <RootNamespace>Metering.Mbus</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\PublicTypes\PublicTypes.fsproj" />
       <ProjectReference Include="..\Devices\Devices.fsproj" />
+      <ProjectReference Include="..\Codec\Codec.fsproj" />
+      <ProjectReference Include="..\PublicTypes\PublicTypes.fsproj" />
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="FSharp.Core" Version="10.1.201" />
+        <PackageReference Include="FSharp.Core" Version="10.1.201" />
     </ItemGroup>
 
 </Project>

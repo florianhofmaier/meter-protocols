@@ -1,0 +1,68 @@
+= ADR 0005: Austauschbarer Protocol Inspector und Analysevertrag
+
+Status:: Accepted
+Datum:: 2026-10-17
+Ergänzt:: xref:0004-layer-codecs-and-protocol-analyzers.adoc[ADR 0004]
+
+== Kontext
+
+Telegramme sollen interaktiv untersucht und ihre Struktur dokumentiert werden.
+Die erste Oberfläche ist React/TypeScript; eine spätere Desktopoberfläche soll
+dieselben Analyseergebnisse verwenden können. Das Ziel umfasst neben M-Bus auch
+DLMS/COSEM. Die bestehenden protokollspezifischen Analyzer behalten ihre Verantwortung.
+
+== Entscheidung
+
+* `src/Apps/ProtocolInspector/Client` enthält React/TypeScript und lokale Bedienzustände.
+* `src/Apps/ProtocolInspector/Server` ist der ASP.NET-Core-Host und registriert Adapter.
+* `src/Analysis` definiert einen UI- und HTTP-unabhängigen Bericht und den Application-Service.
+* `src/Mbus/AnalysisAdapter` projiziert den bestehenden M-Bus-Bericht in diesen Vertrag.
+
+Der Bericht besitzt Schema-Version, Protokollbeschreibung, Sources, Feldbaum,
+geprüfte Darstellungswerte, Diagnosen und Schritte. Parsed/Incomplete-Felder und
+Succeeded/Failed/Blocked-Schritte sind getrennte Varianten. Feld- und Source-IDs
+gelten innerhalb des jeweiligen Berichts. Geprüfte Werte werden als beschriftete
+Texte übertragen, damit exakte große Zahlen nicht durch JavaScript-Zahlen verändert werden.
+
+Eine optionale Nachrichtenidentität enthält Dienstname, Beschreibung, Richtung,
+Normverweis und typbestimmende Feld-ID. Der Protokollkern identifiziert den Dienst;
+der Adapter projiziert ihn in den neutralen Vertrag. Die Identität ist unabhängig
+von vollständiger Nachrichtenunterstützung und Prüfsummengültigkeit. Ältere Berichte
+ohne diese optionale Erweiterung bleiben mit Schema-Version 1 lesbar; inkompatible
+Vertragsänderungen erfordern eine neue Version.
+
+Der Application-Service erkennt Textdarstellungen von Bytes und lässt registrierte
+Adapter mögliche Interpretationen bewerten. Signaturen erzeugen lediglich Kandidaten;
+das Ranking berücksichtigt anschließend die tatsächlichen Parser-/Validator-Ergebnisse.
+Die Einstufung ist eine Heuristik über implementierte Einstiege, keine Wahrscheinlichkeit
+und keine allgemeine automatische Protokollidentifikation. Mehrdeutigkeit bleibt sichtbar.
+
+Ein Protokolladapter kennt seinen Einstieg und fachliche Erklärungsmetadaten. Er
+verwendet bestehende Parser/Validatoren/Protection und dupliziert deren Prüfung nicht.
+Es gibt keine gemeinsame Protokoll-Layer-Union. Die UI benötigt keine M-Bus-spezifischen
+Matches zur Interpretation von Feldern oder zur Fortsetzung nach Fehlern.
+
+Eine Desktopoberfläche kann den Application-Service direkt oder per HTTP aufrufen.
+JSON dient Transport und Persistenz. Gespeicherte Berichte sind unabhängig von einer
+laufenden Analyse lesbar. HTML-Export ist eine Darstellung desselben Berichts.
+
+== Implementierungsstand und Grenzen
+
+Die erste Umsetzung besitzt einen Adapter für ein einzelnes wired M-Bus-Frame,
+die React-Oberfläche sowie einen lokalen HTTP-Host. DLMS-Analyzer, Wireless-Einstiege,
+Frame-Streams und direkte APL-/TPL-Einstiege sind nicht implementiert. Der Host stellt
+keine externen Schlüssel bereit; der vorhandene Analyzer erhält seine expliziten
+Protection-Fehler. Erklärungsmetadaten decken zentrale Frame-/Record-Felder ab;
+fehlende Metadaten werden ausdrücklich kenntlich gemacht.
+
+Das bisherige native M-Bus-JSON/XML-Exportformat bleibt bestehen. Der neue UI-Vertrag
+ist eine eigene Projektion und erbt interne F#-Union-/Enum-Namen nicht als Strukturvertrag.
+Die dargestellten Werte können weiterhin fachliche Namen aus dem Analyzer enthalten.
+Erfolgreich validierte Data-Records werden bei übereinstimmender Record-Anzahl in
+Parserreihenfolge den Record-/DIB-/VIB-/Datenfeldern zugeordnet; Idle-Filler erzeugen
+keinen Datenwert. Bei einer abweichenden Projektionsform wird keine solche Zuordnung
+erfunden. Die tatsächliche Byteinterpretation bleibt im Protokoll-Analyzer.
+
+Tests: `src/Analysis.Tests` prüft Eingaben, Ranking und den echten Adapter;
+`Client/src/contracts.test.ts` prüft Feldzuordnung, Import und Dokumentexport.
+Diese Nachweise sind keine zusätzliche vollständige Protokoll-Konformitätsaussage.

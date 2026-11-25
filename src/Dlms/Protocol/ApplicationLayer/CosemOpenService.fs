@@ -4,19 +4,17 @@ open Metering.Dlms.Protocol.Acse.Aarq
 open Metering.Dlms.Protocol.Acse.Fields
 open Metering.Dlms.Protocol.Xdlms
 
-type CosemOpenIndication =
-    {
-        Address : CosemAddress
-        Aarq : AarqValidatedFields
-        InitiateRequest : InitiateRequestValidatedFields
-    }
+type CosemOpenIndication = {
+    Address: CosemAddress
+    Aarq: AarqValidatedFields
+    InitiateRequest: InitiateRequestValidatedFields
+}
 
-type CosemOpenAccept =
-    {
-        Address : CosemAddress
-        ApplicationContextName : ApplicationContextName
-        InitiateResponse : InitiateResponseValidatedFields
-    }
+type CosemOpenAccept = {
+    Address: CosemAddress
+    ApplicationContextName: ApplicationContextName
+    InitiateResponse: InitiateResponseValidatedFields
+}
 
 type CosemOpenRejectReason =
     | ApplicationContextNameNotSupported
@@ -25,11 +23,10 @@ type CosemOpenRejectReason =
     | XdlmsContextNotAccepted
     | UserNotKnown
 
-type CosemOpenReject =
-    {
-        Address : CosemAddress
-        Reason : CosemOpenRejectReason
-    }
+type CosemOpenReject = {
+    Address: CosemAddress
+    Reason: CosemOpenRejectReason
+}
 
 type CosemOpenResponse =
     | Accept of CosemOpenAccept

@@ -4,8 +4,7 @@ open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 
-type ProtocolVersion =
-    | Version1
+type ProtocolVersion = | Version1
 
 module ProtocolVersion =
 
@@ -14,16 +13,10 @@ module ProtocolVersion =
         && bits.Payload.Length = 1
         && bits.Payload.Span[0] = 0x80uy
 
-    let validateValue
-        (raw: Field<Ber.BitString>)
-        : Validation<ProtocolVersion> =
+    let validateValue (raw: Field<Ber.BitString>) : Validation<ProtocolVersion> =
 
         validator {
-            do!
-                ensure
-                    raw
-                    "unsupported protocol-version value"
-                    (isVersion1 raw.Value)
+            do! ensure raw "unsupported protocol-version value" (isVersion1 raw.Value)
 
             return Version1
         }

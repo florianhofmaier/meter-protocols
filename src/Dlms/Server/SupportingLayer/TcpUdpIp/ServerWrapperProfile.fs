@@ -6,23 +6,16 @@ open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol.ApplicationLayer
 open Metering.Dlms.Protocol.SupportingLayer.TcpUdpIp
 
-let toXxDataIndication
-    (raw: Field<WrapperPduRaw>)
-    : Validation<XxDataIndication> =
+let toXxDataIndication (raw: Field<WrapperPduRaw>) : Validation<XxDataIndication> =
 
     validator {
-        let! pdu =
-            WrapperPdu.fromRaw raw
+        let! pdu = WrapperPdu.validate raw
 
         let! clientSap =
-            Validation.parsed
-                raw.Value.SourceWrapperPort
-                WrapperClientSap.fromWPort
+            Validation.parsed raw.Value.SourceWrapperPort WrapperClientSap.fromWPort
 
         and! serverSap =
-            Validation.parsed
-                raw.Value.DestinationWrapperPort
-                WrapperServerSap.fromWPort
+            Validation.parsed raw.Value.DestinationWrapperPort WrapperServerSap.fromWPort
 
         return {
             Payload = {
@@ -37,19 +30,12 @@ let toXxDataIndication
         }
     }
 
-let fromXxDataRequest
-    (request: XxDataRequest)
-    : WrapperPdu =
+let fromXxDataRequest (request: XxDataRequest) : WrapperPdu =
 
     {
-        SourceWrapperPort =
-            request.Address.ServerSap
-            |> WrapperServerSap.toWPort
+        SourceWrapperPort = request.Address.ServerSap |> WrapperServerSap.toWPort
 
-        DestinationWrapperPort =
-            request.Address.ClientSap
-            |> WrapperClientSap.toWPort
+        DestinationWrapperPort = request.Address.ClientSap |> WrapperClientSap.toWPort
 
-        Data =
-            request.Payload
+        Data = request.Payload
     }

@@ -1,5 +1,8 @@
 namespace Metering.Mbus.Protocol.Frames.TransportLayer
 
+open Metering.Common.BaseWriters.Core
+open Metering.Common.BaseWriters.BinaryWriters
+
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
@@ -7,9 +10,7 @@ open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Validators.Core
 
-type ConfigurationFieldBitsRaw =
-    private
-        ConfigurationFieldBits of uint16
+type ConfigurationFieldBitsRaw = private ConfigurationFieldBits of uint16
 
 type ConfigurationFieldRaw =
     | Mode0Raw of Field<ConfigurationFieldBitsRaw>
@@ -19,10 +20,8 @@ module ConfigurationFieldBitsRaw =
 
     let value (ConfigurationFieldBits v) = v
 
-    let parse : Parser<Field<ConfigurationFieldBitsRaw>> =
-        parseField
-            "Configuration Field"
-            parseU16LittleEndian
+    let parse: Parser<Field<ConfigurationFieldBitsRaw>> =
+        parseField "Configuration Field" parseU16LittleEndian
         |>> Field.map ConfigurationFieldBits
 
 module ConfigurationFieldRaw =
@@ -33,97 +32,129 @@ module ConfigurationFieldRaw =
         | Mode5Raw bits -> bits
 
     let value cnf =
-        cnf
-        |> bits
-        |> _.Value
-        |> ConfigurationFieldBitsRaw.value
+        cnf |> bits |> _.Value |> ConfigurationFieldBitsRaw.value
 
-    let parse : Parser<Field<ConfigurationFieldRaw>> =
+    let parse: Parser<Field<ConfigurationFieldRaw>> =
         parser {
             let! bits = ConfigurationFieldBitsRaw.parse
 
-            let value =
-                bits.Value
-                |> ConfigurationFieldBitsRaw.value
+            let value = bits.Value |> ConfigurationFieldBitsRaw.value
 
             match Mode.tryMap value with
-            | Some Mode.Mode0 ->
-                return bits |> Field.map (fun _ -> Mode0Raw bits)
+            | Some Mode.Mode0 -> return bits |> Field.map (fun _ -> Mode0Raw bits)
 
-            | Some Mode.Mode5 ->
-                return bits |> Field.map (fun _ -> Mode5Raw bits)
+            | Some Mode.Mode5 -> return bits |> Field.map (fun _ -> Mode5Raw bits)
 
             | None ->
                 let mode = Mode.rawValue value |> byte
                 return! failBefore 2 $"Unsupported security mode {mode}."
         }
 
-module BitFields =
+/// H subfield: one-bit hop counter; EN 13757-7:2018, 7.7.1.
+[<RequireQualifiedAccess>]
+type HopCounter =
+    | Zero
+    | One
 
-    let private maskHop = 0x1us
-    let private maskRepeaterAccess = 0x2us
-    let private maskSynchronized = 0x20us
-    let private maskAccessibility = 0x40us
-    let private maskBidirectionalCommunication = 0x80us
+module HopCounter =
+    let ofConfigurationBits bits =
+        if bits &&& 0x0001us = 0us then
+            HopCounter.Zero
+        else
+            HopCounter.One
 
-    let private map mask cnf =
-        cnf &&& mask <> 0us
+    let toConfigurationBits =
+        function
+        | HopCounter.Zero -> 0us
+        | HopCounter.One -> 0x0001us
 
-    let mapHopCounter cnf =
-        map maskHop cnf
-
-    let mapRepeaterAccess cnf =
-        map maskRepeaterAccess cnf
-
-    let mapSynchronized cnf =
-        map maskSynchronized cnf
-
-    let mapAccessibility cnf =
-        map maskAccessibility cnf
-
-    let mapBidirectionalCommunication cnf =
-        map maskBidirectionalCommunication cnf
+/// R subfield; reserved for message repetition, cleared on wired M-Bus.
+[<RequireQualifiedAccess>]
+type RepeaterAccess =
+    | NotSet
+    | Set
 
 module RepeaterAccess =
+    let ofConfigurationBits bits =
+        if bits &&& 0x0002us = 0us then
+            RepeaterAccess.NotSet
+        else
+            RepeaterAccess.Set
 
-    let private mask = 0x2us
+    let toConfigurationBits =
+        function
+        | RepeaterAccess.NotSet -> 0us
+        | RepeaterAccess.Set -> 0x0002us
 
-    let map cnf =
-        (cnf &&& mask) <> 0us
+/// S subfield: declaration of a synchronized transmission.
+[<RequireQualifiedAccess>]
+type Synchronization =
+    | NotSynchronized
+    | Synchronized
 
-module Synchronized =
+module Synchronization =
+    let ofConfigurationBits bits =
+        if bits &&& 0x2000us = 0us then
+            Synchronization.NotSynchronized
+        else
+            Synchronization.Synchronized
 
-    let private mask = 0x20us
+    let toConfigurationBits =
+        function
+        | Synchronization.NotSynchronized -> 0us
+        | Synchronization.Synchronized -> 0x2000us
 
-    let map cnf =
-        (cnf &&& mask) <> 0us
+/// Joint B/A subfields: meter accessibility according to EN 13757-7:2018, Table 23.
+[<RequireQualifiedAccess>]
+type Accessibility =
+    | NoAccessWindow
+    | BidirectionalAccessWithoutWindow
+    | ShortAccessWindow
+    | UnlimitedAccess
 
 module Accessibility =
+    let ofConfigurationBits bits =
+        match bits &&& 0xC000us with
+        | 0x0000us -> Accessibility.NoAccessWindow
+        | 0x4000us -> Accessibility.BidirectionalAccessWithoutWindow
+        | 0x8000us -> Accessibility.ShortAccessWindow
+        | _ -> Accessibility.UnlimitedAccess
 
-    let private mask = 0x40us
+    let toConfigurationBits =
+        function
+        | Accessibility.NoAccessWindow -> 0x0000us
+        | Accessibility.BidirectionalAccessWithoutWindow -> 0x4000us
+        | Accessibility.ShortAccessWindow -> 0x8000us
+        | Accessibility.UnlimitedAccess -> 0xC000us
 
-    let map cnf =
-        (cnf &&& mask) <> 0us
-
-type ConfigurationFieldMode0 =
-    {
-        HopCounter: bool
-        RepeaterAccess: bool
-        ContentOfMsg: ContentOfMessage
-        Mode: Mode
-        Synchronized: bool
-        Accessibility: bool
-        BidirectionalCommunication: bool
-    }
+type ConfigurationFieldMode0 = {
+    HopCounter: HopCounter
+    RepeaterAccess: RepeaterAccess
+    ContentOfMsg: ContentOfMessage
+    Synchronized: Synchronization
+    Accessibility: Accessibility
+}
 
 module ConfigurationFieldMode0 =
 
-    let fromRaw
-        (raw: Field<ConfigurationFieldBitsRaw>)
-        : Validation<ConfigurationFieldMode0> =
+    let standardData: ConfigurationFieldMode0 = {
+        HopCounter = HopCounter.Zero
+        RepeaterAccess = RepeaterAccess.NotSet
+        ContentOfMsg = ContentOfMessage.StandardData
+        Synchronized = Synchronization.NotSynchronized
+        Accessibility = Accessibility.NoAccessWindow
+    }
+
+    let validate (raw: Field<ConfigurationFieldBitsRaw>) : Validation<ConfigurationFieldMode0> =
 
         validator {
             let cnf = ConfigurationFieldBitsRaw.value raw.Value
+
+            let! () =
+                ensure
+                    raw
+                    "Expected configuration security mode 0."
+                    (Mode.tryMap cnf = Some Mode.Mode0)
 
             let! cc =
                 match ContentOfMessage.tryMap cnf with
@@ -131,55 +162,86 @@ module ConfigurationFieldMode0 =
                 | None -> failed raw "Invalid ContentOfMessage"
 
             return {
-                HopCounter = BitFields.mapHopCounter cnf
-                RepeaterAccess = BitFields.mapRepeaterAccess cnf
+                HopCounter = HopCounter.ofConfigurationBits cnf
+                RepeaterAccess = RepeaterAccess.ofConfigurationBits cnf
                 ContentOfMsg = cc
-                Mode = Mode.Mode0
-                Synchronized = BitFields.mapSynchronized cnf
-                Accessibility = BitFields.mapAccessibility cnf
-                BidirectionalCommunication = BitFields.mapBidirectionalCommunication cnf
+                Synchronized = Synchronization.ofConfigurationBits cnf
+                Accessibility = Accessibility.ofConfigurationBits cnf
             }
         }
 
-type ConfigurationFieldMode5 =
-    {
-        HopCounter: bool
-        RepeaterAccess: bool
-        ContentOfMsg: ContentOfMessage
-        NumOfEncryptedBlocks: NumberOfEncryptedBlocks
-        Mode: Mode
-        Synchronized: bool
-        Accessibility: bool
-        BidirectionalCommunication: bool
-    }
+    let write (cnf: ConfigurationFieldMode0) : Writer<unit> =
+        let content =
+            match cnf.ContentOfMsg with
+            | StandardData -> 0us
+            | StaticMessage -> 8us
+
+        let bits =
+            (0us <<< 8)
+            ||| content
+            ||| HopCounter.toConfigurationBits cnf.HopCounter
+            ||| RepeaterAccess.toConfigurationBits cnf.RepeaterAccess
+            ||| Synchronization.toConfigurationBits cnf.Synchronized
+            ||| Accessibility.toConfigurationBits cnf.Accessibility
+
+        writeU16LittleEndian bits
+
+type ConfigurationFieldMode5 = {
+    HopCounter: HopCounter
+    RepeaterAccess: RepeaterAccess
+    ContentOfMsg: ContentOfMessage
+    NumOfEncryptedBlocks: NumberOfEncryptedBlocks
+    Synchronized: Synchronization
+    Accessibility: Accessibility
+}
 
 module ConfigurationFieldMode5 =
 
-    let fromRaw
+    let validate
         (raw: Field<ConfigurationFieldBitsRaw>)
         : Validation<Field<ConfigurationFieldMode5>> =
 
         validator {
             let cnf = ConfigurationFieldBitsRaw.value raw.Value
 
+            let! () =
+                ensure
+                    raw
+                    "Expected configuration security mode 5."
+                    (Mode.tryMap cnf = Some Mode.Mode5)
+
             let! cc =
                 match ContentOfMessage.tryMap cnf with
                 | Some c -> passed c
                 | None -> failed raw "Invalid ContentOfMessage"
 
-            let encryptedLength =
-                NumberOfEncryptedBlocks.map cnf
+            let encryptedLength = NumberOfEncryptedBlocks.map cnf
 
             return
                 raw
                 |> Field.withValue {
-                    HopCounter = BitFields.mapHopCounter cnf
-                    RepeaterAccess = BitFields.mapRepeaterAccess cnf
+                    HopCounter = HopCounter.ofConfigurationBits cnf
+                    RepeaterAccess = RepeaterAccess.ofConfigurationBits cnf
                     ContentOfMsg = cc
                     NumOfEncryptedBlocks = encryptedLength
-                    Mode = Mode.Mode5
-                    Synchronized = BitFields.mapSynchronized cnf
-                    Accessibility = BitFields.mapAccessibility cnf
-                    BidirectionalCommunication = BitFields.mapBidirectionalCommunication cnf
+                    Synchronized = Synchronization.ofConfigurationBits cnf
+                    Accessibility = Accessibility.ofConfigurationBits cnf
                 }
         }
+
+    let write (cnf: ConfigurationFieldMode5) : Writer<unit> =
+        let content =
+            match cnf.ContentOfMsg with
+            | StandardData -> 0us
+            | StaticMessage -> 8us
+
+        let bits =
+            (5us <<< 8)
+            ||| content
+            ||| HopCounter.toConfigurationBits cnf.HopCounter
+            ||| RepeaterAccess.toConfigurationBits cnf.RepeaterAccess
+            ||| Synchronization.toConfigurationBits cnf.Synchronized
+            ||| Accessibility.toConfigurationBits cnf.Accessibility
+
+        let blocks = NumberOfEncryptedBlocks.value cnf.NumOfEncryptedBlocks
+        writeU16LittleEndian (bits ||| (uint16 blocks <<< 4))

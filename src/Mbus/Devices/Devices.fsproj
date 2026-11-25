@@ -1,19 +1,25 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <RootNamespace>Mbus.Devices</RootNamespace>
+    <RootNamespace>Metering.Mbus.Devices</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="DeviceSelection.fs" />
+    <Compile Include="Readout.fs" />
     <Compile Include="DeviceLogic.fs" />
     <Compile Include="DeviceRuntime.fs" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Common\ByteReaders\ByteReaders.csproj" />
+    <ProjectReference Include="..\..\Common\Decoders\Decoders.fsproj" />
+    <ProjectReference Include="..\..\Common\Parsers\Parsers.fsproj" />
+    <ProjectReference Include="..\Protocol\Protocol.fsproj" />
+    <ProjectReference Include="..\Codec\Codec.fsproj" />
     <ProjectReference Include="..\..\Common\Io\Io.fsproj" />
+
   </ItemGroup>
 
 </Project>

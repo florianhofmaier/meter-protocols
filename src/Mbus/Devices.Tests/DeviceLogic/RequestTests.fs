@@ -1,75 +1,85 @@
-module Devices.Tests.RequestTests
+module Metering.Mbus.Devices.Tests.RequestTests
 
-open Mbus.Devices
-open Mbus.Frames
 open Xunit
 open FsUnit.Xunit
-
-let createAddress id mfr version deviceType =
-    match MbusAddress.create id mfr version deviceType with
-    | Ok addr -> addr
-    | Error msg -> failwith $"Failed to create address: {msg}"
-
-let createTestState prmAdr secAdr =
-    DeviceLogic.initialState prmAdr secAdr
-
-let testAddress = createAddress 12345678 "GWF" 60 MbusDeviceType.WaterMeter
-let testUserData = []
+open Metering.Mbus.Devices
+open Metering.Mbus.Protocol.Frames.DeviceIdentification
+open Metering.Common.Decoding.Decoders.Core
+open Metering.Common.Decoding.Validators.Core
+open Metering.Mbus.Protocol.Records
+open Metering.Mbus.Protocol.Messages
+open Metering.Mbus.Protocol.Frames.TransportLayer
+open Metering.Mbus.Devices.Tests.DeviceTestSupport
 
 [<Fact>]
-let ``handleFrame when ReqUd2 to primary address should respond with user data`` () =
-    let state = createTestState 0x05uy testAddress
-    let frame = Frame.ShortFrame { CField = 0x5Buy; PrmAdr = 0x05uy }
+let ``class two requests use the configured address or selected secondary address`` () =
+    for selected, destination, responds in
+        [
+            false, 5uy, true
+            true, 5uy, true
+            false, 6uy, false
+            false, 0xFDuy, false
+            true, 0xFDuy, true
+        ] do
+        let before = {
+            initial () with
+                IsSelected = selected
+        }
 
-    let _newState, action = DeviceLogic.handleFrame state testUserData frame
+        let after, action =
+            shortFrame 0x5Buy destination
+            |> frame
+            |> DeviceLogic.handleFrame before (userData [])
+
+        if responds then
+            AccessNumber.value after.AccessNumber |> should equal 1uy
+        else
+            after |> should equal before
+
+        match action with
+        | SendUserData response when responds ->
+            IdNumber.value response.MeterAddress.IdNum |> should equal 12345678u
+            response.UserData |> Seq.isEmpty |> should be True
+            response.Status |> should equal before.Status
+        | NoAction when not responds -> ()
+        | actual -> failwith $"Unexpected action {actual}"
+
+[<Fact>]
+let ``unconfigured device responds only to its own address before selection`` () =
+    let state = DeviceLogic.initialState PrimaryAddress.Unconfigured identity
+
+    let _, action =
+        shortFrame 0x5Buy 0uy |> frame |> DeviceLogic.handleFrame state (userData [])
 
     match action with
-    | SendFrame (Frame.LongFrame {
-        CField = 0x08uy
-        PrmAdr = 0x05uy
-        Tpl = Tpl.Long {
-            Func = TplLongFunc.Rsp
-            Ala = {
-                IdNumber = 12345678
-                Mfr = "GWF"
-                Version = 60
-                DeviceType = MbusDeviceType.WaterMeter }
-            Acc = 0uy
+    | SendUserData _ -> ()
+    | actual -> failwith $"Expected response, got {actual}"
+
+[<Fact>]
+let ``response preserves supplied records and status`` () =
+    let raw =
+        run (Decoder.parseValue RecordRaw.parse) [| 0x04uy; 0x13uy; 0x39uy; 0x30uy; 0uy; 0uy |]
+
+    let record =
+        match RecordRsp.validate raw with
+        | Passed(RecordRsp.Data record, _) -> record
+        | actual -> failwith $"Expected valid test record, got {actual}"
+
+    let state = {
+        initial () with
             Status = {
-                ApplicationError = MbusApplicationError.NoError
-                PowerLow = false
-                TemporaryError = false
-                PermanentError = false }
-            Cnf = 0us }
-        Apl = Apl.RspUdData { DataRecords = []; MfrSpecificData = None; IsMoreDataInNextTelegram = false }
-    }) -> ()
-    | _ -> failwith "Expected SendFrame with LongFrame containing RSP_UD response"
+                (initial ()).Status with
+                    PowerLow = true
+            }
+    }
 
-[<Fact>]
-let ``handleFrame when ReqUd2 to different primary address should not respond`` () =
-    let state = createTestState 0x05uy testAddress
-    let frame = Frame.ShortFrame { CField = 0x5Buy; PrmAdr = 0x06uy }
-
-    let _newState, action = DeviceLogic.handleFrame state testUserData frame
-
-    action |> should equal NoAction
-
-[<Fact>]
-let ``handleFrame when ReqUd2 to 0xFD and device is selected should respond`` () =
-    let state = { createTestState 0x05uy testAddress with IsSelected = true }
-    let frame = Frame.ShortFrame { CField = 0x5Buy; PrmAdr = 0xFDuy }
-
-    let _newState, action = DeviceLogic.handleFrame state testUserData frame
+    let _, action =
+        shortFrame 0x5Buy 5uy
+        |> frame
+        |> DeviceLogic.handleFrame state (userData [ record ])
 
     match action with
-    | SendFrame (Frame.LongFrame _) -> ()
-    | _ -> failwith "Expected SendFrame with LongFrame"
-
-[<Fact>]
-let ``handleFrame when ReqUd2 to 0xFD and device is not selected should not respond`` () =
-    let state = createTestState 0x05uy testAddress
-    let frame = Frame.ShortFrame { CField = 0x5Buy; PrmAdr = 0xFDuy }
-
-    let _newState, action = DeviceLogic.handleFrame state testUserData frame
-
-    action |> should equal NoAction
+    | SendUserData response ->
+        response.UserData |> Seq.toList |> should equal [ record ]
+        response.Status |> should equal state.Status
+    | actual -> failwith $"Expected user-data response, got {actual}"

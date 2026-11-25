@@ -12,32 +12,24 @@ open Metering.Dlms.Protocol.Acse.Aarq
 
 module OpenRequestRawFields =
     let parseBody: Parser<OpenRequestRawFields> =
-        AarqRaw.parseBody
-        |>> OpenRequestRawFields.Aarq
+        AarqRaw.parseBody |>> OpenRequestRawFields.Aarq
 
-type OpenRequestValidatedFields =
-    {
-        Aarq : AarqValidatedFields
-        InitiateRequest : OpenRequestUserInformation
-    }
+type OpenRequestValidatedFields = {
+    Aarq: AarqValidatedFields
+    InitiateRequest: OpenRequestUserInformation
+}
 
 module OpenRequestValidatedFields =
 
-    let fromRaw
-        (raw: Field<OpenRequestRawFields>)
-        : Validation<OpenRequestValidatedFields> =
+    let validate (raw: Field<OpenRequestRawFields>) : Validation<OpenRequestValidatedFields> =
 
         validator {
-            let! aarq =
-                Validation.parsed
-                    raw
-                    AarqValidatedFields.validate
+            let! aarq = Validation.parsed raw AarqValidatedFields.validate
 
 
             match raw.UserInformation with
             | Xdlms.XdlmsApduRaw.InitiateRequest initiateRaw ->
-                let! initiate =
-                    InitiateRequestValidatedFields.fromRaw initiateRaw
+                let! initiate = InitiateRequestValidatedFields.validate initiateRaw
 
                 return {
                     Aarq = aarq
@@ -47,16 +39,15 @@ module OpenRequestValidatedFields =
             | _ ->
                 return!
                     validationError
-                        ["COSEM-OPEN"; "AARQ"; "user-information"]
+                        [ "COSEM-OPEN"; "AARQ"; "user-information" ]
                         "COSEM-OPEN.request user-information must resolve to initiateRequest"
         }
 
-type LogicalNameConformance =
-    private LogicalNameConformance of Conformance
+type LogicalNameConformance = private LogicalNameConformance of Conformance
 
 module LogicalNameConformance =
     let fromConformance (c: Conformance) : Validation<LogicalNameConformance> =
-        validationOk(LogicalNameConformance c)
+        validationOk (LogicalNameConformance c)
 
     let private value (LogicalNameConformance c) = c
 
@@ -93,14 +84,11 @@ module LogicalNameConformance =
     let dataNotification x =
         x |> value |> Conformance.dataNotification
 
-    let access x =
-        x |> value |> Conformance.access
+    let access x = x |> value |> Conformance.access
 
-    let get x =
-        x |> value |> Conformance.get
+    let get x = x |> value |> Conformance.get
 
-    let set x =
-        x |> value |> Conformance.set
+    let set x = x |> value |> Conformance.set
 
     let selectiveAccess x =
         x |> value |> Conformance.selectiveAccess
@@ -108,17 +96,15 @@ module LogicalNameConformance =
     let eventNotification x =
         x |> value |> Conformance.eventNotification
 
-    let action x =
-        x |> value |> Conformance.action
+    let action x = x |> value |> Conformance.action
 
 
-type LogicalNameNoCipheringInitiateRequest =
-    {
-        ResponseAllowed : ResponseAllowed
-        ProposedDlmsVersionNumber : DlmsVersionNumber
-        ProposedConformance : LogicalNameConformance
-        ClientMaxReceivePduSize : ClientMaxReceivePduSize
-    }
+type LogicalNameNoCipheringInitiateRequest = {
+    ResponseAllowed: ResponseAllowed
+    ProposedDlmsVersionNumber: DlmsVersionNumber
+    ProposedConformance: LogicalNameConformance
+    ClientMaxReceivePduSize: ClientMaxReceivePduSize
+}
 
 module LogicalNameNoCipheringInitiateRequest =
     let fromInitiateRequest
@@ -128,11 +114,10 @@ module LogicalNameNoCipheringInitiateRequest =
             do!
                 request.DedicatedKey
                 |> Validation.requireNone
-                    ["InitiateRequest"; "dedicated-key"]
+                    [ "InitiateRequest"; "dedicated-key" ]
                     "dedicated-key is not allowed in a no-ciphering application context"
 
-            let! conformance =
-                LogicalNameConformance.fromConformance request.ProposedConformance
+            let! conformance = LogicalNameConformance.fromConformance request.ProposedConformance
 
             return {
                 ResponseAllowed = request.ResponseAllowed
@@ -142,12 +127,11 @@ module LogicalNameNoCipheringInitiateRequest =
             }
         }
 
-type ShortNameConformance =
-    private ShortNameConformance of Conformance
+type ShortNameConformance = private ShortNameConformance of Conformance
 
 module ShortNameConformance =
     let fromConformance (c: Conformance) : Validation<ShortNameConformance> =
-        validationOk(ShortNameConformance c)
+        validationOk (ShortNameConformance c)
 
     let private value (ShortNameConformance c) = c
 
@@ -157,11 +141,9 @@ module ShortNameConformance =
     let generalBlockTransfer x =
         x |> value |> Conformance.generalBlockTransfer
 
-    let read x =
-        x |> value |> Conformance.read
+    let read x = x |> value |> Conformance.read
 
-    let write x =
-        x |> value |> Conformance.write
+    let write x = x |> value |> Conformance.write
 
     let unconfirmedWrite x =
         x |> value |> Conformance.unconfirmedWrite
@@ -187,76 +169,65 @@ module ShortNameConformance =
     let parameterizedAccess x =
         x |> value |> Conformance.parameterizedAccess
 
-type ClientSystemTitle =
-    private ClientSystemTitle of ReadOnlyMemory<byte>
+type ClientSystemTitle = private ClientSystemTitle of ReadOnlyMemory<byte>
 
 module ClientSystemTitle =
-    let value (ClientSystemTitle bytes) =
-        bytes
+    let value (ClientSystemTitle bytes) = bytes
 
     let private validate (bytes: ReadOnlyMemory<byte>) : Validation<ClientSystemTitle> =
         if bytes.Length = 8 then
-            validationOk(ClientSystemTitle bytes)
+            validationOk (ClientSystemTitle bytes)
         else
             validationError
-                ["AARQ"; "calling-AP-title"]
+                [ "AARQ"; "calling-AP-title" ]
                 $"client system title must be 8 octets, got {bytes.Length}"
 
     let fromApTitle apTitle : Validation<ClientSystemTitle> =
-        apTitle
-        |> ApTitle.value
-        |> Ber.OctetString.toBytes
-        |> validate
+        apTitle |> ApTitle.value |> Ber.OctetString.toBytes |> validate
 
 type ClientDigitalSignatureCertificate =
-    private ClientDigitalSignatureCertificate of ReadOnlyMemory<byte>
+    private | ClientDigitalSignatureCertificate of ReadOnlyMemory<byte>
 
 module ClientDigitalSignatureCertificate =
-    let value (ClientDigitalSignatureCertificate bytes) =
-        bytes
+    let value (ClientDigitalSignatureCertificate bytes) = bytes
 
-    let private validate (bytes: ReadOnlyMemory<byte>) : Validation<ClientDigitalSignatureCertificate> =
+    let private validate
+        (bytes: ReadOnlyMemory<byte>)
+        : Validation<ClientDigitalSignatureCertificate> =
         if bytes.Length = 0 then
             validationError
-                ["AARQ"; "calling-AE-qualifier"]
+                [ "AARQ"; "calling-AE-qualifier" ]
                 "client digital signature certificate must not be empty"
         else
-            validationOk(ClientDigitalSignatureCertificate bytes)
+            validationOk (ClientDigitalSignatureCertificate bytes)
 
     let fromAeQualifier (aeQualifier: AeQualifier) : Validation<ClientDigitalSignatureCertificate> =
-        aeQualifier
-            |> AeQualifier.value
-            |> Ber.OctetString.toBytes
-            |> validate
+        aeQualifier |> AeQualifier.value |> Ber.OctetString.toBytes |> validate
 
-type ClientUserIdentifier =
-    private ClientUserIdentifier of uint32
+type ClientUserIdentifier = private ClientUserIdentifier of uint32
 
 module ClientUserIdentifier =
-    let create value =
-        ClientUserIdentifier value
+    let create value = ClientUserIdentifier value
 
-    let value (ClientUserIdentifier value) =
-        value
+    let value (ClientUserIdentifier value) = value
 
     let fromInvocationIdentifier (identifier: InvocationIdentifier) =
-        identifier
-        |> InvocationIdentifier.value
-        |> create
+        identifier |> InvocationIdentifier.value |> create
 
-type LogicalNameNoCipheringOpenRequest =
-    {
-        ClientUserIdentifier : ClientUserIdentifier option
-        Authentication : Authentication
-        InitiateRequest : LogicalNameNoCipheringInitiateRequest
-    }
+type LogicalNameNoCipheringOpenRequest = {
+    ClientUserIdentifier: ClientUserIdentifier option
+    Authentication: Authentication
+    InitiateRequest: LogicalNameNoCipheringInitiateRequest
+}
 
 module LogicalNameNoCipheringOpenRequest =
-    let fromFields (aarq: AarqValidatedFields) (initiate: InitiateRequestValidatedFields) : Validation<
-                                                                                                LogicalNameNoCipheringOpenRequest
-                                                                                                > =
+    let fromFields
+        (aarq: AarqValidatedFields)
+        (initiate: InitiateRequestValidatedFields)
+        : Validation<LogicalNameNoCipheringOpenRequest> =
         validator {
             let! initiate = LogicalNameNoCipheringInitiateRequest.fromInitiateRequest initiate
+
             let userId =
                 aarq.CallingAeInvocationId
                 |> Option.map ClientUserIdentifier.fromInvocationIdentifier
@@ -268,22 +239,20 @@ module LogicalNameNoCipheringOpenRequest =
             }
         }
 
-type LogicalNameWithCipheringInitiateRequest =
-    {
-        DedicatedKey : DedicatedKey option
-        ResponseAllowed : ResponseAllowed
-        ProposedDlmsVersionNumber : DlmsVersionNumber
-        ProposedConformance : LogicalNameConformance
-        ClientMaxReceivePduSize : ClientMaxReceivePduSize
-    }
+type LogicalNameWithCipheringInitiateRequest = {
+    DedicatedKey: DedicatedKey option
+    ResponseAllowed: ResponseAllowed
+    ProposedDlmsVersionNumber: DlmsVersionNumber
+    ProposedConformance: LogicalNameConformance
+    ClientMaxReceivePduSize: ClientMaxReceivePduSize
+}
 
 module LogicalNameWithCipheringInitiateRequest =
     let fromInitiateRequest
         (request: InitiateRequestValidatedFields)
         : Validation<LogicalNameWithCipheringInitiateRequest> =
         validator {
-            let! conformance =
-                LogicalNameConformance.fromConformance request.ProposedConformance
+            let! conformance = LogicalNameConformance.fromConformance request.ProposedConformance
 
             return {
                 DedicatedKey = request.DedicatedKey
@@ -294,13 +263,12 @@ module LogicalNameWithCipheringInitiateRequest =
             }
         }
 
-type ShortNameNoCipheringInitiateRequest =
-    {
-        ResponseAllowed : ResponseAllowed
-        ProposedDlmsVersionNumber : DlmsVersionNumber
-        ProposedConformance : ShortNameConformance
-        ClientMaxReceivePduSize : ClientMaxReceivePduSize
-    }
+type ShortNameNoCipheringInitiateRequest = {
+    ResponseAllowed: ResponseAllowed
+    ProposedDlmsVersionNumber: DlmsVersionNumber
+    ProposedConformance: ShortNameConformance
+    ClientMaxReceivePduSize: ClientMaxReceivePduSize
+}
 
 module ShortNameNoCipheringInitiateRequest =
     let fromInitiateRequest
@@ -310,11 +278,10 @@ module ShortNameNoCipheringInitiateRequest =
             do!
                 request.DedicatedKey
                 |> Validation.requireNone
-                    ["InitiateRequest"; "dedicated-key"]
+                    [ "InitiateRequest"; "dedicated-key" ]
                     "dedicated-key is not allowed in a no-ciphering application context"
 
-            let! conformance =
-                ShortNameConformance.fromConformance request.ProposedConformance
+            let! conformance = ShortNameConformance.fromConformance request.ProposedConformance
 
             return {
                 ResponseAllowed = request.ResponseAllowed
@@ -324,22 +291,20 @@ module ShortNameNoCipheringInitiateRequest =
             }
         }
 
-type ShortNameWithCipheringInitiateRequest =
-    {
-        DedicatedKey : DedicatedKey option
-        ResponseAllowed : ResponseAllowed
-        ProposedDlmsVersionNumber : DlmsVersionNumber
-        ProposedConformance : ShortNameConformance
-        ClientMaxReceivePduSize : ClientMaxReceivePduSize
-    }
+type ShortNameWithCipheringInitiateRequest = {
+    DedicatedKey: DedicatedKey option
+    ResponseAllowed: ResponseAllowed
+    ProposedDlmsVersionNumber: DlmsVersionNumber
+    ProposedConformance: ShortNameConformance
+    ClientMaxReceivePduSize: ClientMaxReceivePduSize
+}
 
 module ShortNameWithCipheringInitiateRequest =
     let fromInitiateRequest
         (request: InitiateRequestValidatedFields)
         : Validation<ShortNameWithCipheringInitiateRequest> =
         validator {
-            let! conformance =
-                ShortNameConformance.fromConformance request.ProposedConformance
+            let! conformance = ShortNameConformance.fromConformance request.ProposedConformance
 
             return {
                 DedicatedKey = request.DedicatedKey
@@ -350,19 +315,17 @@ module ShortNameWithCipheringInitiateRequest =
             }
         }
 
-type private CipheredAarqClientFields =
-    {
-        ClientSystemTitle : ClientSystemTitle option
-        ClientDigitalSignatureCertificate : ClientDigitalSignatureCertificate option
-        ClientUserIdentifier : ClientUserIdentifier option
-    }
+type private CipheredAarqClientFields = {
+    ClientSystemTitle: ClientSystemTitle option
+    ClientDigitalSignatureCertificate: ClientDigitalSignatureCertificate option
+    ClientUserIdentifier: ClientUserIdentifier option
+}
 
 module private CipheredAarqClientFields =
     let fromAarqFields (aarq: AarqValidatedFields) : Validation<CipheredAarqClientFields> =
         validator {
             let! clientSystemTitle =
-                aarq.CallingApTitle
-                |> Validation.traverseOption ClientSystemTitle.fromApTitle
+                aarq.CallingApTitle |> Validation.traverseOption ClientSystemTitle.fromApTitle
 
             and! clientCertificate =
                 aarq.CallingAeQualifier
@@ -379,25 +342,23 @@ module private CipheredAarqClientFields =
             }
         }
 
-type LogicalNameWithCipheringOpenRequest =
-    {
-        ClientSystemTitle : ClientSystemTitle option
-        ClientDigitalSignatureCertificate : ClientDigitalSignatureCertificate option
-        ClientUserIdentifier : ClientUserIdentifier option
-        Authentication : Authentication
-        InitiateRequest : LogicalNameWithCipheringInitiateRequest
-    }
+type LogicalNameWithCipheringOpenRequest = {
+    ClientSystemTitle: ClientSystemTitle option
+    ClientDigitalSignatureCertificate: ClientDigitalSignatureCertificate option
+    ClientUserIdentifier: ClientUserIdentifier option
+    Authentication: Authentication
+    InitiateRequest: LogicalNameWithCipheringInitiateRequest
+}
 
 module LogicalNameWithCipheringOpenRequest =
-    let fromFields (aarq: AarqValidatedFields) (initiate: InitiateRequestValidatedFields) : Validation<
-                                                                                                LogicalNameWithCipheringOpenRequest
-                                                                                                > =
+    let fromFields
+        (aarq: AarqValidatedFields)
+        (initiate: InitiateRequestValidatedFields)
+        : Validation<LogicalNameWithCipheringOpenRequest> =
         validator {
-            let! initiate =
-                LogicalNameWithCipheringInitiateRequest.fromInitiateRequest initiate
+            let! initiate = LogicalNameWithCipheringInitiateRequest.fromInitiateRequest initiate
 
-            and! clientIdentity =
-                CipheredAarqClientFields.fromAarqFields aarq
+            and! clientIdentity = CipheredAarqClientFields.fromAarqFields aarq
 
             return {
                 ClientSystemTitle = clientIdentity.ClientSystemTitle
@@ -408,12 +369,11 @@ module LogicalNameWithCipheringOpenRequest =
             }
         }
 
-type ShortNameNoCipheringOpenRequest =
-    {
-        ClientUserIdentifier : ClientUserIdentifier option
-        Authentication : Authentication
-        InitiateRequest : ShortNameNoCipheringInitiateRequest
-    }
+type ShortNameNoCipheringOpenRequest = {
+    ClientUserIdentifier: ClientUserIdentifier option
+    Authentication: Authentication
+    InitiateRequest: ShortNameNoCipheringInitiateRequest
+}
 
 module ShortNameNoCipheringOpenRequest =
     let fromFields
@@ -421,8 +381,7 @@ module ShortNameNoCipheringOpenRequest =
         (initiate: InitiateRequestValidatedFields)
         : Validation<ShortNameNoCipheringOpenRequest> =
         validator {
-            let! initiate =
-                ShortNameNoCipheringInitiateRequest.fromInitiateRequest initiate
+            let! initiate = ShortNameNoCipheringInitiateRequest.fromInitiateRequest initiate
 
             let userId =
                 aarq.CallingAeInvocationId
@@ -435,25 +394,23 @@ module ShortNameNoCipheringOpenRequest =
             }
         }
 
-type ShortNameWithCipheringOpenRequest =
-    {
-        ClientSystemTitle : ClientSystemTitle option
-        ClientDigitalSignatureCertificate : ClientDigitalSignatureCertificate option
-        ClientUserIdentifier : ClientUserIdentifier option
-        Authentication : Authentication
-        InitiateRequest : ShortNameWithCipheringInitiateRequest
-    }
+type ShortNameWithCipheringOpenRequest = {
+    ClientSystemTitle: ClientSystemTitle option
+    ClientDigitalSignatureCertificate: ClientDigitalSignatureCertificate option
+    ClientUserIdentifier: ClientUserIdentifier option
+    Authentication: Authentication
+    InitiateRequest: ShortNameWithCipheringInitiateRequest
+}
 
 module ShortNameWithCipheringOpenRequest =
-    let fromFields (aarq: AarqValidatedFields) (initiate: InitiateRequestValidatedFields) : Validation<
-                                                                                                ShortNameWithCipheringOpenRequest
-                                                                                                > =
+    let fromFields
+        (aarq: AarqValidatedFields)
+        (initiate: InitiateRequestValidatedFields)
+        : Validation<ShortNameWithCipheringOpenRequest> =
         validator {
-            let! initiate =
-                ShortNameWithCipheringInitiateRequest.fromInitiateRequest initiate
+            let! initiate = ShortNameWithCipheringInitiateRequest.fromInitiateRequest initiate
 
-            and! clientIdentity =
-                CipheredAarqClientFields.fromAarqFields aarq
+            and! clientIdentity = CipheredAarqClientFields.fromAarqFields aarq
 
             return {
                 ClientSystemTitle = clientIdentity.ClientSystemTitle
@@ -471,7 +428,10 @@ type OpenRequest =
     | ShortNameWithCiphering of ShortNameWithCipheringOpenRequest
 
 module OpenRequest =
-    let fromFields (aarqFields: AarqValidatedFields) (initiateRequest: InitiateRequestValidatedFields) : Validation<OpenRequest> =
+    let fromFields
+        (aarqFields: AarqValidatedFields)
+        (initiateRequest: InitiateRequestValidatedFields)
+        : Validation<OpenRequest> =
         validator {
             match aarqFields.ApplicationContextName with
             | ApplicationContextName.LogicalNameNoCiphering ->
@@ -495,20 +455,15 @@ module OpenRequest =
                     |> Validation.map ShortNameWithCiphering
         }
 
-    let fromRaw (raw: OpenRequestRawFields) : Validation<OpenRequest> =
+    let validate (raw: OpenRequestRawFields) : Validation<OpenRequest> =
         match raw.UserInformation with
         | XdlmsApduRaw.InitiateRequest initiateRaw ->
-                validator {
-                    let! initiateRequest =
-                        InitiateRequestValidatedFields.fromRaw initiateRaw
+            validator {
+                let! initiateRequest = InitiateRequestValidatedFields.validate initiateRaw
 
-                    and! aarq =
-                        AarqValidatedFields.fromRaw raw.Aarq
+                and! aarq = AarqValidatedFields.validate raw.Aarq
 
-                    return! fromFields aarq initiateRequest
-                }
+                return! fromFields aarq initiateRequest
+            }
 
-        | _ ->
-            validationError
-                ["AARQ"; "user-information"]
-                "encrypted AARQ is not supported yet"
+        | _ -> validationError [ "AARQ"; "user-information" ] "encrypted AARQ is not supported yet"

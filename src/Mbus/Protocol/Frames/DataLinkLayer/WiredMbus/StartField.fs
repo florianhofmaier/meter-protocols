@@ -5,19 +5,15 @@ open Metering.Common.Decoding.Parsers.Binary
 open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 
-type StartFixedLength =
-    private StartFixedLength of unit
+type StartFixedLength = private StartFixedLength of unit
 
 module StartFixedLength =
 
-    let parse : Parser<Field<StartFixedLength>> =
-        parseField "Start Field" (expectU8 0x10uy)
-        |>> Field.map StartFixedLength
+    let parse: Parser<Field<StartFixedLength>> =
+        parseField "Start Field" (expectU8 0x10uy) |>> Field.map StartFixedLength
 
-type StartVariableLength =
-    private StartVariableLength of unit
+type StartVariableLength = private StartVariableLength of unit
 
 module StartVariableLength =
 
-    let parse : Parser<Field<Unit>> =
-        parseField "Start Field" (expectU8 0x68uy)
+    let parse: Parser<Field<Unit>> = parseField "Start Field" (expectU8 0x68uy)

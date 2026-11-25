@@ -1,5 +1,8 @@
 namespace Metering.Mbus.Protocol.Records.ValueInfoBlocks
 
+open Metering.Common.BaseWriters.Core
+open Metering.Common.BaseWriters.BinaryWriters
+
 open System
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
@@ -40,25 +43,19 @@ module ActionCode =
             0x0Buy, FreezeData
             0x0Cuy, AddToReadoutList
             0x0Duy, DeleteFromReadoutList
-            0xFFuy, Get
+            0x0Fuy, Get
         ]
 
-    let tryMap
-        (bytes: ReadOnlyMemory<byte>)
-        (pos: int)
-        : ActionCode option * int =
+    let tryMap (bytes: ReadOnlyMemory<byte>) (pos: int) : ActionCode option * int =
 
         if pos >= bytes.Length then
             None, pos
         else
-            match Map.tryFind bytes.Span[pos] table with
+            match Map.tryFind (bytes.Span[pos] &&& 0x7Fuy) table with
             | Some action -> Some action, pos + 1
             | None -> None, pos
 
-    let map
-        (infoBlock: Field<InfoBlockRaw>)
-        (pos: int)
-        : Validation<ActionCode> * int =
+    let map (infoBlock: Field<InfoBlockRaw>) (pos: int) : Validation<ActionCode> * int =
 
         let bytes = InfoBlockRaw.bytes infoBlock.Value
         let action, nextPos = tryMap bytes pos
@@ -67,5 +64,10 @@ module ActionCode =
         | Some value -> passed value, nextPos
         | None when pos < bytes.Length ->
             failed infoBlock $"Unknown action code 0x{bytes.Span[pos]:X2} at index {pos}", pos
-        | None ->
-            failed infoBlock $"Missing action code at index {pos}", pos
+        | None -> failed infoBlock $"Missing action code at index {pos}", pos
+
+    /// Writes the code without the enclosing VIB's extension bit.
+    let write (value: ActionCode) : Writer<unit> =
+        match table |> Map.toList |> List.tryFind (fun (_, v) -> v = value) with
+        | Some(code, _) -> writeU8 code
+        | None -> writerError "Unsupported ActionCode"

@@ -5,38 +5,36 @@ open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 open Metering.Dlms.Protocol.Acse.Fields
 
-type AarqValidatedFields =
-    {
-        ApplicationContextName : ApplicationContextName
+type AarqValidatedFields = {
+    ApplicationContextName: ApplicationContextName
 
-        CalledApTitle : ApTitle option
-        CalledAeQualifier : AeQualifier option
-        CalledApInvocationId : InvocationIdentifier option
-        CalledAeInvocationId : InvocationIdentifier option
+    CalledApTitle: ApTitle option
+    CalledAeQualifier: AeQualifier option
+    CalledApInvocationId: InvocationIdentifier option
+    CalledAeInvocationId: InvocationIdentifier option
 
-        CallingApTitle : ApTitle option
-        CallingAeQualifier : AeQualifier option
-        CallingApInvocationId : InvocationIdentifier option
-        CallingAeInvocationId : InvocationIdentifier option
+    CallingApTitle: ApTitle option
+    CallingAeQualifier: AeQualifier option
+    CallingApInvocationId: InvocationIdentifier option
+    CallingAeInvocationId: InvocationIdentifier option
 
-        SenderAcseRequirements : SenderAcseRequirements option
-        MechanismName : MechanismName option
-        CallingAuthenticationValue : AuthenticationValue option
+    SenderAcseRequirements: SenderAcseRequirements option
+    MechanismName: MechanismName option
+    CallingAuthenticationValue: AuthenticationValue option
 
-        UserInformation : Field<UserInformation>
-    }
+    UserInformation: Field<UserInformation>
+}
 
 module AarqValidatedFields =
 
-    let fromParsed
-        (raw: Field<AarqRaw>)
-        : Validation<AarqValidatedFields> =
+    let validate (raw: Field<AarqRaw>) : Validation<AarqValidatedFields> =
 
         validator {
             let! _ =
                 AcseField.defaulted
                     ProtocolVersion.Version1
-                    (InfoWhenPresent "protocol-version is present although the default value would be sufficient")
+                    (InfoWhenPresent
+                        "protocol-version is present although the default value would be sufficient")
                     ProtocolVersion.validateValue
                     raw.Value.ProtocolVersion
 
@@ -47,10 +45,7 @@ module AarqValidatedFields =
                     raw.Value.ApplicationContextName
 
             and! calledApTitle =
-                AcseField.optional
-                    NoPresenceDiagnostic
-                    ApTitle.validate
-                    raw.Value.CalledApTitle
+                AcseField.optional NoPresenceDiagnostic ApTitle.validate raw.Value.CalledApTitle
 
             and! calledAeQualifier =
                 AcseField.optional
@@ -71,10 +66,7 @@ module AarqValidatedFields =
                     raw.Value.CalledApInvocationId
 
             and! callingApTitle =
-                AcseField.optional
-                    NoPresenceDiagnostic
-                    ApTitle.validate
-                    raw.Value.CallingApTitle
+                AcseField.optional NoPresenceDiagnostic ApTitle.validate raw.Value.CallingApTitle
 
             and! callingAeQualifier =
                 AcseField.optional
@@ -121,7 +113,8 @@ module AarqValidatedFields =
             and! userInformation =
                 AcseField.requiredField
                     "missing user-information"
-                    UserInformation.validate raw.Value.UserInformation
+                    UserInformation.validate
+                    raw.Value.UserInformation
 
             return {
                 ApplicationContextName = applicationContextName

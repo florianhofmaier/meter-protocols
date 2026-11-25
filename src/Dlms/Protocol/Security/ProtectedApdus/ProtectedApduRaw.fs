@@ -6,27 +6,22 @@ open Metering.Common.Decoding.Parsers.Core
 open Metering.Common.Decoding.Parsers.FieldParser
 open Metering.Common.Decoding.Parsers.Utility
 
-type ProtectedApduRaw =
-    {
-        SecurityControl : Field<SecurityControlRaw>
-        InvocationCounter : Field<InvocationCounter>
-        protectedPayload : Field<ReadOnlyMemory<byte>>
-    }
+type ProtectedApduRaw = {
+    SecurityControl: Field<SecurityControlRaw>
+    InvocationCounter: Field<InvocationCounter>
+    protectedPayload: Field<ReadOnlyMemory<byte>>
+}
 
 module ProtectedApduRaw =
 
-    let parse : Parser<Field<ProtectedApduRaw>> =
+    let parse: Parser<Field<ProtectedApduRaw>> =
         parseField "protected-apdu"
         <| parser {
-            let! securityControl =
-                SecurityControlRaw.parse
+            let! securityControl = SecurityControlRaw.parse
 
-            let! invocationCounter =
-                InvocationCounter.parse
+            let! invocationCounter = InvocationCounter.parse
 
-            let! protectedPayload =
-                parseField "protected-payload"
-                <| takeAll
+            let! protectedPayload = parseField "protected-payload" <| takeAll
 
             return {
                 SecurityControl = securityControl

@@ -1,0 +1,7 @@
+**/bin/**
+**/obj/**
+**/node_modules/**
+**/dist/**
+
+# TODO: Remove once the unfinished match branch is implemented (FS0010).
+src/Dlms/Protocol/Xdlms/XdlmsApduDecodeSteps.fs

@@ -13,7 +13,7 @@ module AssociateSourceDiagnosticRaw =
         | AcseServiceUser = 0xA1uy
         | AcseServiceProvider = 0xA2uy
 
-    let parse : Parser<AssociateSourceDiagnosticRaw> =
+    let parse: Parser<AssociateSourceDiagnosticRaw> =
         parser {
             let! tag = Tag.parse<Tag>
 
@@ -28,6 +28,5 @@ module AssociateSourceDiagnosticRaw =
                     Ber.parseLengthDelimited Ber.Integer.parseUint32
                     |>> AssociateSourceDiagnosticRaw.AcseServiceProvider
 
-            | _ ->
-                return! fail $"unexpected result-source-diagnostic choice tag {tag}"
+            | _ -> return! fail $"unexpected result-source-diagnostic choice tag {tag}"
         }

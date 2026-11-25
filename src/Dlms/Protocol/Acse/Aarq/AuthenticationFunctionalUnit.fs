@@ -11,19 +11,13 @@ type AuthenticationFunctionalUnit =
     | HighLevelSecurity of HlsAuthenticationMechanismName * AuthenticationValue
 
 module AuthenticationFunctionalUnit =
-    let private validateMechanism
-        (value: Field<MechanismName option>)
-        : Validation<MechanismName> =
-        requireSome
-            "missing mechanism-name although authentication is selected"
-            value
+    let private validateMechanism (value: Field<MechanismName option>) : Validation<MechanismName> =
+        requireSome "missing mechanism-name although authentication is selected" value
 
     let private validateValue
         (value: Field<AuthenticationValue option>)
         : Validation<AuthenticationValue> =
-        requireSome
-            "missing calling-authentication-value although authentication is selected"
-            value
+        requireSome "missing calling-authentication-value although authentication is selected" value
 
     let private buildSelectedAuthentication
         (mechanism: Field<MechanismName>)
@@ -40,21 +34,18 @@ module AuthenticationFunctionalUnit =
             passed (AuthenticationFunctionalUnit.LowLevelSecurity value.Value)
 
         | MechanismName.HighLevelSecurity hls ->
-            passed (AuthenticationFunctionalUnit.HighLevelSecurity (hls, value.Value))
+            passed (AuthenticationFunctionalUnit.HighLevelSecurity(hls, value.Value))
 
     let private validateSelected
         (mechanismName: Field<MechanismName option>)
         (callingAuthenticationValue: Field<AuthenticationValue option>)
         : Validation<Field<AuthenticationFunctionalUnit>> =
         validator {
-            let! mechanism =
-                validateMechanism mechanismName
+            let! mechanism = validateMechanism mechanismName
 
-            and! value =
-                validateValue callingAuthenticationValue
+            and! value = validateValue callingAuthenticationValue
 
-            return!
-                buildSelectedAuthentication mechanism value
+            return! buildSelectedAuthentication mechanism value
         }
 
     let validate
@@ -64,16 +55,11 @@ module AuthenticationFunctionalUnit =
         : Validation<AuthenticationFunctionalUnit> =
 
         validator {
-            let! selection =
-                SenderAcseRequirements.validate senderAcseRequirements
+            let! selection = SenderAcseRequirements.validate senderAcseRequirements
 
             match selection with
-            | AuthenticationNotSelected ->
-                return AuthenticationFunctionalUnit.NoSecurity
+            | AuthenticationNotSelected -> return AuthenticationFunctionalUnit.NoSecurity
 
             | AuthenticationSelected ->
-                return!
-                    validateSelected
-                        mechanismName
-                        callingAuthenticationValue
+                return! validateSelected mechanismName callingAuthenticationValue
         }

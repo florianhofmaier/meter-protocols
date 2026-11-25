@@ -3,7 +3,6 @@ namespace Metering.Dlms.Protocol.Acse.Fields
 open System
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Parsers.Core
-open Metering.Common.Decoding.Parsers.ErrorHandling
 open Metering.Common.Decoding.Validators.Core
 open Metering.Dlms.Protocol
 
@@ -26,12 +25,9 @@ module AuthenticationValueRaw =
                 return! Ber.GraphicString.parseImplicit |>> AuthenticationValueRaw.CharString
 
             | ChoiceTag.BitString ->
-                return! Ber.BitString.parseImplicit|>> AuthenticationValueRaw.BitString
+                return! Ber.BitString.parseImplicit |>> AuthenticationValueRaw.BitString
 
-            | _ ->
-                return!
-                    Metering.Common.Decoding.Parsers.ErrorHandling.fail
-                        $"unexpected authentication-value choice tag {tag}"
+            | _ -> return! ErrorHandling.fail $"unexpected authentication-value choice tag {tag}"
         }
 
 type AuthenticationValue =
@@ -40,18 +36,12 @@ type AuthenticationValue =
 
 module AuthenticationValue =
 
-    let validate
-        (raw: Field<AuthenticationValueRaw>)
-        : Validation<AuthenticationValue> =
+    let validate (raw: Field<AuthenticationValueRaw>) : Validation<AuthenticationValue> =
 
         validator {
             match raw.Value with
             | AuthenticationValueRaw.CharString value ->
-                return
-                    value
-                    |> Ber.GraphicString.toBytes
-                    |> AuthenticationValue.CharString
+                return value |> Ber.GraphicString.toBytes |> AuthenticationValue.CharString
 
-            | AuthenticationValueRaw.BitString bits ->
-                return AuthenticationValue.BitString bits
+            | AuthenticationValueRaw.BitString bits -> return AuthenticationValue.BitString bits
         }

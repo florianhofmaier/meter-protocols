@@ -1,21 +1,31 @@
 namespace Metering.Mbus.Protocol.Records.ValueInfoBlocks
 
+open Metering.Common.BaseWriters.Core
+open Metering.Common.BaseWriters.BinaryWriters
+
 open System
 open Metering.Common.Decoding.Parsers
 open Metering.Common.Decoding.Validators.Core
 open Metering.Mbus.Protocol.Records
 
-type NormalRspVib = { Def: Vif; Ext: VifExtension list; Codes: RecordError list }
+type NormalRspVib = {
+    Def: Vif
+    Ext: VifExtension list
+    Codes: RecordError list
+}
 
-type NormalCmdVib = { Def: Vif; Ext: VifExtension list; Actions: ActionCode list }
+type NormalCmdVib = {
+    Def: Vif
+    Ext: VifExtension list
+    Actions: ActionCode list
+}
 
 type VibRsp =
     | Mfr of ReadOnlyMemory<uint8>
     | Normal of NormalRspVib
     | Text of string
 
-type VibCmd =
-    | Normal of NormalCmdVib
+type VibCmd = Normal of NormalCmdVib
 
 type VibReq = VibCmd
 
@@ -30,24 +40,19 @@ module internal VibCommon =
     let anyVif = 0x7Euy
     let mfrVif = 0x7Fuy
 
-    let isSpecial expected (b: byte) =
-        (b &&& mask) = expected
+    let isSpecial expected (b: byte) = (b &&& mask) = expected
 
-    type ExtensionScan<'code> =
-        {
-            Pos: int
-            Extensions: VifExtension list
-            Codes: 'code list
-        }
+    type ExtensionScan<'code> = {
+        Pos: int
+        Extensions: VifExtension list
+        Codes: 'code list
+    }
 
-    let vibBytes (raw: Field<InfoBlockRaw>) =
-        InfoBlockRaw.bytes raw.Value
+    let vibBytes (raw: Field<InfoBlockRaw>) = InfoBlockRaw.bytes raw.Value
 
-    let hex (bytes: ReadOnlyMemory<byte>) =
-        Convert.ToHexString bytes.Span
+    let hex (bytes: ReadOnlyMemory<byte>) = Convert.ToHexString bytes.Span
 
-    let issue raw message : Validation<unit> =
-        failed raw message
+    let issue raw message : Validation<unit> = failed raw message
 
     let private invalidVifExtension
         (raw: Field<InfoBlockRaw>)
@@ -62,7 +67,9 @@ module internal VibCommon =
             else
                 pos
 
-        failed raw $"Invalid VIB extension byte 0x{bytes.Span[invalidPos]:X2} at index {invalidPos} in VIB {hex bytes}"
+        failed
+            raw
+            $"Invalid VIB extension byte 0x{bytes.Span[invalidPos]:X2} at index {invalidPos} in VIB {hex bytes}"
 
     let private unknownCode
         (raw: Field<InfoBlockRaw>)
@@ -71,14 +78,15 @@ module internal VibCommon =
         (pos: int)
         : Validation<'a> =
 
-        failed raw $"Unknown VIB {unknownCodeDescription} byte 0x{bytes.Span[pos]:X2} at index {pos} in VIB {hex bytes}"
+        failed
+            raw
+            $"Unknown VIB {unknownCodeDescription} byte 0x{bytes.Span[pos]:X2} at index {pos} in VIB {hex bytes}"
 
-    let private emptyScan start : ExtensionScan<'code> =
-        {
-            Pos = start
-            Extensions = []
-            Codes = []
-        }
+    let private emptyScan start : ExtensionScan<'code> = {
+        Pos = start
+        Extensions = []
+        Codes = []
+    }
 
     let scanExtensions
         (tryMapCode: ReadOnlyMemory<byte> -> int -> 'code option * int)
@@ -97,20 +105,26 @@ module internal VibCommon =
 
                 match ext with
                 | Some ext ->
-                    loop { state with Pos = nextPos; Extensions = ext :: state.Extensions }
+                    loop {
+                        state with
+                            Pos = nextPos
+                            Extensions = ext :: state.Extensions
+                    }
 
-                | _ when nextPos > state.Pos ->
-                    invalidVifExtension raw bytes state.Pos nextPos
+                | _ when nextPos > state.Pos -> invalidVifExtension raw bytes state.Pos nextPos
 
                 | _ ->
                     let code, nextPos = tryMapCode bytes state.Pos
 
                     match code with
                     | Some code ->
-                        loop { state with Pos = nextPos; Codes = code :: state.Codes }
+                        loop {
+                            state with
+                                Pos = nextPos
+                                Codes = code :: state.Codes
+                        }
 
-                    | _ ->
-                        unknownCode raw bytes unknownCodeDescription state.Pos
+                    | _ -> unknownCode raw bytes unknownCodeDescription state.Pos
 
         loop (emptyScan start)
 
@@ -127,9 +141,19 @@ module internal VibCommon =
 
             let! scan = scanExtensions tryMapCode unknownCodeDescription raw pos
 
-            return
-                build
-                    vif
-                    (List.rev scan.Extensions)
-                    (List.rev scan.Codes)
+            return build vif (List.rev scan.Extensions) (List.rev scan.Codes)
         }
+
+    /// Encodes a VIB code sequence and applies its extension-bit chain.
+    let writeChain (codes: Writer<unit>) : Writer<unit> =
+        match Writer.run 11 codes with
+        | Error error -> writerError error.Msg
+        | Ok bytes when bytes.Length = 0 -> writerError "Empty VIB"
+        | Ok bytes ->
+            writer {
+                for i in 0 .. bytes.Length - 1 do
+                    do!
+                        writeU8 (
+                            (bytes[i] &&& 0x7Fuy) ||| (if i < bytes.Length - 1 then 0x80uy else 0uy)
+                        )
+            }

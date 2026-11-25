@@ -5,18 +5,17 @@ open DlmsMessages.Acse
 open Mbus.BaseParsers.Core
 open Validators
 
-type OpenResponseRawFields =
-    {
-        Aare : AareRawFields
-        UserInformation : XdlmsApduRaw
-    }
+type OpenResponseRawFields = {
+    Aare: AareRawFields
+    UserInformation: XdlmsApduRaw
+}
 
 type AareUserInformationRaw =
     | InitiateResponse of InitiateResponseRawFields
     | ConfirmedServiceError of ConfirmedServiceErrorRaw
 
 module AareUserInformationRaw =
-    let parse : Parser<AareUserInformationRaw> =
+    let parse: Parser<AareUserInformationRaw> =
         parser {
             let! tag = Tag.parse<XdlmsTag>
 
@@ -29,8 +28,7 @@ module AareUserInformationRaw =
                 let! error = ConfirmedServiceErrorRaw.parseBody
                 return AareUserInformationRaw.ConfirmedServiceError error
 
-            | other ->
-                return! fail $"unexpected xDLMS APDU in AARE user-information: {other}"
+            | other -> return! fail $"unexpected xDLMS APDU in AARE user-information: {other}"
         }
 
 type AareUserInformation =
@@ -40,67 +38,63 @@ type AareUserInformation =
 module AareUserInformation =
     let validateConfirmedServiceErrorForAare error =
         match error with
-        | ConfirmedServiceError.InitiateError _ ->
-            validationOkerror
+        | ConfirmedServiceError.InitiateError _ -> validationOkerror
 
         | ConfirmedServiceError.Read _
         | ConfirmedServiceError.Write _ ->
             validationError
-                ["AARE"; "user-information"]
+                [ "AARE"; "user-information" ]
                 "AARE confirmedServiceError must be initiateError"
 
-    let fromRaw raw : Validation<AareUserInformation> =
+    let validate raw : Validation<AareUserInformation> =
         match raw with
         | AareUserInformationRaw.InitiateResponse response ->
             response
-            |> InitiateResponseValidatedFields.fromRaw
+            |> InitiateResponseValidatedFields.validate
             |> Validation.map AareUserInformation.InitiateResponse
 
         | AareUserInformationRaw.ConfirmedServiceError error ->
             error
-            |> ConfirmedServiceError.fromRaw
+            |> ConfirmedServiceError.validate
             |> Validation.bind validateConfirmedServiceErrorForAare
             |> Validation.map AareUserInformation.ConfirmedServiceError
 
-type OpenResponseValidatedFields =
-    {
-        Aare : AareValidatedFields
-        UserInformation : AareUserInformation
-    }
+type OpenResponseValidatedFields = {
+    Aare: AareValidatedFields
+    UserInformation: AareUserInformation
+}
 
 module OpenResponseValidatedFields =
     let validateConfirmedServiceErrorForOpenResponse error =
         match error with
-        | ConfirmedServiceError.InitiateError _ ->
-            validationOkerror
+        | ConfirmedServiceError.InitiateError _ -> validationOkerror
 
         | ConfirmedServiceError.Read _
         | ConfirmedServiceError.Write _ ->
             validationError
-                ["COSEM-OPEN"; "AARE"; "user-information"]
+                [ "COSEM-OPEN"; "AARE"; "user-information" ]
                 "AARE confirmedServiceError must be initiateError"
 
-    let fromRaw (raw: OpenResponseRawFields) : Validation<OpenResponseValidatedFields> =
+    let validate (raw: OpenResponseRawFields) : Validation<OpenResponseValidatedFields> =
         validator {
-            let! aare =
-                AareValidatedFields.validate raw.Aare
+            let! aare = AareValidatedFields.validate raw.Aare
 
             let! userInformation =
                 match raw.UserInformation with
                 | XdlmsApduRaw.InitiateResponse responseRaw ->
                     responseRaw
-                    |> InitiateResponseValidatedFields.fromRaw
+                    |> InitiateResponseValidatedFields.validate
                     |> Validation.map AareUserInformation.InitiateResponse
 
                 | XdlmsApduRaw.ConfirmedServiceError errorRaw ->
                     errorRaw
-                    |> ConfirmedServiceError.fromRaw
+                    |> ConfirmedServiceError.validate
                     |> Validation.bind validateConfirmedServiceErrorForOpenResponse
                     |> Validation.map AareUserInformation.ConfirmedServiceError
 
                 | other ->
                     validationError
-                        ["COSEM-OPEN"; "AARE"; "user-information"]
+                        [ "COSEM-OPEN"; "AARE"; "user-information" ]
                         $"COSEM-OPEN.response user-information must contain initiateResponse or confirmedServiceError, got {other}"
 
             return {
@@ -113,31 +107,27 @@ type OpenResponseRejectedUserInformation =
     | InitiateResponse of InitiateResponseValidatedFields
     | InitiateError of ConfirmedServiceError
 
-type OpenResponseAccepted =
-    {
-        ApplicationContextName : ApplicationContextName
-        ResultSourceDiagnostic : AssociateSourceDiagnostic
-        Authentication : RespondingAuthentication
-        InitiateResponse : InitiateResponseValidatedFields
-    }
+type OpenResponseAccepted = {
+    ApplicationContextName: ApplicationContextName
+    ResultSourceDiagnostic: AssociateSourceDiagnostic
+    Authentication: RespondingAuthentication
+    InitiateResponse: InitiateResponseValidatedFields
+}
 
-type OpenResponseRejected =
-    {
-        ApplicationContextName : ApplicationContextName
-        Result : AssociationResult
-        ResultSourceDiagnostic : AssociateSourceDiagnostic
-        Authentication : RespondingAuthentication
-        UserInformation : OpenResponseRejectedUserInformation
-    }
+type OpenResponseRejected = {
+    ApplicationContextName: ApplicationContextName
+    Result: AssociationResult
+    ResultSourceDiagnostic: AssociateSourceDiagnostic
+    Authentication: RespondingAuthentication
+    UserInformation: OpenResponseRejectedUserInformation
+}
 
 type OpenResponse =
     | Accepted of OpenResponseAccepted
     | Rejected of OpenResponseRejected
 
 module OpenResponse =
-    let fromValidatedFields
-        (fields: OpenResponseValidatedFields)
-        : Validation<OpenResponse> =
+    let fromValidatedFields (fields: OpenResponseValidatedFields) : Validation<OpenResponse> =
 
         validator {
             match fields.Aare.Result, fields.UserInformation with
@@ -153,7 +143,7 @@ module OpenResponse =
             | AssociationResult.Accepted, AareUserInformation.ConfirmedServiceError _ ->
                 return!
                     validationError
-                        ["COSEM-OPEN"; "AARE"; "user-information"]
+                        [ "COSEM-OPEN"; "AARE"; "user-information" ]
                         "accepted AARE must carry initiateResponse"
 
             | AssociationResult.RejectedPermanent, AareUserInformation.InitiateResponse response
@@ -164,7 +154,8 @@ module OpenResponse =
                         Result = fields.Aare.Result
                         ResultSourceDiagnostic = fields.Aare.ResultSourceDiagnostic
                         Authentication = fields.Aare.Authentication
-                        UserInformation = OpenResponseRejectedUserInformation.InitiateResponse response
+                        UserInformation =
+                            OpenResponseRejectedUserInformation.InitiateResponse response
                     }
 
             | AssociationResult.RejectedPermanent, AareUserInformation.ConfirmedServiceError error
@@ -179,8 +170,7 @@ module OpenResponse =
                     }
         }
 
-    let fromRaw raw =
+    let validate raw =
         raw
-        |> OpenResponseValidatedFields.fromRaw
+        |> OpenResponseValidatedFields.validate
         |> Validation.bind fromValidatedFields
-

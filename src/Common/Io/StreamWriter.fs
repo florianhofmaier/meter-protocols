@@ -1,30 +1,24 @@
-namespace Mbus.Io
+namespace Metering.Common.Io
 
 open System
 open System.IO
 open System.Threading
-open Mbus.Frames
-open Mbus.BaseWriters.Core
 
+/// <summary>Serializes concurrent stream writes through a shared semaphore.</summary>
 module StreamWriter =
 
-    let private serialize frame writeBuffer =
-            let wState = { WState.Buf = writeBuffer; Pos = 0 }
-            match FrameWriter.writeFrame frame wState with
-            | Ok (_, endState) -> endState.Pos
-            | Error e -> failwithf "Serialization failed: %s" e.Msg
+    /// <summary>Creates a cancellable writer. Encoding, writing and flushing occur under the same lock.</summary>
+    let create (stream: Stream) (encode: 'frame -> ReadOnlyMemory<byte>) =
+        let gate = new SemaphoreSlim(1, 1)
 
-    let create (stream: Stream) =
-        let lock = new SemaphoreSlim(1, 1)
-        let writeBuffer = Array.zeroCreate<byte> 512
+        fun (frame: 'frame) (ct: CancellationToken) ->
+            task {
+                do! gate.WaitAsync ct
 
-        fun (frame: Frame) (ct: CancellationToken) -> task {
-            let len = serialize frame writeBuffer
-
-            do! lock.WaitAsync(ct)
-            try
-                do! stream.WriteAsync(ReadOnlyMemory(writeBuffer, 0, len), ct)
-                do! stream.FlushAsync(ct)
-            finally
-                lock.Release() |> ignore
-        }
+                try
+                    let bytes = encode frame
+                    do! stream.WriteAsync(bytes, ct)
+                    do! stream.FlushAsync ct
+                finally
+                    gate.Release() |> ignore
+            }
