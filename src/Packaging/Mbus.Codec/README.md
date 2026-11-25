@@ -13,3 +13,6 @@ is not included yet. Device-emulator applications should reference
 
 The supported protocol subset is documented in the repository's M-Bus conformance
 document. This package is not a full M-Bus conformance declaration.
+
+Licensed under the MIT License. Copyright (c) 2026 Florian Hofmaier.
+The complete license text is included as `LICENSE` in this package.

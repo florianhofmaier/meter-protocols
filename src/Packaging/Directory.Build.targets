@@ -1,6 +1,7 @@
 <Project>
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/" />
+    <None Include="$(MSBuildThisFileDirectory)../../LICENSE" Pack="true" PackagePath="/" />
   </ItemGroup>
   <!-- Each source assembly has exactly one owning package. Private project references
        build those assemblies without publishing their original project names as packages. -->

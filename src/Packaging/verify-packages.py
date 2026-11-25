@@ -6,6 +6,7 @@ from pathlib import Path
 from zipfile import ZipFile
 
 feed, version, commit = sys.argv[1:]
+license_bytes = (Path(__file__).resolve().parents[2] / "LICENSE").read_bytes()
 packages = {
     "Metering.Mbus.Codec": (
         {
@@ -30,6 +31,11 @@ for package_id, (expected_dlls, expected_dependencies) in packages.items():
         assert metadata.findtext("{*}id") == package_id, path
         assert metadata.findtext("{*}version") == version, path
         assert metadata.find("{*}repository").get("commit") == commit, path
+        license_element = metadata.find("{*}license")
+        assert license_element is not None and license_element.get("type") == "expression", path
+        assert license_element.text == "MIT", path
+        assert metadata.findtext("{*}copyright") == "Copyright (c) 2026 Florian Hofmaier", path
+        assert archive.read("LICENSE") == license_bytes, path
         dependencies = {
             dependency.get("id"): dependency.get("version")
             for dependency in metadata.findall(".//{*}dependency")

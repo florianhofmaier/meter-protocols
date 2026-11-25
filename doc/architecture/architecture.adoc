@@ -214,6 +214,8 @@ Das Paket hängt von `Metering.Mbus.Codec` ab. Codec bündelt `MbusCodec.dll`,
 `Protocol.dll`, `PublicTypes.dll` und die benötigten Common-Assemblies; Devices
 enthält `Devices.dll` und `MbusDevices.dll`. `FSharp.Core` bleibt eine externe
 NuGet-Abhängigkeit. Ein separates Foundation-NuGet wird nicht erzeugt.
+Beide Pakete werden unter MIT mit Copyright Florian Hofmaier ausgeliefert;
+SPDX-Lizenzangabe, Copyright und vollständige `LICENSE` sind Bestandteil der Pakete.
 Interne Projektgrenzen müssen nicht den Paketgrenzen entsprechen. Jede eigene
 Assembly gehört genau einem der beiden Pakete.
 

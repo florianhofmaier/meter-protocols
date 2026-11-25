@@ -32,3 +32,6 @@ The supported public API is the exact namespace `Metering.Mbus`. Other namespace
 are implementation details, even if their types are technically public. This API
 and the supported subset can change between beta releases. No DLMS,
 Analyzer or Protocol Inspector assemblies are included.
+
+Licensed under the MIT License. Copyright (c) 2026 Florian Hofmaier.
+The complete license text is included as `LICENSE` in this package.

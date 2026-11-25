@@ -1,4 +1,4 @@
-# M-Bus Beta 0.1.0-beta.1
+# M-Bus Beta 0.1.0-beta.2
 
 Für einen C#-Geräteemulator wird nur **Metering.Mbus.Devices** installiert.
 Benötigt wird .NET 10. Die Pakete werden zunächst als lokaler NuGet-Feed unter
@@ -22,7 +22,7 @@ Den lokalen Feed zusätzlich zu nuget.org registrieren (absoluten Pfad anpassen)
 
 ```sh
 dotnet nuget add source /pfad/zu/MeterProtocols/artifacts/nuget --name MeterProtocols-local
-dotnet add package Metering.Mbus.Devices --version 0.1.0-beta.1
+dotnet add package Metering.Mbus.Devices --version 0.1.0-beta.2
 ```
 
 ```csharp
@@ -68,7 +68,8 @@ zeigen. `BETA_NUGET_SOURCE` ersetzt bei Bedarf nuget.org durch einen anderen Fee
 Der zum SDK gehörende FSharp-Core-Feed wird zusätzlich berücksichtigt.
 
 Das Skript führt die Common- und M-Bus-Tests in Release aus, erstellt beide Pakete
-und prüft Paketabhängigkeiten, enthaltene DLLs und den Git-Commit in den Metadaten.
+und prüft Paketabhängigkeiten, enthaltene DLLs und den Git-Commit in den Metadaten
+sowie MIT-Lizenzangabe, Copyright und den mitgelieferten Lizenztext.
 Anschließend wird ein C#-Consumer mit genau einer Paketreferenz in ein eigenes
 Verzeichnis kopiert und mit leerem Paketcache wiederhergestellt. Er prüft die
 Emulation über einen Duplex-Stream, FCB-Wiederholung, Mehrtelegramme, Datenupdates,
@@ -95,6 +96,12 @@ RSP-UD-Byte-Import, verschlüsselte C#-Geräteausgabe und Wireless-Geräteemulat
 sind nicht enthalten. Physisches Timing und Baudrate sind Aufgabe des Transports.
 DLMS, Analyzer und Protocol Inspector werden nicht mit ausgeliefert.
 
-Das Repository enthält derzeit keine Lizenzdatei. Die Paketmetadaten enthalten
-deshalb noch keine Lizenzangabe. Für eine öffentliche Veröffentlichung ist die
-Lizenzentscheidung noch offen.
+## Lizenz
+
+Das Projekt steht unter der [MIT-Lizenz](../../LICENSE).
+Copyright (c) 2026 Florian Hofmaier. Beide NuGet-Pakete enthalten den vollständigen
+Lizenztext als `LICENSE` und die SPDX-Lizenzangabe `MIT` in ihren Metadaten.
+Abhängigkeiten behalten ihre jeweiligen Lizenzen.
+
+Beta `0.1.0-beta.2` ergänzt die Lizenz gegenüber `0.1.0-beta.1`.
+Die Device-API und Protokollimplementierung sind unverändert.

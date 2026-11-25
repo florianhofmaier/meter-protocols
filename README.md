@@ -24,3 +24,7 @@ let encode = Encoder.create options resolver
 
 Beide Funktionen verarbeiten einzelne Nachrichten. Gerätezustand und Stream-I/O
 liegen in `Devices`; Analyse und Diagnose liegen im eigenständigen `Analyzer`.
+
+## Lizenz
+
+[MIT](LICENSE) — Copyright (c) 2026 Florian Hofmaier.
